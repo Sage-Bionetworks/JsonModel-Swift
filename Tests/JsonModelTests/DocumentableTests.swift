@@ -38,9 +38,7 @@ final class DocumentableTests: XCTestCase {
     
     func testFactoryDocumentBuilder() {
         
-        let serializer = SampleSerializer()
-        let factory = SerializationFactory.shared
-        factory.registerSerializer(serializer)
+        let factory = TestFactory.defaultFactory
         let baseUrl = URL(string: "http://sagebionetworks.org/jsonSchema/")!
         
         let doc = JsonDocumentBuilder(baseUrl: baseUrl,
@@ -51,7 +49,7 @@ final class DocumentableTests: XCTestCase {
         XCTAssertEqual("Example", doc.rootName)
         XCTAssertEqual(["Sample"], doc.interfaces.map { $0.className })
         let objects = doc.objects.map { $0.className }
-        XCTAssertEqual(["SampleType", "SampleColor", "SampleA", "SampleB"], objects)
+        XCTAssertEqual(["SampleType", "SampleColor", "SampleA", "SampleAnimals", "SampleB"], objects)
         
         do {
             let jsonSchema = try doc.buildSchema()
@@ -71,7 +69,7 @@ final class DocumentableTests: XCTestCase {
                 return
             }
 
-            XCTAssertEqual(5, definitions.count)
+            XCTAssertEqual(6, definitions.count)
             
             var key: String = "Sample"
             if let def = definitions[key], case .object(let obj) = def {
@@ -101,6 +99,17 @@ final class DocumentableTests: XCTestCase {
             if let def = definitions[key], case .stringLiteral(let obj) = def {
                 XCTAssertEqual(key, obj.id.className)
                 XCTAssertEqual(key, obj.title)
+                XCTAssertEqual(["a","b"], obj.examples)
+            }
+            else {
+                XCTFail("Missing definition mapping for \(key)")
+            }
+            
+            key = "SampleAnimals"
+            if let def = definitions[key], case .stringOptionSet(let obj) = def {
+                XCTAssertEqual(key, obj.id.className)
+                XCTAssertEqual(key, obj.title)
+                XCTAssertEqual(["bear", "cow", "fox"], Set(obj.examples ?? []))
             }
             else {
                 XCTFail("Missing definition mapping for \(key)")
@@ -115,15 +124,49 @@ final class DocumentableTests: XCTestCase {
                 XCTAssertFalse(obj.isOpen)
                 let expectedExamples = [
                     AnyCodableDictionary(["type":"a","value":3]),
-                    AnyCodableDictionary(["type":"a","value":2,"color":"yellow"])
+                    AnyCodableDictionary(["type":"a","value":2,"color":"yellow","animalMap": ["blue":["robin","sparrow"]]])
                 ]
                 XCTAssertEqual(expectedExamples, obj.examples)
                 let expectedProperties: [String : JsonSchemaProperty] = [
                     "type" : .const(JsonSchemaConst(const: "a", ref: JsonSchemaReferenceId("SampleType"))),
                     "value" : .primitive(.integer),
-                    "color" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleColor")))
+                    "color" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleColor"))),
+                    "animalMap" : .dictionary(JsonSchemaTypedDictionary(items: .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleAnimals")))))
                 ]
                 XCTAssertEqual(expectedProperties, obj.properties)
+            }
+            else {
+                XCTFail("Missing definition mapping for \(key)")
+            }
+            
+//            let jsonBlob: JsonElement?
+//            let timestamp: Date?
+//            let numberMap: [String : Int]?
+            
+            key = "SampleB"
+            if let def = definitions[key], case .object(let obj) = def {
+                XCTAssertEqual(key, obj.id.className)
+                XCTAssertEqual(key, obj.title)
+                XCTAssertEqual(obj.allOf?.map { $0.ref.className }, ["Sample"])
+                XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
+                XCTAssertFalse(obj.isOpen)
+                let expectedProperties: [String : JsonSchemaProperty] = [
+                    "type" : .const(JsonSchemaConst(const: "b", ref: JsonSchemaReferenceId("SampleType"))),
+                    "value" : .primitive(.string),
+                    "animals" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleAnimals"))),
+                    "jsonBlob" : .primitive(.any),
+                    "timestamp" : .primitive(JsonSchemaPrimitive(format: .dateTime)),
+                    "numberMap" : .dictionary(JsonSchemaTypedDictionary(items: .primitive(.integer)))
+                ]
+                
+                XCTAssertEqual(expectedProperties.count, obj.properties?.count)
+                XCTAssertEqual(expectedProperties, obj.properties)
+                XCTAssertEqual(expectedProperties["type"], obj.properties?["type"])
+                XCTAssertEqual(expectedProperties["value"], obj.properties?["value"])
+                XCTAssertEqual(expectedProperties["animals"], obj.properties?["animals"])
+                XCTAssertEqual(expectedProperties["jsonBlob"], obj.properties?["jsonBlob"])
+                XCTAssertEqual(expectedProperties["timestamp"], obj.properties?["timestamp"])
+                XCTAssertEqual(expectedProperties["numberMap"], obj.properties?["numberMap"])
             }
             else {
                 XCTFail("Missing definition mapping for \(key)")

@@ -52,7 +52,7 @@ public struct AnyCodingKey: CodingKey {
 }
 
 /// Wrapper for any codable array.
-public struct AnyCodableArray : Codable, Equatable, Hashable {
+public struct AnyCodableArray : Codable, Hashable {
     let array : [JsonSerializable]
     
     public init(_ array : [JsonSerializable]) {
@@ -78,7 +78,7 @@ public struct AnyCodableArray : Codable, Equatable, Hashable {
 }
 
 /// Wrapper for any codable dictionary.
-public struct AnyCodableDictionary : Codable, Equatable, Hashable {
+public struct AnyCodableDictionary : Codable, Hashable {
     public let dictionary : [String : JsonSerializable]
     
     public init(_ dictionary : [String : JsonSerializable]) {
@@ -202,7 +202,7 @@ extension FactoryDecoder {
     
     /// Use this jsonElement to decode the given object type.
     public func decode<T>(_ type: T.Type, from jsonElement: JsonElement) throws -> T where T : Decodable {
-        let jsonData = try self.factory.createJSONEncoder().encode(jsonElement)
+        let jsonData = try self.serializationFactory.createJSONEncoder().encode(jsonElement)
         let decodable = try self.decode(type, from: jsonData)
         return decodable
     }
@@ -227,15 +227,15 @@ extension Dictionary {
 extension Encodable {
     
     /// Return the `JsonElement` for this object using the serialization strategy for numbers and
-    /// dates defined by `SerializationFactory.shared`.
-    public func jsonElement(using factory: SerializationFactory = SerializationFactory.shared) throws -> JsonElement {
+    /// dates defined by `SerializationFactory.defaultFactory`.
+    public func jsonElement(using factory: SerializationFactory = SerializationFactory.defaultFactory) throws -> JsonElement {
         let data = try factory.createJSONEncoder().encode(self)
         let json = try factory.createJSONDecoder().decode(JsonElement.self, from: data)
         return json
     }
     
     /// Return the dictionary representation for this object.
-    public func jsonEncodedDictionary(using factory: SerializationFactory = SerializationFactory.shared) throws -> [String : JsonSerializable] {
+    public func jsonEncodedDictionary(using factory: SerializationFactory = SerializationFactory.defaultFactory) throws -> [String : JsonSerializable] {
         let json = try self.jsonElement(using: factory)
         guard case .object(let dictionary) = json else {
             let context = EncodingError.Context(codingPath: [], debugDescription: "Failed to encode the object into a dictionary.")

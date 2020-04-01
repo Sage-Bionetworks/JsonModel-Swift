@@ -35,6 +35,18 @@ import Foundation
 
 /// A `Decodable` implementation that includes a mapping of the value of the "type" keyword that
 /// is used to define the polymorphic serialization for this object.
+///
+/// Swift Codable does not include any mechanism for serialization using the "type" keyword in the
+/// JSON that is typical of POJO (Plain Old Java Object) model objects. Therefore, the "type"
+/// keyword needs to be explicitly defined in the `CodingKeys` enum in order for the `Codable`
+/// protocol methods to be auto-synthesized by the compiler. Additionally, when defining your
+/// classes and structs, it is often helpful to be able to describe the class type using the
+/// extensible string enum pattern. Finally, "type" is a special syntax word in Swift and so using
+/// that word makes for messy, hard-to-read code. Therefore, this protocol returns the `String`
+/// value as `typeName` rather than mapping directly to `type`.
+///
+/// - seealso: `PolymorphicSerializerTests`
+///
 public protocol PolymorphicRepresentable : Decodable {
     var typeName: String { get }
 }
@@ -46,13 +58,15 @@ public protocol GenericSerializer : class {
     var interfaceName : String { get }
     func decode(from decoder: Decoder) throws -> Any
     func documentableExamples() -> [DocumentableObject]
+    func canDecode(_ typeName: String) -> Bool
+    func validate() throws
 }
 
 /// A serializer protocol for decoding serializable objects.
 ///
 /// This serializer is designed to allow for decoding objects that use
 /// [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) so it requires that
-/// the "type" key is set as a special property in the JSON. While you *can* chance the default
+/// the "type" key is set as a special property in the JSON. While you *can* change the default
 /// key in the JSON dictionary, this is not recommended because it would require all of your
 /// Swift Codable implementations to also use the new coding key.
 ///
@@ -92,17 +106,19 @@ extension PolymorphicSerializer {
         }
     }
     
+    public func canDecode(_ typeName: String) -> Bool {
+        findExample(for: typeName) != nil
+    }
+    
     /// Find an example for the given `typeName` key.
     public func findExample(for typeName: String) -> ProtocolValue? {
-        return examples.first { ($0 as? PolymorphicRepresentable)?.typeName == typeName }
+        examples.first { ($0 as? PolymorphicRepresentable)?.typeName == typeName }
     }
     
     public func decode(from decoder: Decoder) throws -> Any {
         let name = try typeName(from: decoder)
         guard let example = findExample(for: name) as? Decodable else {
-            let context = DecodingError.Context(codingPath: decoder.codingPath,
-                                                debugDescription: "Could not find an example for type \(name)")
-            throw DecodingError.valueNotFound(ProtocolValue.self, context)
+            throw PolymorphicSerializerError.exampleNotFound(name)
         }
         return try type(of: example.self).init(from: decoder)
     }
@@ -122,7 +138,15 @@ open class AbstractPolymorphicSerializer {
     
     open func typeName(from decoder: Decoder) throws -> String {
         let container = try decoder.container(keyedBy: TypeKeys.self)
-        return try container.decode(String.self, forKey: .type)
+        guard let type = try container.decodeIfPresent(String.self, forKey: .type) else {
+            throw PolymorphicSerializerError.typeKeyNotFound
+        }
+        return type
     }
+}
+
+enum PolymorphicSerializerError : Error {
+    case typeKeyNotFound
+    case exampleNotFound(String)
 }
 

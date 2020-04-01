@@ -48,7 +48,7 @@ public protocol PolymorphicSchemaElement {
 ///
 /// - note: The composable elements in this code file are defined as public to allow for extending
 /// the documentation, but should only be used at your own risk.
-public struct JsonSchema : PolymorphicSchemaElement, Codable, Equatable, Hashable {
+public struct JsonSchema : PolymorphicSchemaElement, Codable, Hashable {
     private enum CodingKeys : String, CodingKey {
         case schema = "$schema",
         id = "$id",
@@ -107,10 +107,11 @@ public struct JsonSchema : PolymorphicSchemaElement, Codable, Equatable, Hashabl
     }
 }
 
-public enum JsonSchemaDefinition : Codable, Equatable, Hashable {
+public enum JsonSchemaDefinition : Codable, Hashable {
     case object(JsonSchemaObject)
     case stringLiteral(JsonSchemaStringLiteral)
     case stringEnum(JsonSchemaStringEnum)
+    case stringOptionSet(JsonSchemaStringOptionSet)
     
     public var className: String? {
         switch self {
@@ -120,11 +121,16 @@ public enum JsonSchemaDefinition : Codable, Equatable, Hashable {
             return value.id.className
         case .stringLiteral(let value):
             return value.id.className
+        case .stringOptionSet(let value):
+            return value.id.className
         }
     }
     
     public init(from decoder: Decoder) throws {
-        if let obj = try? JsonSchemaStringEnum(from: decoder) {
+        if let obj = try? JsonSchemaStringOptionSet(from: decoder) {
+            self = .stringOptionSet(obj)
+        }
+        else if let obj = try? JsonSchemaStringEnum(from: decoder) {
             self = .stringEnum(obj)
         }
         else if let obj = try? JsonSchemaStringLiteral(from: decoder), obj.isValidDecoding {
@@ -148,24 +154,16 @@ public enum JsonSchemaDefinition : Codable, Equatable, Hashable {
             try value.encode(to: encoder)
         case .stringLiteral(let value):
             try value.encode(to: encoder)
-        }
-    }
-    
-    public static func == (lhs: JsonSchemaDefinition, rhs: JsonSchemaDefinition) -> Bool {
-        switch lhs {
-        case .object(let lv):
-            if case .object(let rv) = rhs { return rv == lv } else { return false }
-        case .stringEnum(let lv):
-            if case .stringEnum(let rv) = rhs { return rv == lv } else { return false }
-        case .stringLiteral(let lv):
-            if case .stringLiteral(let rv) = rhs { return rv == lv } else { return false }
+        case .stringOptionSet(let value):
+            try value.encode(to: encoder)
         }
     }
 }
 
-public enum JsonSchemaProperty : Codable, Equatable, Hashable {
+public enum JsonSchemaProperty : Codable, Hashable {
     case array(JsonSchemaArray)
     case const(JsonSchemaConst)
+    case dictionary(JsonSchemaTypedDictionary)
     case primitive(JsonSchemaPrimitive)
     case reference(JsonSchemaObjectRef)
     
@@ -176,8 +174,11 @@ public enum JsonSchemaProperty : Codable, Equatable, Hashable {
         else if let obj = try? JsonSchemaObjectRef(from: decoder) {
             self = .reference(obj)
         }
-        else if let obj = try? JsonSchemaArray(from: decoder) {
+        else if let obj = try? JsonSchemaArray(from: decoder), obj.isValidDecoding {
             self = .array(obj)
+        }
+        else if let obj = try? JsonSchemaTypedDictionary(from: decoder), obj.isValidDecoding {
+            self = .dictionary(obj)
         }
         else if let obj = try? JsonSchemaPrimitive(from: decoder), obj.isValidDecoding {
             self = .primitive(obj)
@@ -195,28 +196,17 @@ public enum JsonSchemaProperty : Codable, Equatable, Hashable {
             try value.encode(to: encoder)
         case .const(let value):
             try value.encode(to: encoder)
+        case .dictionary(let value):
+            try value.encode(to: encoder)
         case .primitive(let value):
             try value.encode(to: encoder)
         case .reference(let value):
             try value.encode(to: encoder)
         }
     }
-    
-    public static func == (lhs: JsonSchemaProperty, rhs: JsonSchemaProperty) -> Bool {
-        switch lhs {
-        case .array(let lv):
-            if case .array(let rv) = rhs { return rv == lv } else { return false }
-        case .const(let lv):
-            if case .const(let rv) = rhs { return rv == lv } else { return false }
-        case .primitive(let lv):
-            if case .primitive(let rv) = rhs { return rv == lv } else { return false }
-        case .reference(let lv):
-            if case .reference(let rv) = rhs { return rv == lv } else { return false }
-        }
-    }
 }
 
-public enum JsonSchemaArrayElement : Codable, Equatable, Hashable {
+public enum JsonSchemaElement : Codable, Hashable {
     case primitive(JsonSchemaPrimitive)
     case reference(JsonSchemaObjectRef)
     
@@ -230,7 +220,7 @@ public enum JsonSchemaArrayElement : Codable, Equatable, Hashable {
         else {
             let context = DecodingError.Context(codingPath: decoder.codingPath,
                                                 debugDescription: "Cannot find match for this decoding")
-            throw DecodingError.typeMismatch(JsonSchemaArrayElement.self, context)
+            throw DecodingError.typeMismatch(JsonSchemaElement.self, context)
         }
     }
     
@@ -242,18 +232,9 @@ public enum JsonSchemaArrayElement : Codable, Equatable, Hashable {
             try value.encode(to: encoder)
         }
     }
-    
-    public static func == (lhs: JsonSchemaArrayElement, rhs: JsonSchemaArrayElement) -> Bool {
-        switch lhs {
-        case .primitive(let lv):
-            if case .primitive(let rv) = rhs { return rv == lv } else { return false }
-        case .reference(let lv):
-            if case .reference(let rv) = rhs { return rv == lv } else { return false }
-        }
-    }
 }
 
-public struct JsonSchemaObjectRef : Codable, Equatable, Hashable {
+public struct JsonSchemaObjectRef : Codable, Hashable {
     private enum CodingKeys : String, CodingKey {
         case ref = "$ref", description
     }
@@ -266,7 +247,29 @@ public struct JsonSchemaObjectRef : Codable, Equatable, Hashable {
     }
 }
 
-public struct JsonSchemaObject : PolymorphicSchemaElement, Codable, Equatable, Hashable {
+public struct JsonSchemaTypedDictionary : Codable, Hashable {
+    private enum CodingKeys : String, CodingKey {
+        case jsonType = "type", description, additionalProperties
+    }
+    public private(set) var jsonType: JsonType = .object
+    private let additionalProperties: JsonSchemaElement
+    public let description: String?
+    
+    public var items: JsonSchemaElement {
+        return additionalProperties
+    }
+    
+    public init(items: JsonSchemaElement, description: String? = nil) {
+        self.additionalProperties = items
+        self.description = description
+    }
+    
+    fileprivate var isValidDecoding: Bool {
+        return jsonType == .object
+    }
+}
+
+public struct JsonSchemaObject : PolymorphicSchemaElement, Codable, Hashable {
     private enum CodingKeys : String, CodingKey {
         case id = "$id", jsonType = "type", title, description, properties, required, allOf, additionalProperties, examples
     }
@@ -278,12 +281,12 @@ public struct JsonSchemaObject : PolymorphicSchemaElement, Codable, Equatable, H
     public let allOf: [JsonSchemaObjectRef]?
     public let properties: [String : JsonSchemaProperty]?
     public let required: [String]?
-    private let additionalProperties: JsonElement?
     public let examples: [AnyCodableDictionary]?
     
     public var isOpen: Bool {
-        return additionalProperties == nil
+        return additionalProperties ?? true
     }
+    private let additionalProperties: Bool?
     
     public init(id: JsonSchemaReferenceId,
                 properties: [String : JsonSchemaProperty]? = nil,
@@ -295,7 +298,7 @@ public struct JsonSchemaObject : PolymorphicSchemaElement, Codable, Equatable, H
         self.id = id
         self.title = id.className
         self.description = description
-        self.additionalProperties = isOpen ? nil : .boolean(false)
+        self.additionalProperties = isOpen ? nil : false
         self.allOf = interfaces?.map { JsonSchemaObjectRef(ref: $0) }
         self.properties = properties
         self.required = required
@@ -307,53 +310,79 @@ public struct JsonSchemaObject : PolymorphicSchemaElement, Codable, Equatable, H
     }
 }
 
-public struct JsonSchemaArray : Codable, Equatable, Hashable {
+public struct JsonSchemaArray : Codable, Hashable {
     private enum CodingKeys : String, CodingKey {
         case jsonType = "type", items, description
     }
     
     public private(set) var jsonType: JsonType = .array
-    public let items: JsonSchemaArrayElement
+    public let items: JsonSchemaElement
     public let description: String?
     
-    public init(items: JsonSchemaArrayElement, description: String? = nil) {
+    public init(items: JsonSchemaElement, description: String? = nil) {
         self.items = items
         self.description = description
     }
+    
+    fileprivate var isValidDecoding: Bool {
+        return jsonType == .array
+    }
 }
 
-public struct JsonSchemaPrimitive : Codable, Equatable, Hashable {
+public enum JsonSchemaFormat : String, Codable, Hashable {
+    case dateTime = "date-time", date, time, uuid, uri, email
+}
+
+public struct JsonSchemaPrimitive : Codable, Hashable {
     private enum CodingKeys : String, CodingKey {
-        case jsonType = "type", defaultValue = "default", description
+        case jsonType = "type", defaultValue = "default", description, format
     }
     
-    public let jsonType: JsonType
+    public let jsonType: JsonType?
     public let defaultValue: JsonElement?
     public let description: String?
+    public let format: JsonSchemaFormat?
     
     static public let string = JsonSchemaPrimitive(jsonType: .string)
     static public let integer = JsonSchemaPrimitive(jsonType: .integer)
     static public let number = JsonSchemaPrimitive(jsonType: .number)
     static public let boolean = JsonSchemaPrimitive(jsonType: .boolean)
+    static public let any = JsonSchemaPrimitive()
+    
+    public init(description: String? = nil) {
+        self.defaultValue = nil
+        self.format = nil
+        self.jsonType = nil
+        self.description = description
+    }
     
     public init(jsonType: JsonType, description: String? = nil) {
         self.defaultValue = nil
+        self.format = nil
         self.jsonType = jsonType
         self.description = description
     }
     
     public init(defaultValue: JsonElement, description: String? = nil) {
         self.defaultValue = defaultValue
+        self.format = nil
         self.jsonType = defaultValue.jsonType
         self.description = description
     }
     
+    public init(format: JsonSchemaFormat, description: String? = nil) {
+        self.defaultValue = nil
+        self.format = format
+        self.jsonType = .string
+        self.description = description
+    }
+    
     fileprivate var isValidDecoding: Bool {
-        return jsonType.isPrimitive
+        return jsonType?.isPrimitive ?? true
     }
 }
 
-public struct JsonSchemaStringLiteral : Codable, Equatable, Hashable {
+public struct JsonSchemaStringLiteral : Codable, Hashable {
     private enum CodingKeys : String, CodingKey {
         case id = "$id", jsonType = "type", title, description, pattern, examples
     }
@@ -380,7 +409,47 @@ public struct JsonSchemaStringLiteral : Codable, Equatable, Hashable {
     }
 }
 
-public struct JsonSchemaStringEnum : Codable, Equatable, Hashable {
+public struct JsonSchemaStringOptionSet : Codable, Hashable {
+    private enum CodingKeys : String, CodingKey {
+        case id = "$id", jsonType = "type", title, description, items
+    }
+    public let id: JsonSchemaReferenceId
+    public private(set) var jsonType: JsonType = .array
+    public let title: String?
+    public let description: String?
+    
+    private let items: StringOptions
+    
+    public var examples: [String]? {
+        return items.examples
+    }
+    
+    public var pattern: String? {
+        return items.pattern
+    }
+
+    public init(id: JsonSchemaReferenceId,
+                description: String = "",
+                examples: [String]? = nil,
+                pattern: NSRegularExpression? = nil) {
+        self.id = id
+        self.title = id.className
+        self.description = description
+        self.items = StringOptions(examples: examples, pattern: pattern?.pattern)
+    }
+    
+    fileprivate var isValidDecoding: Bool {
+        return jsonType == .string
+    }
+    
+    struct StringOptions : Codable, Hashable {
+        private(set) var jsonType: JsonType = .string
+        let examples: [String]?
+        let pattern: String?
+    }
+}
+
+public struct JsonSchemaStringEnum : Codable, Hashable {
     private enum CodingKeys : String, CodingKey {
         case id = "$id", jsonType = "type", title, values = "enum", description
     }
@@ -400,7 +469,7 @@ public struct JsonSchemaStringEnum : Codable, Equatable, Hashable {
     }
 }
 
-public struct JsonSchemaConst : Codable, Equatable, Hashable {
+public struct JsonSchemaConst : Codable, Hashable {
     private enum CodingKeys : String, CodingKey {
         case const, ref = "$ref", description
     }
@@ -417,7 +486,7 @@ public struct JsonSchemaConst : Codable, Equatable, Hashable {
     }
 }
 
-public struct JsonSchemaReferenceId : Codable, Equatable, Hashable {
+public struct JsonSchemaReferenceId : Codable, Hashable {
     public let className: String
     public let classPath: String
     

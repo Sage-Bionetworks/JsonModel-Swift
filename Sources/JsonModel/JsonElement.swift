@@ -34,7 +34,7 @@
 import Foundation
 
 /// An enum listing the json-types for serialization.
-public enum JsonType : String, Codable {
+public enum JsonType : String, Codable, CaseIterable {
     case string, number, integer, boolean, null, array, object
     
     var isPrimitive: Bool {
@@ -43,8 +43,11 @@ public enum JsonType : String, Codable {
     }
 }
 
+extension JsonType : DocumentableStringEnum, StringEnumSet {
+}
+
 /// A `Codable` element that can be used to serialize any `JsonSerializable`.
-public enum JsonElement : Codable, Equatable, Hashable {
+public enum JsonElement : Codable, Hashable {
     case string(String)
     case integer(Int)
     case number(JsonNumber)
@@ -52,25 +55,6 @@ public enum JsonElement : Codable, Equatable, Hashable {
     case null
     case array([JsonSerializable])
     case object([String : JsonSerializable])
-    
-    public func jsonObject() -> JsonSerializable? {
-        switch self {
-        case .null:
-            return nil
-        case .boolean(let value):
-            return value
-        case .string(let value):
-            return value
-        case .integer(let value):
-            return value
-        case .number(let value):
-            return value.jsonNumber()
-        case .array(let value):
-            return value
-        case .object(let value):
-            return value
-        }
-    }
     
     public var jsonType: JsonType {
         switch self {
@@ -102,11 +86,14 @@ public enum JsonElement : Codable, Equatable, Hashable {
         else if let value = obj as? Bool {
             self = .boolean(value)
         }
-        else if let value = obj as? Int {
-            self = .integer(value)
+        else if obj is FixedWidthInteger, let value = obj as? NSNumber {
+            self = .integer(value.intValue)
         }
         else if let value = obj as? JsonNumber {
             self = .number(value)
+        }
+        else if let num = obj as? NSNumber {
+            self = .number(num.doubleValue)
         }
         else if let value = obj as? [JsonSerializable] {
             self = .array(value)
@@ -188,27 +175,72 @@ public enum JsonElement : Codable, Equatable, Hashable {
     }
     
     public func hash(into hasher: inout Hasher) {
+        jsonType.hash(into: &hasher)
         switch self {
         case .null:
-            "null".hash(into: &hasher)
+            break
         case .boolean(let value):
-            "boolean".hash(into: &hasher)
             value.hash(into: &hasher)
         case .string(let value):
-            "string".hash(into: &hasher)
             value.hash(into: &hasher)
         case .integer(let value):
-            "integer".hash(into: &hasher)
             value.hash(into: &hasher)
         case .number(let value):
-            "number".hash(into: &hasher)
             value.jsonNumber()?.hash(into: &hasher)
         case .array(let value):
-            "array".hash(into: &hasher)
             (value as NSArray).hash(into: &hasher)
         case .object(let value):
-            "object".hash(into: &hasher)
             (value as NSDictionary).hash(into: &hasher)
+        }
+    }
+}
+
+extension JsonElement : JsonValue {
+    public func jsonObject() -> JsonSerializable {
+        switch self {
+        case .null:
+            return NSNull()
+        case .boolean(let value):
+            return value
+        case .string(let value):
+            return value
+        case .integer(let value):
+            return value
+        case .number(let value):
+            return value.jsonNumber() ?? NSNull()
+        case .array(let value):
+            return value
+        case .object(let value):
+            return value
+        }
+    }
+}
+
+public protocol JsonElementFormatter {
+    func jsonElement(from string: String) -> JsonElement?
+    func string(from jsonElement: JsonElement) -> String?
+}
+
+extension NumberFormatter : JsonElementFormatter {
+    
+    public var isIntegerStyle: Bool {
+        get { self.maximumFractionDigits == 0 }
+    }
+    
+    public func jsonElement(from string: String) -> JsonElement? {
+        self.number(from: string).map { self.isIntegerStyle ? .integer($0.intValue) : .number($0.doubleValue) }
+    }
+    
+    public func string(from jsonElement: JsonElement) -> String? {
+        switch jsonElement {
+        case .integer(let value):
+            return self.string(from: value as NSNumber)
+        case .number(let value):
+            return value.jsonNumber().map { self.string(from: $0) } ?? nil
+        case .string(let value):
+            return value
+        default:
+            return nil
         }
     }
 }
