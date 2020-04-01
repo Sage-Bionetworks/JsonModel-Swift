@@ -1,8 +1,7 @@
 # JsonModel
 
 JsonModel is a set of utilities built on top of the Swift Codable protocol to allow for polymorphic serialization
-and documentation using a subset of the  
-[JSON Schema draft 7](https://json-schema.org/understanding-json-schema/index.html).
+and documentation using a subset of the  [JSON Schema draft 7](https://json-schema.org/understanding-json-schema/index.html).
 
 TODO: syoung 03/31/2020 Link to the examples in the test cases.
 
