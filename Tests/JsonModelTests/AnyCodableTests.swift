@@ -40,6 +40,7 @@ final class AnyCodableTests: XCTestCase {
         
         let factory = SerializationFactory.shared
         let encoder = factory.createJSONEncoder()
+        let decoder = factory.createJSONDecoder()
         
         let now = Date()
         var dateComponents = DateComponents()
@@ -68,7 +69,7 @@ final class AnyCodableTests: XCTestCase {
             
             encoder.dataEncodingStrategy = .base64
             encoder.nonConformingFloatEncodingStrategy = .convertToString(positiveInfinity: "+inf", negativeInfinity: "-inf", nan: "NaN")
-            let jsonData = try encoder.rsd_encode(input)
+            let jsonData = try encoder.encodeDictionary(input)
             
             guard let dictionary = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String : Any]
                 else {
@@ -101,7 +102,7 @@ final class AnyCodableTests: XCTestCase {
             }
             
             // Test convert to object
-            let object = try dictionary.rsd_decode(TestDecodable.self)
+            let object = try decoder.decode(TestDecodable.self, from: dictionary)
             
             XCTAssertEqual("String", object.string)
             XCTAssertEqual(34, object.integer)
@@ -121,6 +122,7 @@ final class AnyCodableTests: XCTestCase {
         
         let factory = SerializationFactory.shared
         let encoder = factory.createJSONEncoder()
+        let decoder = factory.createJSONDecoder()
         
         let now = Date()
         var dateComponents = DateComponents()
@@ -135,7 +137,7 @@ final class AnyCodableTests: XCTestCase {
                              "uuid" : uuid.uuidString,
                              "array" : ["cat", "dog", "duck"]]]
         do {
-            guard let object = try input.rsd_decode([TestDecodable].self).first
+            guard let object = try decoder.decode([TestDecodable].self, from: input).first
                 else {
                     XCTFail("Failed to decode object")
                     return
@@ -151,7 +153,7 @@ final class AnyCodableTests: XCTestCase {
             
             encoder.dataEncodingStrategy = .base64
             encoder.nonConformingFloatEncodingStrategy = .convertToString(positiveInfinity: "+inf", negativeInfinity: "-inf", nan: "NaN")
-            let jsonData = try encoder.rsd_encode(input)
+            let jsonData = try encoder.encodeArray(input)
             
             guard let array = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [[String: Any]],
                 let dictionary = array.first

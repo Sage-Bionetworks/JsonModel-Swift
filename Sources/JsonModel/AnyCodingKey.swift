@@ -166,7 +166,7 @@ extension FactoryEncoder {
     
     /// Serialize a dictionary. This is a work around for not being able to
     /// directly encode a generic dictionary.
-    public func rsd_encode(_ value: Dictionary<String, Any>) throws -> Data {
+    public func encodeDictionary(_ value: Dictionary<String, Any>) throws -> Data {
         let dictionary = value._mapKeys { "\($0)" }
         let anyDictionary = AnyCodableDictionary(dictionary.jsonDictionary())
         let data = try self.encode(anyDictionary)
@@ -175,28 +175,46 @@ extension FactoryEncoder {
     
     /// Serialize an array. This is a work around for not being able to
     /// directly encode a generic dictionary.
-    public func rsd_encode(_ value: Array<Any>) throws -> Data {
+    public func encodeArray(_ value: Array<Any>) throws -> Data {
         let anyArray = AnyCodableArray(value.jsonArray())
         let data = try self.encode(anyArray)
         return data
     }
 }
 
-extension Dictionary {
+extension FactoryDecoder {
     
     /// Use this dictionary to decode the given object type.
-    public func rsd_decode<T>(_ type: T.Type, resourceInfo: ResourceInfo? = nil) throws -> T where T : Decodable {
-        let decoder = SerializationFactory.shared.createJSONDecoder(resourceInfo: resourceInfo)
-        let jsonData = try JSONSerialization.data(withJSONObject: self, options: [])
-        let decodable = try decoder.decode(type, from: jsonData)
+    public func decode<T>(_ type: T.Type, from dictionary: Dictionary<String, Any>) throws -> T where T : Decodable {
+        let jsonDictionary = dictionary.jsonDictionary()
+        let jsonData = try JSONSerialization.data(withJSONObject: jsonDictionary, options: [])
+        let decodable = try self.decode(type, from: jsonData)
         return decodable
     }
+    
+    /// Use this array to decode an array of objects of the given type.
+    public func decode<T>(_ type: Array<T>.Type, from array: Array<Any>) throws -> Array<T> where T : Decodable {
+        let jsonArray = array.jsonArray()
+        let jsonData = try JSONSerialization.data(withJSONObject: jsonArray, options: [])
+        let decodable = try self.decode(type, from: jsonData)
+        return decodable
+    }
+    
+    /// Use this jsonElement to decode the given object type.
+    public func decode<T>(_ type: T.Type, from jsonElement: JsonElement) throws -> T where T : Decodable {
+        let jsonData = try self.factory.createJSONEncoder().encode(jsonElement)
+        let decodable = try self.decode(type, from: jsonData)
+        return decodable
+    }
+}
+
+extension Dictionary {
     
     /// Returns a `Dictionary` containing the results of transforming the keys
     /// over `self` where the returned values are the mapped keys.
     /// - parameter transform: The function used to transform the input keys into the output key
     /// - returns: A dictionary of key/value pairs.
-    internal func _mapKeys<T: Hashable>(_ transform: (Key) -> T) -> [T: Value] {
+    fileprivate func _mapKeys<T: Hashable>(_ transform: (Key) -> T) -> [T: Value] {
         var result: [T: Value] = [:]
         for (key, value) in self {
             let transformedKey = transform(key)
@@ -206,31 +224,19 @@ extension Dictionary {
     }
 }
 
-extension Array {
-    
-    /// Use this array to decode an array of objects of the given type.
-    public func rsd_decode<T>(_ type: Array<T>.Type, resourceInfo: ResourceInfo? = nil) throws -> Array<T> where T : Decodable {
-        let decoder = SerializationFactory.shared.createJSONDecoder(resourceInfo: resourceInfo)
-        let jsonData = try JSONSerialization.data(withJSONObject: self, options: [])
-        let decodable = try decoder.decode(type, from: jsonData)
-        return decodable
-    }
-}
-
 extension Encodable {
     
     /// Return the `JsonElement` for this object using the serialization strategy for numbers and
     /// dates defined by `SerializationFactory.shared`.
-    public func jsonElement() throws -> JsonElement {
-        let factory = SerializationFactory.shared
+    public func jsonElement(using factory: SerializationFactory = SerializationFactory.shared) throws -> JsonElement {
         let data = try factory.createJSONEncoder().encode(self)
         let json = try factory.createJSONDecoder().decode(JsonElement.self, from: data)
         return json
     }
     
     /// Return the dictionary representation for this object.
-    public func jsonEncodedDictionary() throws -> [String : JsonSerializable] {
-        let json = try self.jsonElement()
+    public func jsonEncodedDictionary(using factory: SerializationFactory = SerializationFactory.shared) throws -> [String : JsonSerializable] {
+        let json = try self.jsonElement(using: factory)
         guard case .object(let dictionary) = json else {
             let context = EncodingError.Context(codingPath: [], debugDescription: "Failed to encode the object into a dictionary.")
             throw EncodingError.invalidValue(json, context)

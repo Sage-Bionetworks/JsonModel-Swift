@@ -36,7 +36,8 @@ import XCTest
 
 final class JsonModelTests: XCTestCase {
     func testExample() {
-        
+        // This code file is a template for setting up unit tests.
+        XCTAssertTrue(true)
     }
 
     static var allTests = [
