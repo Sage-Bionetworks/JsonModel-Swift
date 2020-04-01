@@ -133,8 +133,4 @@ final class DocumentableTests: XCTestCase {
             XCTFail("Failed to build the JsonSchema: \(err)")
         }
     }
-
-    static var allTests = [
-        ("testFactoryDocumentBuilder", testFactoryDocumentBuilder),
-    ]
 }

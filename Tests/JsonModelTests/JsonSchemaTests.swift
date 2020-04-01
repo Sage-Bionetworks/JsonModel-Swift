@@ -558,17 +558,4 @@ final class JsonSchemaTests: XCTestCase {
             XCTFail("Failed to decode/encode object: \(err)")
         }
     }
-    
-    static var allTests = [
-        ("testJsonSchemaPrimitive_IntDefault", testJsonSchemaPrimitive_IntDefault),
-        ("testJsonSchemaPrimitive_String", testJsonSchemaPrimitive_String),
-        ("testJsonSchemaObjectRef", testJsonSchemaObjectRef),
-        ("testJsonSchemaArray_Ref", testJsonSchemaArray_Ref),
-        ("testJsonSchemaArray_Primitive", testJsonSchemaArray_Primitive),
-        ("testJsonSchemaConst", testJsonSchemaConst),
-        ("testJsonSchemaStringEnum", testJsonSchemaStringEnum),
-        ("testJsonSchemaStringLiteral", testJsonSchemaStringLiteral),
-        ("testJsonSchemaObject", testJsonSchemaObject),
-        ("testJsonSchemaRootElement", testJsonSchemaRootElement),
-    ]
 }

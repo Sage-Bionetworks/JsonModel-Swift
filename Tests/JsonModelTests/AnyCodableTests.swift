@@ -216,11 +216,6 @@ final class AnyCodableTests: XCTestCase {
             return
         }
     }
-    
-    static var allTests = [
-        ("testDictionary_Encodable", testDictionary_Encodable),
-        ("testArray_Codable", testArray_Codable),
-    ]
 }
 
 struct TestDecodable : Codable {

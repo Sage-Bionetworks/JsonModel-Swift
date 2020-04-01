@@ -87,10 +87,6 @@ final class PolymorphicSerializerTests: XCTestCase {
             XCTFail("Failed to decode/encode object: \(err)")
         }
     }
-
-    static var allTests = [
-        ("testSampleSerializer", testSampleSerializer),
-    ]
 }
 
 struct SampleWrapper : Codable {

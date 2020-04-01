@@ -161,16 +161,6 @@ final class JsonElementTests: XCTestCase {
             return
         }
     }
-
-    static var allTests = [
-        ("testString", testString),
-        ("testInt", testInt),
-        ("testDouble", testDouble),
-        ("testBoolean", testBoolean),
-        ("testNull", testNull),
-        ("testArray", testArray),
-        ("testDictionary", testDictionary),
-    ]
 }
 
 enum SampleIntEnum : Int, Codable {
