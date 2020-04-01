@@ -120,7 +120,16 @@ public enum JsonElement : Codable, Equatable, Hashable {
     }
     
     public init(from decoder: Decoder) throws {
-        if let container = try? decoder.singleValueContainer() {
+        if let _ = try? decoder.container(keyedBy: AnyCodingKey.self) {
+            let value = try AnyCodableDictionary(from: decoder)
+            self = .object(value.dictionary)
+        }
+        else if let _ = try? decoder.unkeyedContainer() {
+            let value = try AnyCodableArray(from: decoder)
+            self = .array(value.array)
+        }
+        else {
+            let container = try decoder.singleValueContainer()
             if container.decodeNil() {
                 self = .null
             }
@@ -137,14 +146,6 @@ public enum JsonElement : Codable, Equatable, Hashable {
                 let value = try container.decode(String.self)
                 self = .string(value)
             }
-        }
-        else if let _ = try? decoder.container(keyedBy: AnyCodingKey.self) {
-            let value = try AnyCodableDictionary(from: decoder)
-            self = .object(value.dictionary)
-        }
-        else {
-            let value = try AnyCodableArray(from: decoder)
-            self = .array(value.array)
         }
     }
     

@@ -172,7 +172,49 @@ final class AnyCodableTests: XCTestCase {
             return
         }
     }
-
+    
+    func testEncodableToJsonElement_Object() {
+        let uuid = UUID()
+        let now = Date()
+        let expected: [String : JsonSerializable] = ["string" : "String",
+                                                     "integer" : NSNumber(value: 34),
+                                                     "bool" : NSNumber(value:true),
+                                                     "date" : now.jsonObject(),
+                                                     "uuid" : uuid.uuidString,
+                                                     "array" : ["cat", "dog", "duck"]]
+        
+        let test = TestDecodable(string: "String",
+                                 integer: 34,
+                                 uuid: uuid,
+                                 date: now,
+                                 bool: true,
+                                 array: ["cat", "dog", "duck"],
+                                 null: nil)
+        
+        do {
+            let jsonElement = try test.jsonElement()
+            XCTAssertEqual(JsonElement.object(expected), jsonElement)
+        
+            let dictionary = try test.jsonEncodedDictionary()
+            XCTAssertEqual(expected as NSDictionary, dictionary as NSDictionary)
+            
+        } catch let err {
+            XCTFail("Failed to decode/encode object: \(err)")
+            return
+        }
+    }
+    
+    func testEncodableToJsonElement_Int() {
+        do {
+            let test = 3
+            let jsonElement = try test.jsonElement()
+            XCTAssertEqual(JsonElement.integer(3), jsonElement)
+        } catch let err {
+            XCTFail("Failed to decode/encode object: \(err)")
+            return
+        }
+    }
+    
     static var allTests = [
         ("testDictionary_Encodable", testDictionary_Encodable),
         ("testArray_Codable", testArray_Codable),

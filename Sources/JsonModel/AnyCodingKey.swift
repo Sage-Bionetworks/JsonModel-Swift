@@ -219,14 +219,22 @@ extension Array {
 
 extension Encodable {
     
+    /// Return the `JsonElement` for this object using the serialization strategy for numbers and
+    /// dates defined by `SerializationFactory.shared`.
+    public func jsonElement() throws -> JsonElement {
+        let factory = SerializationFactory.shared
+        let data = try factory.createJSONEncoder().encode(self)
+        let json = try factory.createJSONDecoder().decode(JsonElement.self, from: data)
+        return json
+    }
+    
     /// Return the dictionary representation for this object.
-    func jsonEncodedDictionary() throws -> [String : JsonSerializable] {
-        let data = try SerializationFactory.shared.createJSONEncoder().encode(self)
-        let json = try JSONSerialization.jsonObject(with: data, options: [])
-        guard let dictionary = json as? NSDictionary else {
+    public func jsonEncodedDictionary() throws -> [String : JsonSerializable] {
+        let json = try self.jsonElement()
+        guard case .object(let dictionary) = json else {
             let context = EncodingError.Context(codingPath: [], debugDescription: "Failed to encode the object into a dictionary.")
             throw EncodingError.invalidValue(json, context)
         }
-        return dictionary.jsonDictionary()
+        return dictionary
     }
 }

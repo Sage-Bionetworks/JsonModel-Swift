@@ -275,14 +275,7 @@ fileprivate func _convertToJSONValue(from object: Any) -> JsonSerializable {
         return obj.jsonObject()
     }
     else if let obj = object as? DictionaryRepresentable {
-        let dictionary = obj.dictionaryRepresentation()
-        if JSONSerialization.isValidJSONObject(dictionary),
-            let cast = dictionary as? [String : JsonSerializable] {
-            return cast
-        }
-        else {
-            return dictionary.jsonObject()
-        }
+        return obj.dictionaryRepresentation()
     }
     else if let obj = object as? NSObjectProtocol {
         return obj.description
