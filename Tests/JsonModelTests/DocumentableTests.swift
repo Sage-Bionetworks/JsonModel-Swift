@@ -139,10 +139,6 @@ final class DocumentableTests: XCTestCase {
                 XCTFail("Missing definition mapping for \(key)")
             }
             
-//            let jsonBlob: JsonElement?
-//            let timestamp: Date?
-//            let numberMap: [String : Int]?
-            
             key = "SampleB"
             if let def = definitions[key], case .object(let obj) = def {
                 XCTAssertEqual(key, obj.id.className)
