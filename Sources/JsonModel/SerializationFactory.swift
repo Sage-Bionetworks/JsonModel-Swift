@@ -136,7 +136,7 @@ open class SerializationFactory : FactoryRegistration {
     /// If required, allow the factory to set up pointers or transform the decoded objects.
     open func mapDecodedArray<T>(_ objects : [T]) throws -> [T] { objects }
     
-    /// If required, allow the factory to set up pointers or transform the decoded objects.
+    /// If required, allow the factory to set up pointers or transform the decoded object.
     open func mapDecodedObject<T>(_ type: T.Type, object: Any, codingPath: [CodingKey]) throws -> T {
         guard let obj = object as? T else {
             let name = "\(type)"
@@ -421,16 +421,6 @@ extension Encoder {
 /// mutated during the Decoding of an object.
 public class CodingInfo {
     public var userInfo : [CodingUserInfoKey : Any] = [:]
-}
-
-internal struct FactoryResourceInfo : ResourceInfo {
-    let factoryBundle: ResourceBundle?
-    let packageName: String?
-    var bundleIdentifier: String? { return nil }
-    init(from decoder: Decoder) {
-        self.factoryBundle = decoder.bundle
-        self.packageName = decoder.packageName
-    }
 }
 
 
