@@ -37,12 +37,6 @@ public protocol TypeRepresentable : Hashable, RawRepresentable, ExpressibleByStr
     var stringValue: String { get }
 }
 
-extension TypeRepresentable {
-    static var regularExpression: NSRegularExpression? {
-        return try? NSRegularExpression(pattern: "^[A-Za-z][A-Za-z0-9]*$", options: [])
-    }
-}
-
 extension RawRepresentable where Self.RawValue == String {
     public var stringValue: String { return rawValue }
 }
@@ -53,10 +47,19 @@ extension RawRepresentable where Self.RawValue == String {
 public protocol Documentable {
 }
 
-protocol DocumentableStringEnum : Documentable, Codable {
-    /// The string value of the enum.
+extension Documentable {
+    public static func documentableType() -> Documentable.Type {
+        return self
+    }
+}
+
+public protocol DocumentableString : Documentable, Codable {
+    /// Not all of the string literals have a `rawValue` of a `String` but they should all be
+    /// codable using a string value.
     var stringValue: String { get }
-    
+}
+
+public protocol DocumentableStringEnum : DocumentableString {
     /// An array of encodable objects to use as the set of examples for decoding this object.
     static func allValues() -> [String]
 }
@@ -65,18 +68,17 @@ public protocol StringEnumSet : Hashable, RawRepresentable, CaseIterable where R
 }
 
 extension StringEnumSet {
-    static func allValues() -> [String] {
+    public static func allValues() -> [String] {
         return self.allCases.map { $0.rawValue }
     }
 }
 
-public protocol DocumentableStringLiteral : Documentable, Codable {
-    /// Not all of the string literals have a `rawValue` of a `String` but they should all be
-    /// codable using a string value.
-    var stringValue: String { get }
-    
-    /// A regular expression that can be used to limit the allowed string pattern for values.
-    static var regularExpression: NSRegularExpression? { get }
+public protocol DocumentableStringLiteral : DocumentableString {
+    /// An array of encodable objects to use as the set of examples for decoding this object.
+    static func examples() -> [String]
+}
+
+public protocol DocumentableStringOptionSet : Documentable, Codable {
     
     /// An array of encodable objects to use as the set of examples for decoding this object.
     static func examples() -> [String]
@@ -107,32 +109,41 @@ public struct DocumentProperty {
     let propertyType: PropertyType
     let constValue: String?
     let defaultValue: JsonElement?
+    let propertyDescription: String?
     
     public enum PropertyType {
+        case any
+        case format(JsonSchemaFormat)
         case primitive(JsonType)
         case primitiveArray(JsonType)
+        case primitiveDictionary(JsonType)
         case reference(Documentable.Type)
         case referenceArray(Documentable.Type)
+        case referenceDictionary(Documentable.Type)
         case interface(String)
         case interfaceArray(String)
+        case interfaceDictionary(String)
     }
     
-    public init(propertyType: PropertyType) {
+    public init(propertyType: PropertyType, propertyDescription: String? = nil) {
         self.propertyType = propertyType
         self.constValue = nil
         self.defaultValue = nil
+        self.propertyDescription = propertyDescription
     }
     
-    public init(defaultValue: JsonElement) {
+    public init(defaultValue: JsonElement, propertyDescription: String? = nil) {
         self.propertyType = .primitive(defaultValue.jsonType)
         self.constValue = nil
         self.defaultValue = defaultValue
+        self.propertyDescription = propertyDescription
     }
     
-    public init(constValue: DocumentableStringLiteral) {
+    public init(constValue: DocumentableString, propertyDescription: String? = nil) {
         self.propertyType = .reference(type(of: constValue))
         self.constValue = constValue.stringValue
         self.defaultValue = nil
+        self.propertyDescription = propertyDescription
     }
 }
 
@@ -142,11 +153,11 @@ public protocol DocumentableStruct : DocumentableObject, Codable {
 }
 
 extension DocumentableStruct {
-    static func isOpen() -> Bool {
+    public static func isOpen() -> Bool {
         return false
     }
     
-    static func jsonExamples() throws -> [[String : JsonSerializable]] {
+    public static func jsonExamples() throws -> [[String : JsonSerializable]] {
         return try examples().map { try $0.jsonEncodedDictionary() }
     }
 }
@@ -293,46 +304,66 @@ public class JsonDocumentBuilder {
     
     fileprivate func buildSchemaProperty(for prop: DocumentProperty) throws -> JsonSchemaProperty {
         switch prop.propertyType {
+        case .any:
+            return .primitive(.any)
+        
+        case .format(let format):
+            return .primitive(JsonSchemaPrimitive(format: format, description: prop.propertyDescription))
+            
         case .reference(let dType):
             guard let pointer = self.pointer(for: dType) else {
                 throw DocumentableError.invalidMapping("Could not find the pointer for the property mapping.")
             }
             if let const = prop.constValue {
-                return .const(JsonSchemaConst(const: const, ref: pointer.schemaRef))
+                return .const(JsonSchemaConst(const: const, ref: pointer.schemaRef, description: prop.propertyDescription))
             }
             else {
-                return .reference(JsonSchemaObjectRef(ref: pointer.schemaRef))
+                return .reference(JsonSchemaObjectRef(ref: pointer.schemaRef, description: prop.propertyDescription))
             }
             
         case .referenceArray(let dType):
             guard let pointer = self.pointer(for: dType) else {
                 throw DocumentableError.invalidMapping("Could not find the pointer for the property mapping.")
             }
-            return .array(JsonSchemaArray(items: .reference(JsonSchemaObjectRef(ref: pointer.schemaRef))))
+            return .array(JsonSchemaArray(items: .reference(JsonSchemaObjectRef(ref: pointer.schemaRef)), description: prop.propertyDescription))
+            
+        case .referenceDictionary(let dType):
+            guard let pointer = self.pointer(for: dType) else {
+                throw DocumentableError.invalidMapping("Could not find the pointer for the property mapping.")
+            }
+            return .dictionary(JsonSchemaTypedDictionary(items: .reference(JsonSchemaObjectRef(ref: pointer.schemaRef)), description: prop.propertyDescription))
             
         case .interface(let className):
             guard let schemaRef = self.interfaces.first(where: { $0.className == className }) else {
                 throw DocumentableError.invalidMapping("Could not find the pointer for the property mapping.")
             }
-            return .reference(JsonSchemaObjectRef(ref: schemaRef))
+            return .reference(JsonSchemaObjectRef(ref: schemaRef, description: prop.propertyDescription))
         
         case .interfaceArray(let className):
             guard let schemaRef = self.interfaces.first(where: { $0.className == className }) else {
                 throw DocumentableError.invalidMapping("Could not find the pointer for the property mapping.")
             }
-            return .array(JsonSchemaArray(items: .reference(JsonSchemaObjectRef(ref: schemaRef))))
+            return .array(JsonSchemaArray(items: .reference(JsonSchemaObjectRef(ref: schemaRef)), description: prop.propertyDescription))
+            
+        case .interfaceDictionary(let className):
+            guard let schemaRef = self.interfaces.first(where: { $0.className == className }) else {
+                throw DocumentableError.invalidMapping("Could not find the pointer for the property mapping.")
+            }
+            return .array(JsonSchemaArray(items: .reference(JsonSchemaObjectRef(ref: schemaRef)), description: prop.propertyDescription))
             
         case .primitive(let jsonType):
             if let defaultValue = prop.defaultValue {
-                return .primitive(JsonSchemaPrimitive(defaultValue: defaultValue))
+                return .primitive(JsonSchemaPrimitive(defaultValue: defaultValue, description: prop.propertyDescription))
             }
             else {
-                return .primitive(JsonSchemaPrimitive(jsonType: jsonType))
+                return .primitive(JsonSchemaPrimitive(jsonType: jsonType, description: prop.propertyDescription))
             }
         
         case .primitiveArray(let jsonType):
-            return .array(JsonSchemaArray(items: .primitive(JsonSchemaPrimitive(jsonType: jsonType))))
-        
+            return .array(JsonSchemaArray(items: .primitive(JsonSchemaPrimitive(jsonType: jsonType)), description: prop.propertyDescription))
+            
+        case .primitiveDictionary(let jsonType):
+            return .dictionary(JsonSchemaTypedDictionary(items: .primitive(JsonSchemaPrimitive(jsonType: jsonType)), description: prop.propertyDescription))
         }
     }
     
@@ -359,12 +390,16 @@ public class JsonDocumentBuilder {
             if let docType = klass as? DocumentableStringLiteral.Type {
                 return .stringLiteral(JsonSchemaStringLiteral(id: ref,
                                                               description: "",
-                                                              examples: docType.examples(),
-                                                              pattern: docType.regularExpression))
+                                                              examples: docType.examples()))
             }
             else if let docType = klass as? DocumentableStringEnum.Type {
                 return .stringEnum(JsonSchemaStringEnum(id: ref,
                                                         values: docType.allValues()))
+            }
+            else if let docType = klass as? DocumentableStringOptionSet.Type {
+                return .stringOptionSet(JsonSchemaStringOptionSet(id: ref,
+                                                                  description: "",
+                                                                  examples: docType.examples()))
             }
             else if let docType = klass as? DocumentableObject.Type {
                 let codingKeys = docType.codingKeys()

@@ -48,17 +48,17 @@ final class JsonSchemaTests: XCTestCase {
         let original = JsonSchemaPrimitive(defaultValue: .integer(4),
                                            description: "An integer value")
         
-        let decoder = SerializationFactory.shared.createJSONDecoder()
-        let encoder = SerializationFactory.shared.createJSONEncoder()
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
         
         do {
             let decodedObject = try decoder.decode(JsonSchemaPrimitive.self, from: json)
             let decodedProperty = try decoder.decode(JsonSchemaProperty.self, from: json)
-            let decodedArrayElement = try decoder.decode(JsonSchemaArrayElement.self, from: json)
+            let decodedArrayElement = try decoder.decode(JsonSchemaElement.self, from: json)
             
             XCTAssertEqual(original, decodedObject)
             XCTAssertEqual(JsonSchemaProperty.primitive(original), decodedProperty)
-            XCTAssertEqual(JsonSchemaArrayElement.primitive(original), decodedArrayElement)
+            XCTAssertEqual(JsonSchemaElement.primitive(original), decodedArrayElement)
             
             let encodedData = try encoder.encode(original)
             let encodedJson = try JSONSerialization.jsonObject(with: encodedData, options: [])
@@ -86,17 +86,17 @@ final class JsonSchemaTests: XCTestCase {
         
         let original = JsonSchemaPrimitive.string
         
-        let decoder = SerializationFactory.shared.createJSONDecoder()
-        let encoder = SerializationFactory.shared.createJSONEncoder()
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
         
         do {
             let decodedObject = try decoder.decode(JsonSchemaPrimitive.self, from: json)
             let decodedProperty = try decoder.decode(JsonSchemaProperty.self, from: json)
-            let decodedArrayElement = try decoder.decode(JsonSchemaArrayElement.self, from: json)
+            let decodedArrayElement = try decoder.decode(JsonSchemaElement.self, from: json)
             
             XCTAssertEqual(original, decodedObject)
             XCTAssertEqual(JsonSchemaProperty.primitive(original), decodedProperty)
-            XCTAssertEqual(JsonSchemaArrayElement.primitive(original), decodedArrayElement)
+            XCTAssertEqual(JsonSchemaElement.primitive(original), decodedArrayElement)
             
             let encodedData = try encoder.encode(original)
             let encodedJson = try JSONSerialization.jsonObject(with: encodedData, options: [])
@@ -124,17 +124,17 @@ final class JsonSchemaTests: XCTestCase {
         
         let original = JsonSchemaObjectRef(ref: JsonSchemaReferenceId("FooClass"))
         
-        let decoder = SerializationFactory.shared.createJSONDecoder()
-        let encoder = SerializationFactory.shared.createJSONEncoder()
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
         
         do {
             let decodedObject = try decoder.decode(JsonSchemaObjectRef.self, from: json)
             let decodedProperty = try decoder.decode(JsonSchemaProperty.self, from: json)
-            let decodedArrayElement = try decoder.decode(JsonSchemaArrayElement.self, from: json)
+            let decodedArrayElement = try decoder.decode(JsonSchemaElement.self, from: json)
             
             XCTAssertEqual(original, decodedObject)
             XCTAssertEqual(JsonSchemaProperty.reference(original), decodedProperty)
-            XCTAssertEqual(JsonSchemaArrayElement.reference(original), decodedArrayElement)
+            XCTAssertEqual(JsonSchemaElement.reference(original), decodedArrayElement)
             
             let encodedData = try encoder.encode(original)
             let encodedJson = try JSONSerialization.jsonObject(with: encodedData, options: [])
@@ -166,8 +166,8 @@ final class JsonSchemaTests: XCTestCase {
         let original = JsonSchemaArray(items: .reference(items),
                                        description: "Test of a reference array")
         
-        let decoder = SerializationFactory.shared.createJSONDecoder()
-        let encoder = SerializationFactory.shared.createJSONEncoder()
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
         
         do {
             let decodedObject = try decoder.decode(JsonSchemaArray.self, from: json)
@@ -205,8 +205,8 @@ final class JsonSchemaTests: XCTestCase {
         let original = JsonSchemaArray(items: .primitive(JsonSchemaPrimitive(jsonType: .boolean)),
                                        description: "Test of a reference array")
         
-        let decoder = SerializationFactory.shared.createJSONDecoder()
-        let encoder = SerializationFactory.shared.createJSONEncoder()
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
         
         do {
             let decodedObject = try decoder.decode(JsonSchemaArray.self, from: json)
@@ -214,6 +214,85 @@ final class JsonSchemaTests: XCTestCase {
             
             XCTAssertEqual(original, decodedObject)
             XCTAssertEqual(JsonSchemaProperty.array(original), decodedProperty)
+            
+            let encodedData = try encoder.encode(original)
+            let encodedJson = try JSONSerialization.jsonObject(with: encodedData, options: [])
+            let originalJson = try JSONSerialization.jsonObject(with: json, options: [])
+            
+            guard let expected = originalJson as? NSDictionary,
+                let actual = encodedJson as? NSDictionary else {
+                    XCTFail("\(originalJson) or \(encodedJson) not of expected type")
+                    return
+            }
+
+            XCTAssertEqual(expected, actual)
+
+        } catch let err {
+            XCTFail("Failed to decode/encode object: \(err)")
+        }
+    }
+    
+    func testJsonSchemaTypedDictionary_Ref() {
+        let json = """
+        {
+            "type": "object",
+            "additionalProperties": { "$ref": "#FooClass" },
+            "description": "Test of a typed dictionary"
+        }
+        """.data(using: .utf8)! // our data in native (JSON) format
+        
+        let items = JsonSchemaObjectRef(ref: JsonSchemaReferenceId("FooClass"))
+        let original = JsonSchemaTypedDictionary(items: .reference(items),
+                                                 description: "Test of a typed dictionary")
+        
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
+        
+        do {
+            let decodedObject = try decoder.decode(JsonSchemaTypedDictionary.self, from: json)
+            let decodedProperty = try decoder.decode(JsonSchemaProperty.self, from: json)
+            
+            XCTAssertEqual(original, decodedObject)
+            XCTAssertEqual(JsonSchemaProperty.dictionary(original), decodedProperty)
+            
+            let encodedData = try encoder.encode(original)
+            let encodedJson = try JSONSerialization.jsonObject(with: encodedData, options: [])
+            let originalJson = try JSONSerialization.jsonObject(with: json, options: [])
+            
+            guard let expected = originalJson as? NSDictionary,
+                let actual = encodedJson as? NSDictionary else {
+                    XCTFail("\(originalJson) or \(encodedJson) not of expected type")
+                    return
+            }
+
+            XCTAssertEqual(expected, actual)
+
+        } catch let err {
+            XCTFail("Failed to decode/encode object: \(err)")
+        }
+    }
+    
+    func testJsonSchemaTypedDictionary_Primitive() {
+        let json = """
+        {
+            "type": "object",
+            "additionalProperties": { "type": "boolean" },
+            "description": "Test of a typed dictionary"
+        }
+        """.data(using: .utf8)! // our data in native (JSON) format
+        
+        let original = JsonSchemaTypedDictionary(items: .primitive(JsonSchemaPrimitive(jsonType: .boolean)),
+                                                 description: "Test of a typed dictionary")
+        
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
+        
+        do {
+            let decodedObject = try decoder.decode(JsonSchemaTypedDictionary.self, from: json)
+            let decodedProperty = try decoder.decode(JsonSchemaProperty.self, from: json)
+            
+            XCTAssertEqual(original, decodedObject)
+            XCTAssertEqual(JsonSchemaProperty.dictionary(original), decodedProperty)
             
             let encodedData = try encoder.encode(original)
             let encodedJson = try JSONSerialization.jsonObject(with: encodedData, options: [])
@@ -242,8 +321,8 @@ final class JsonSchemaTests: XCTestCase {
         
         let original = JsonSchemaConst(const: "boo", ref: JsonSchemaReferenceId("FooType"))
         
-        let decoder = SerializationFactory.shared.createJSONDecoder()
-        let encoder = SerializationFactory.shared.createJSONEncoder()
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
         
         do {
             let decodedObject = try decoder.decode(JsonSchemaConst.self, from: json)
@@ -284,8 +363,8 @@ final class JsonSchemaTests: XCTestCase {
                                             values: ["red","green","blue"],
                                             description: "These are primary colors")
          
-        let decoder = SerializationFactory.shared.createJSONDecoder()
-        let encoder = SerializationFactory.shared.createJSONEncoder()
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
 
         do {
             let decodedObject = try decoder.decode(JsonSchemaStringEnum.self, from: json)
@@ -324,8 +403,8 @@ final class JsonSchemaTests: XCTestCase {
         let original = JsonSchemaStringLiteral(id: JsonSchemaReferenceId("Color"),
                                                description: "This is a freeform string liternal for color names")
          
-        let decoder = SerializationFactory.shared.createJSONDecoder()
-        let encoder = SerializationFactory.shared.createJSONEncoder()
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
 
         do {
             let decodedObject = try decoder.decode(JsonSchemaStringLiteral.self, from: json)
@@ -398,8 +477,8 @@ final class JsonSchemaTests: XCTestCase {
                                         interfaces: [JsonSchemaReferenceId("Goo")],
                                         examples: [["type":"foo","identifier":"boo"]])
         
-        let decoder = SerializationFactory.shared.createJSONDecoder()
-        let encoder = SerializationFactory.shared.createJSONEncoder()
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
 
         do {
             let decodedObject = try decoder.decode(JsonSchemaObject.self, from: json)
@@ -511,8 +590,8 @@ final class JsonSchemaTests: XCTestCase {
                                   required: ["type", "identifier"],
                                   examples: [["type": "foo","identifier": "boo"]])
 
-        let decoder = SerializationFactory.shared.createJSONDecoder()
-        let encoder = SerializationFactory.shared.createJSONEncoder()
+        let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
+        let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
 
         do {
             let decodedObject = try decoder.decode(JsonSchema.self, from: json)

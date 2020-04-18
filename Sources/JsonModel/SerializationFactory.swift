@@ -32,36 +32,96 @@
 
 import Foundation
 
+public protocol FactoryRegistration : class {
+    init()
+    func isRegistered<T>(for type: T.Type, with typeName: String) -> Bool
+}
+
+fileprivate var registeredFactories = [String : SerializationFactory]()
+extension FactoryRegistration {
+    
+    public static var defaultFactory : Self {
+        let identifier = String(reflecting: self)
+        if let factory = registeredFactories[identifier] {
+            return factory as! Self
+        }
+        else {
+            guard let factory = self.init() as? SerializationFactory else {
+                fatalError("Registered Factory *must* be a subclass of `SerializationFactory`.")
+            }
+            registeredFactories[identifier] = factory
+            return factory as! Self
+        }
+    }
+    
+    public static func factory(with identifier: String) -> SerializationFactory? {
+        registeredFactories[identifier]
+    }
+    
+    public static func factory<T>(for type: T.Type, with typeName: String) -> SerializationFactory? {
+        registeredFactories.first { $0.value.isRegistered(for: type, with: typeName) }?.value
+    }
+}
 
 /// `SerializationFactory` handles customization of decoding the elements of a json file. Applications can either
 /// register custom elements or use override to decode them.
-open class SerializationFactory {
+open class SerializationFactory : FactoryRegistration {
     
-    /// Singleton for the shared factory.
-    public static var shared = SerializationFactory()
+    public final var identifier: String { String(reflecting: type(of: self)) }
     
     // Initializer
-    public init() {
+    public required init() {
     }
 
     // MARK: Polymorphic Decodable
     
     public private(set) var serializerMap: [String : GenericSerializer] = [:]
         
-    public func registerSerializer<T : PolymorphicSerializer>(_ polymorphicSerializer: T) {
-        serializerMap[polymorphicSerializer.interfaceName] = polymorphicSerializer
+    public final func registerSerializer(_ serializer: GenericSerializer) {
+        serializerMap[serializer.interfaceName] = serializer
     }
     
-    public final func decodeObject<T>(_ type: T.Type, from decoder: Decoder) throws -> T {
-        let name = "\(T.self)"
-        guard let serializer = serializerMap[name] else {
+    open func serializer<T>(for type: T.Type) -> GenericSerializer? {
+        serializerMap["\(type)"]
+    }
+    
+    public final func isRegistered<T>(for type: T.Type, with typeName: String) -> Bool {
+        guard let serializer = self.serializer(for: type) else { return false }
+        return serializer.canDecode(typeName)
+    }
+    
+    public final func decodePolymorphicArray<T>(_ type: T.Type, from container: UnkeyedDecodingContainer) throws -> [T] {
+        var objects : [T] = []
+        var mutableContainer = container
+        while !mutableContainer.isAtEnd {
+            let nestedDecoder = try mutableContainer.superDecoder()
+            let object = try self.decodePolymorphicObject(type, from: nestedDecoder)
+            objects.append(object)
+        }
+        return try self.mapDecodedArray(objects)
+    }
+    
+    public final func decodePolymorphicObject<T>(_ type: T.Type, from decoder: Decoder) throws -> T {
+        let name = "\(type)"
+        guard let serializer = serializer(for: type) else {
             let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Could not serializer for \(name) is not registered with factory: \(self).")
             throw DecodingError.typeMismatch(type, context)
         }
-        guard let decodedObject = try serializer.decode(from: decoder) as? T else {
-            let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Decoded object does not implement \(name).")
-            throw DecodingError.typeMismatch(type, context)
-        }
+        try serializer.validate()
+        let decodedObject: T = try {
+            do {
+                let obj = try serializer.decode(from: decoder)
+                return try mapDecodedObject(type, object: obj, codingPath: decoder.codingPath)
+            }
+            catch PolymorphicSerializerError.exampleNotFound(let typeName) {
+                debugPrint("WARNING!!! Using a default object is not a strategy that is supported by Kotlin serialization. '\(name)' for '\(typeName)' in \(decoder.codingPath)")
+                return try self.decodeDefaultObject(type, from: decoder)
+            }
+            catch PolymorphicSerializerError.typeKeyNotFound {
+                debugPrint("WARNING!!! Using a default object is not a strategy that is supported by Kotlin serialization. '\(name)' in \(decoder.codingPath)")
+                return try self.decodeDefaultObject(type, from: decoder)
+            }
+        }()
         if let obj = decodedObject as? DecodableBundleInfo {
             var resource = obj
             resource.factoryBundle = decoder.bundle
@@ -72,7 +132,25 @@ open class SerializationFactory {
             return decodedObject
         }
     }
+    
+    /// If required, allow the factory to set up pointers or transform the decoded objects.
+    open func mapDecodedArray<T>(_ objects : [T]) throws -> [T] { objects }
+    
+    /// If required, allow the factory to set up pointers or transform the decoded object.
+    open func mapDecodedObject<T>(_ type: T.Type, object: Any, codingPath: [CodingKey]) throws -> T {
+        guard let obj = object as? T else {
+            let name = "\(type)"
+            let context = DecodingError.Context(codingPath: codingPath, debugDescription: "Decoded object does not implement \(name).")
+            throw DecodingError.typeMismatch(type, context)
+        }
+        return obj
+    }
 
+    open func decodeDefaultObject<T>(_ type: T.Type, from decoder: Decoder) throws -> T {
+        let context = DecodingError.Context(codingPath: decoder.codingPath,
+                                            debugDescription: "Default decoder is not implemented for \(type)")
+        throw DecodingError.valueNotFound(type, context)
+    }
     
     // MARK: Date Result Format
     
@@ -195,7 +273,7 @@ open class SerializationFactory {
         return formatter
     }()
     
-    internal func decodeDate(from string: String, formatter: DateFormatter?, codingPath: [CodingKey]) throws -> Date {
+    public func decodeDate(from string: String, formatter: DateFormatter?, codingPath: [CodingKey]) throws -> Date {
         guard let date = decodeDate(from: string, formatter: formatter) else {
             let context = DecodingError.Context(codingPath: codingPath, debugDescription: "Could not decode \(string) into a date.")
             throw DecodingError.typeMismatch(Date.self, context)
@@ -281,8 +359,8 @@ extension PropertyListDecoder : FactoryDecoder {
 extension FactoryDecoder {
     
     /// The factory to use when decoding.
-    public var factory: SerializationFactory {
-        return self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.shared
+    public var serializationFactory: SerializationFactory {
+        return self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.defaultFactory
     }
 }
 
@@ -291,8 +369,8 @@ extension FactoryDecoder {
 extension Decoder {
     
     /// The factory to use when decoding.
-    public var factory: SerializationFactory {
-        return self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.shared
+    public var serializationFactory: SerializationFactory {
+        return self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.defaultFactory
     }
     
     /// The default bundle to use for embedded resources.
@@ -329,8 +407,8 @@ extension PropertyListEncoder : FactoryEncoder {
 extension Encoder {
     
     /// The factory to use when encoding.
-    public var factory: SerializationFactory {
-        return self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.shared
+    public var serializationFactory: SerializationFactory {
+        return self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.defaultFactory
     }
     
     /// The coding info object to use when encoding.
@@ -343,16 +421,6 @@ extension Encoder {
 /// mutated during the Decoding of an object.
 public class CodingInfo {
     public var userInfo : [CodingUserInfoKey : Any] = [:]
-}
-
-internal struct FactoryResourceInfo : ResourceInfo {
-    let factoryBundle: ResourceBundle?
-    let packageName: String?
-    var bundleIdentifier: String? { return nil }
-    init(from decoder: Decoder) {
-        self.factoryBundle = decoder.bundle
-        self.packageName = decoder.packageName
-    }
 }
 
 

@@ -168,7 +168,7 @@ extension NSDate : JsonValue {
 
 extension Date : JsonValue {
     public func jsonObject() -> JsonSerializable {
-        return SerializationFactory.shared.timestampFormatter.string(from: self)
+        return SerializationFactory.defaultFactory.timestampFormatter.string(from: self)
     }
 }
 
@@ -181,11 +181,11 @@ extension DateComponents : JsonValue {
     
     public func defaultFormatter() -> DateFormatter {
         if ((year == nil) || (year == 0)) && ((month == nil) || (month == 0)) && ((day == nil) || (day == 0)) {
-            return SerializationFactory.shared.timeOnlyFormatter
+            return SerializationFactory.defaultFactory.timeOnlyFormatter
         }
         else if ((hour == nil) || (hour == 0)) && ((minute == nil) || (minute == 0)) {
             if let year = year, year > 0, let month = month, month > 0, let day = day, day > 0 {
-                return SerializationFactory.shared.dateOnlyFormatter
+                return SerializationFactory.defaultFactory.dateOnlyFormatter
             }
             
             // Build the format string if not all components are included
@@ -208,7 +208,7 @@ extension DateComponents : JsonValue {
             formatter.dateFormat = formatString
             return formatter
         }
-        return SerializationFactory.shared.timestampFormatter
+        return SerializationFactory.defaultFactory.timestampFormatter
     }
 }
 

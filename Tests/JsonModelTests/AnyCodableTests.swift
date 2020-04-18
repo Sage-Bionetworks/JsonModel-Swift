@@ -38,7 +38,7 @@ final class AnyCodableTests: XCTestCase {
     
     func testDictionary_Encodable() {
         
-        let factory = SerializationFactory.shared
+        let factory = SerializationFactory.defaultFactory
         let encoder = factory.createJSONEncoder()
         let decoder = factory.createJSONDecoder()
         
@@ -120,7 +120,7 @@ final class AnyCodableTests: XCTestCase {
     
     func testArray_Codable() {
         
-        let factory = SerializationFactory.shared
+        let factory = SerializationFactory.defaultFactory
         let encoder = factory.createJSONEncoder()
         let decoder = factory.createJSONDecoder()
         
