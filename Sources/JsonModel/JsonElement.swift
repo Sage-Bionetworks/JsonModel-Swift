@@ -86,7 +86,7 @@ public enum JsonElement : Codable, Hashable {
         else if let value = obj as? Bool {
             self = .boolean(value)
         }
-        else if obj is FixedWidthInteger, let value = obj as? NSNumber {
+        else if obj is IntegerNumber, let value = obj as? NSNumber {
             self = .integer(value.intValue)
         }
         else if let value = obj as? JsonNumber {
@@ -244,3 +244,31 @@ extension NumberFormatter : JsonElementFormatter {
         }
     }
 }
+
+protocol IntegerNumber {
+}
+
+extension Int : IntegerNumber {
+}
+
+extension Int16 : IntegerNumber {
+}
+
+extension Int32 : IntegerNumber {
+}
+
+extension Int64 : IntegerNumber {
+}
+
+extension UInt : IntegerNumber {
+}
+
+extension UInt16 : IntegerNumber {
+}
+
+extension UInt32 : IntegerNumber {
+}
+
+extension UInt64 : IntegerNumber {
+}
+
