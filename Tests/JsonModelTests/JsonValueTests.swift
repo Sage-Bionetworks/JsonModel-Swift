@@ -267,7 +267,12 @@ final class JsonValueTests: XCTestCase {
         
         let obj = Set([uuid1, uuid2, uuid3])
         let json = obj.jsonObject()
-        XCTAssertEqual((json as? [String])?.count, 3)
+        if let arr = json as? [JsonSerializable] {
+            XCTAssertEqual(arr.count, 3)
+        }
+        else {
+            XCTFail("\(json) not of expected cast.")
+        }
         XCTAssertTrue(JSONSerialization.isValidJSONObject(json))
     }
 }
