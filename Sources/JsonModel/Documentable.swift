@@ -103,6 +103,33 @@ public protocol DocumentableObject : Documentable {
     static func jsonExamples() throws -> [[String : JsonSerializable]]
 }
 
+/// Structs that implement the Codable protocol.
+public protocol DocumentableStruct : DocumentableObject, Codable {
+    static func examples() -> [Self]
+}
+
+extension DocumentableStruct {
+    public static func isOpen() -> Bool {
+        return false
+    }
+    
+    public static func jsonExamples() throws -> [[String : JsonSerializable]] {
+        return try examples().map { try $0.jsonEncodedDictionary() }
+    }
+}
+
+public protocol DocumentableInterface : Documentable {
+    
+    /// The name of the interface that is described by this documentable.
+    var interfaceName : String { get }
+    
+    /// The description to use in documentation.
+    var documentDescription : String? { get }
+    
+    /// A list of `DocumentableObject` classes that implement this interface.
+    func documentableExamples() -> [DocumentableObject]
+}
+
 /// A light-weight wrapper
 public struct DocumentProperty {
 
@@ -147,20 +174,6 @@ public struct DocumentProperty {
     }
 }
 
-/// Structs that implement the Codable protocol.
-public protocol DocumentableStruct : DocumentableObject, Codable {
-    static func examples() -> [Self]
-}
-
-extension DocumentableStruct {
-    public static func isOpen() -> Bool {
-        return false
-    }
-    
-    public static func jsonExamples() throws -> [[String : JsonSerializable]] {
-        return try examples().map { try $0.jsonEncodedDictionary() }
-    }
-}
 
 /// Errors that can be thrown while building documentation.
 public enum DocumentableError : Error {

@@ -202,9 +202,13 @@ extension FactoryDecoder {
     
     /// Use this jsonElement to decode the given object type.
     public func decode<T>(_ type: T.Type, from jsonElement: JsonElement) throws -> T where T : Decodable {
-        let jsonData = try self.serializationFactory.createJSONEncoder().encode(jsonElement)
-        let decodable = try self.decode(type, from: jsonData)
-        return decodable
+        let jsonData = try self.serializationFactory.createJSONEncoder().encode([jsonElement])
+        let decodable = try self.decode([T].self, from: jsonData)
+        guard let first = decodable.first else {
+            let context = DecodingError.Context(codingPath: [], debugDescription: "Decoding returned null object.")
+            throw DecodingError.dataCorrupted(context)
+        }
+        return first
     }
 }
 
@@ -229,9 +233,10 @@ extension Encodable {
     /// Return the `JsonElement` for this object using the serialization strategy for numbers and
     /// dates defined by `SerializationFactory.defaultFactory`.
     public func jsonElement(using factory: SerializationFactory = SerializationFactory.defaultFactory) throws -> JsonElement {
-        let data = try factory.createJSONEncoder().encode(self)
-        let json = try factory.createJSONDecoder().decode(JsonElement.self, from: data)
-        return json
+        let arr = [self]
+        let data = try factory.createJSONEncoder().encode(arr)
+        let json = try factory.createJSONDecoder().decode([JsonElement].self, from: data)
+        return json.first!
     }
     
     /// Return the dictionary representation for this object.

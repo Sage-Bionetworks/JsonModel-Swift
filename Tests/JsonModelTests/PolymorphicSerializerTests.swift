@@ -129,6 +129,10 @@ struct SampleWrapper : Codable {
 }
 
 class SampleSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
+    var documentDescription: String? {
+        "Sample is an example interface used for unit testing."
+    }
+    
     let examples: [Sample] = [
         SampleA(value: 3),
         SampleB(value: "foo"),

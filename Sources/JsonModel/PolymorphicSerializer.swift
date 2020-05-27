@@ -54,7 +54,7 @@ public protocol PolymorphicRepresentable : Decodable {
 /// The generic method for a decodable. This is a work-around for the limitations of Swift generics
 /// where an instance of a class that has an associated type cannot be stored in a dictionary or
 /// array.
-public protocol GenericSerializer : class {
+public protocol GenericSerializer : class, DocumentableInterface {
     var interfaceName : String { get }
     func decode(from decoder: Decoder) throws -> Any
     func documentableExamples() -> [DocumentableObject]
