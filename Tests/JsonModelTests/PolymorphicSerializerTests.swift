@@ -129,6 +129,7 @@ struct SampleWrapper : Codable {
 }
 
 class SampleSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
+
     var documentDescription: String? {
         "Sample is an example interface used for unit testing."
     }
@@ -137,6 +138,10 @@ class SampleSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
         SampleA(value: 3),
         SampleB(value: "foo"),
     ]
+    
+    override class func typeDocumentProperty() -> DocumentProperty {
+        DocumentProperty(propertyType: .reference(SampleType.self))
+    }
 }
 
 protocol Sample {

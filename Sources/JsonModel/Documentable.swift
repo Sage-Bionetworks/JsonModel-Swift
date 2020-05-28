@@ -84,20 +84,23 @@ public protocol DocumentableStringOptionSet : Documentable, Codable {
     static func examples() -> [String]
 }
 
-/// Used to build Json Schema definitions and property references.
-public protocol DocumentableObject : Documentable {
+public protocol DocumentableBase : Documentable {
     
     /// A list of `CodingKey` values for all the `Codable` properties on this object.
     static func codingKeys() -> [CodingKey]
-    
-    /// Can this class be subclassed?
-    static func isOpen() -> Bool
     
     /// Is the coding key required?
     static func isRequired(_ codingKey: CodingKey) -> Bool
     
     /// Returns the property mapping for the
     static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty
+}
+
+/// Used to build Json Schema definitions and property references.
+public protocol DocumentableObject : DocumentableBase {
+    
+    /// Can this class be subclassed?
+    static func isOpen() -> Bool
     
     /// The example JSON for this object.
     static func jsonExamples() throws -> [[String : JsonSerializable]]
@@ -118,16 +121,25 @@ extension DocumentableStruct {
     }
 }
 
-public protocol DocumentableInterface : Documentable {
+public protocol DocumentableRoot : DocumentableBase {
     
     /// The name of the interface that is described by this documentable.
     var interfaceName : String { get }
     
     /// The description to use in documentation.
     var documentDescription : String? { get }
+}
+
+public protocol DocumentableInterface : DocumentableRoot {
     
     /// A list of `DocumentableObject` classes that implement this interface.
     func documentableExamples() -> [DocumentableObject]
+    
+    /// Is the interface sealed or can it be extended?
+    func isSealed() -> Bool
+}
+
+public protocol DocumentableRootObject : DocumentableRoot, DocumentableObject {
 }
 
 /// A light-weight wrapper
@@ -212,39 +224,53 @@ public enum DocumentableError : Error {
 
 public class JsonDocumentBuilder {
     public let baseUrl: URL
-    public let rootName: String
+    public let rootDocument: DocumentableRoot?
+    public let factory: SerializationFactory
     
     private(set) var interfaces: [JsonSchemaReferenceId] = []
     private(set) var objects: [KlassPointer] = []
     
-    public init(baseUrl: URL, rootName: String, factory: SerializationFactory) {
+    public init(baseUrl: URL, factory: SerializationFactory, rootDocument: DocumentableRoot? = nil) {
         self.baseUrl = baseUrl
-        self.rootName = rootName
-        factory.serializerMap.forEach { (interfaceName, serializer) in
-            serializer.documentableExamples().forEach {
-                addExample(example: $0, interfaceName: interfaceName)
-            }
-        }
+        self.factory = factory
+        self.rootDocument = rootDocument
     }
     
+    @available(*, unavailable, message: "Root replaced with a root document that is optional.")
+    public init(baseUrl: URL, rootName: String, factory: SerializationFactory) {
+        fatalError("Not available")
+    }
+    
+    @available(*, unavailable, message: "Use `buildSchemas()` instead.")
     public func buildSchema() throws -> JsonSchema {
-
-        var allDefinitions: [JsonSchemaDefinition] = interfaces.compactMap {
-            $0.isExternal ? nil : .object(JsonSchemaObject(id: $0, isOpen: true))
-        }
-        let objectDefs: [JsonSchemaDefinition] = try self.objects.map {
-            try $0.buildDefinition(using: self)
-        }
-        allDefinitions.append(contentsOf: objectDefs)
+        fatalError("Not available")
+    }
+    
+    public func buildSchemas() throws -> [JsonSchema] {
         
-        return JsonSchema(id: self.baseUrl.appendingPathComponent("\(self.rootName).json"),
-                          description: "",
-                          isOpen: true,
-                          interfaces: nil,
-                          definitions: allDefinitions,
-                          properties: nil,
-                          required: nil,
-                          examples: nil)
+//        factory.serializerMap.forEach { (interfaceName, serializer) in
+//            serializer.documentableExamples().forEach {
+//                addExample(example: $0, interfaceName: interfaceName)
+//            }
+//        }
+
+//        var allDefinitions: [JsonSchemaDefinition] = interfaces.compactMap {
+//            $0.isExternal ? nil : .object(JsonSchemaObject(id: $0, isOpen: true))
+//        }
+//        let objectDefs: [JsonSchemaDefinition] = try self.objects.map {
+//            try $0.buildDefinition(using: self)
+//        }
+//        allDefinitions.append(contentsOf: objectDefs)
+//
+//        return JsonSchema(id: self.baseUrl.appendingPathComponent("\(self.rootName).json"),
+//                          description: "",
+//                          isOpen: true,
+//                          interfaces: nil,
+//                          definitions: allDefinitions,
+//                          properties: nil,
+//                          required: nil,
+//                          examples: nil)
+        return []
     }
     
     private func addExample(example: Documentable, interfaceName: String? = nil) {

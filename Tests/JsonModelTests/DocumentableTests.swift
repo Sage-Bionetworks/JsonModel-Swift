@@ -39,53 +39,41 @@ final class DocumentableTests: XCTestCase {
     func testFactoryDocumentBuilder() {
         
         let factory = TestFactory.defaultFactory
-        let baseUrl = URL(string: "http://sagebionetworks.org/jsonSchema/")!
+        let baseUrl = URL(string: "http://sagebionetworks.org/Example/jsonSchema/")!
         
         let doc = JsonDocumentBuilder(baseUrl: baseUrl,
-                                      rootName: "Example",
                                       factory: factory)
         
-        XCTAssertEqual(baseUrl, doc.baseUrl)
-        XCTAssertEqual("Example", doc.rootName)
-        XCTAssertEqual(["Sample"], doc.interfaces.map { $0.className })
-        let objects = doc.objects.map { $0.className }
-        XCTAssertEqual(["SampleType", "SampleColor", "SampleA", "SampleAnimals", "SampleB"], objects)
-        
         do {
-            let jsonSchema = try doc.buildSchema()
+            let schemas = try doc.buildSchemas()
+            XCTAssertEqual(schemas.count, 1)
+            guard let jsonSchema = schemas.first else {
+                XCTFail("Failed to return a jsonSchema")
+                return
+            }
             
-            XCTAssertEqual("http://sagebionetworks.org/jsonSchema/Example.json", jsonSchema.id.classPath)
-            XCTAssertEqual("Example", jsonSchema.title)
+            XCTAssertEqual("http://sagebionetworks.org/Example/jsonSchema/Sample.json", jsonSchema.id.classPath)
+            XCTAssertEqual("Sample", jsonSchema.title)
             
             XCTAssertTrue(jsonSchema.isOpen)
             XCTAssertNil(jsonSchema.allOf)
-            XCTAssertNil(jsonSchema.properties)
-            XCTAssertNil(jsonSchema.required)
             XCTAssertNil(jsonSchema.examples)
             XCTAssertNotNil(jsonSchema.definitions)
+            
+            let expectedProperties: [String : JsonSchemaProperty] = [
+                "type" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleType")))
+            ]
+            XCTAssertEqual(expectedProperties, jsonSchema.properties)
+            XCTAssertEqual(["type"], jsonSchema.required)
             
             guard let definitions = jsonSchema.definitions else {
                 XCTFail("Failed to build the jsonSchema definitions")
                 return
             }
 
-            XCTAssertEqual(6, definitions.count)
+            XCTAssertEqual(5, definitions.count)
             
-            var key: String = "Sample"
-            if let def = definitions[key], case .object(let obj) = def {
-                XCTAssertEqual(key, obj.id.className)
-                XCTAssertEqual(key, obj.title)
-                XCTAssertNil(obj.allOf)
-                XCTAssertNil(obj.properties)
-                XCTAssertNil(obj.required)
-                XCTAssertNil(obj.examples)
-                XCTAssertTrue(obj.isOpen)
-            }
-            else {
-                XCTFail("Missing definition mapping for \(key)")
-            }
-            
-            key = "SampleColor"
+            var key: String = "SampleColor"
             if let def = definitions[key], case .stringEnum(let obj) = def {
                 XCTAssertEqual(key, obj.id.className)
                 XCTAssertEqual(key, obj.title)
