@@ -152,6 +152,14 @@ open class SerializationFactory : FactoryRegistration {
         throw DecodingError.valueNotFound(type, context)
     }
     
+    // MARK: Documentation
+    
+    /// Return the baseUrl for building documentation for the given `Documentable` object, or `nil`
+    /// if undefined.
+    open func baseUrl(for docRef: Documentable.Type) -> URL? {
+        nil
+    }
+    
     // MARK: Date Result Format
     
     /// Get the date result formatter to use for the given calendar components.

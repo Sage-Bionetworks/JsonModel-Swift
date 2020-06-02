@@ -44,6 +44,12 @@ final class DocumentableTests: XCTestCase {
         let doc = JsonDocumentBuilder(baseUrl: baseUrl,
                                       factory: factory)
         
+        XCTAssertEqual(doc.interfaces.count, 1, "\(doc.interfaces.map { $0.className })")
+        XCTAssertEqual(doc.objects.count, 6, "\(doc.objects.map { $0.className })")
+        
+        let sampleType = doc.objects.first(where: { $0.className == "SampleType" })
+        XCTAssertNotNil(sampleType)
+        
         do {
             let schemas = try doc.buildSchemas()
             XCTAssertEqual(schemas.count, 1)
@@ -54,6 +60,7 @@ final class DocumentableTests: XCTestCase {
             
             XCTAssertEqual("http://sagebionetworks.org/Example/jsonSchema/Sample.json", jsonSchema.id.classPath)
             XCTAssertEqual("Sample", jsonSchema.title)
+            XCTAssertEqual("Sample is an example interface used for unit testing.", jsonSchema.description)
             
             XCTAssertTrue(jsonSchema.isOpen)
             XCTAssertNil(jsonSchema.allOf)
@@ -107,7 +114,7 @@ final class DocumentableTests: XCTestCase {
             if let def = definitions[key], case .object(let obj) = def {
                 XCTAssertEqual(key, obj.id.className)
                 XCTAssertEqual(key, obj.title)
-                XCTAssertEqual(obj.allOf?.map { $0.ref.className }, ["Sample"])
+                XCTAssertEqual(obj.allOf?.map { $0.ref }, [JsonSchemaReferenceId("Sample", isExternal: true)])
                 XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
                 XCTAssertFalse(obj.isOpen)
                 let expectedExamples = [
