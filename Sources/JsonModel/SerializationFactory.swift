@@ -160,6 +160,11 @@ open class SerializationFactory : FactoryRegistration {
         nil
     }
     
+    /// Returns the Json Schema model name for the given class or struct.
+    open func modelName(for className: String) -> String {
+        className
+    }
+    
     // MARK: Date Result Format
     
     /// Get the date result formatter to use for the given calendar components.

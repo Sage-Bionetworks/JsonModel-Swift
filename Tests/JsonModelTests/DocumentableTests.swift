@@ -45,7 +45,7 @@ final class DocumentableTests: XCTestCase {
                                       factory: factory)
         
         XCTAssertEqual(doc.interfaces.count, 1, "\(doc.interfaces.map { $0.className })")
-        XCTAssertEqual(doc.objects.count, 6, "\(doc.objects.map { $0.className })")
+        XCTAssertEqual(doc.objects.count, 7, "\(doc.objects.map { $0.className })")
         
         let sampleType = doc.objects.first(where: { $0.className == "SampleType" })
         XCTAssertNotNil(sampleType)
@@ -57,114 +57,297 @@ final class DocumentableTests: XCTestCase {
                 XCTFail("Failed to return a jsonSchema")
                 return
             }
+            checkSampleSchema(jsonSchema, false)
+        }
+        catch let err {
+            XCTFail("Failed to build the JsonSchema: \(err)")
+        }
+    }
+    
+    func testFactoryDocumentBuilder_Recursive() {
+        
+        let factory = AnotherTestFactory.defaultFactory
+        let baseUrl = URL(string: "http://sagebionetworks.org/Example/jsonSchema/")!
+        
+        let doc = JsonDocumentBuilder(baseUrl: baseUrl,
+                                      factory: factory)
+        
+        XCTAssertEqual(doc.interfaces.count, 2, "\(doc.interfaces.map { $0.className })")
+        XCTAssertEqual(doc.objects.count, 11, "\(doc.objects.map { $0.className })")
+        
+        do {
+            let schemas = try doc.buildSchemas()
             
-            XCTAssertEqual("http://sagebionetworks.org/Example/jsonSchema/Sample.json", jsonSchema.id.classPath)
-            XCTAssertEqual("Sample", jsonSchema.title)
-            XCTAssertEqual("Sample is an example interface used for unit testing.", jsonSchema.description)
+            XCTAssertEqual(schemas.count, 3)
             
-            XCTAssertTrue(jsonSchema.isOpen)
-            XCTAssertNil(jsonSchema.allOf)
-            XCTAssertNil(jsonSchema.examples)
-            XCTAssertNotNil(jsonSchema.definitions)
-            
-            let expectedProperties: [String : JsonSchemaProperty] = [
-                "type" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleType")))
-            ]
-            XCTAssertEqual(expectedProperties, jsonSchema.properties)
-            XCTAssertEqual(["type"], jsonSchema.required)
-            
-            guard let definitions = jsonSchema.definitions else {
-                XCTFail("Failed to build the jsonSchema definitions")
-                return
-            }
-
-            XCTAssertEqual(5, definitions.count)
-            
-            var key: String = "SampleColor"
-            if let def = definitions[key], case .stringEnum(let obj) = def {
-                XCTAssertEqual(key, obj.id.className)
-                XCTAssertEqual(key, obj.title)
-                XCTAssertEqual(["red", "yellow", "blue"], obj.values)
+            if let sampleSchema = schemas.first(where: { $0.id.className == "Sample"}) {
+                checkSampleSchema(sampleSchema, true)
             }
             else {
-                XCTFail("Missing definition mapping for \(key)")
-            }
-            
-            key = "SampleType"
-            if let def = definitions[key], case .stringLiteral(let obj) = def {
-                XCTAssertEqual(key, obj.id.className)
-                XCTAssertEqual(key, obj.title)
-                XCTAssertEqual(["a","b"], obj.examples)
-            }
-            else {
-                XCTFail("Missing definition mapping for \(key)")
-            }
-            
-            key = "SampleAnimals"
-            if let def = definitions[key], case .stringOptionSet(let obj) = def {
-                XCTAssertEqual(key, obj.id.className)
-                XCTAssertEqual(key, obj.title)
-                XCTAssertEqual(["bear", "cow", "fox"], Set(obj.examples ?? []))
-            }
-            else {
-                XCTFail("Missing definition mapping for \(key)")
-            }
-            
-            key = "SampleA"
-            if let def = definitions[key], case .object(let obj) = def {
-                XCTAssertEqual(key, obj.id.className)
-                XCTAssertEqual(key, obj.title)
-                XCTAssertEqual(obj.allOf?.map { $0.ref }, [JsonSchemaReferenceId("Sample", isExternal: true)])
-                XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
-                XCTAssertFalse(obj.isOpen)
-                let expectedExamples = [
-                    AnyCodableDictionary(["type":"a","value":3]),
-                    AnyCodableDictionary(["type":"a","value":2,"color":"yellow","animalMap": ["blue":["robin","sparrow"]]])
-                ]
-                XCTAssertEqual(expectedExamples, obj.examples)
-                let expectedProperties: [String : JsonSchemaProperty] = [
-                    "type" : .const(JsonSchemaConst(const: "a", ref: JsonSchemaReferenceId("SampleType"))),
-                    "value" : .primitive(.integer),
-                    "color" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleColor"))),
-                    "animalMap" : .dictionary(JsonSchemaTypedDictionary(items: .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleAnimals")))))
-                ]
-                XCTAssertEqual(expectedProperties, obj.properties)
-            }
-            else {
-                XCTFail("Missing definition mapping for \(key)")
-            }
-            
-            key = "SampleB"
-            if let def = definitions[key], case .object(let obj) = def {
-                XCTAssertEqual(key, obj.id.className)
-                XCTAssertEqual(key, obj.title)
-                XCTAssertEqual(obj.allOf?.map { $0.ref.className }, ["Sample"])
-                XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
-                XCTAssertFalse(obj.isOpen)
-                let expectedProperties: [String : JsonSchemaProperty] = [
-                    "type" : .const(JsonSchemaConst(const: "b", ref: JsonSchemaReferenceId("SampleType"))),
-                    "value" : .primitive(.string),
-                    "animals" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleAnimals"))),
-                    "jsonBlob" : .primitive(.any),
-                    "timestamp" : .primitive(JsonSchemaPrimitive(format: .dateTime)),
-                    "numberMap" : .dictionary(JsonSchemaTypedDictionary(items: .primitive(.integer)))
-                ]
-                
-                XCTAssertEqual(expectedProperties.count, obj.properties?.count)
-                XCTAssertEqual(expectedProperties, obj.properties)
-                XCTAssertEqual(expectedProperties["type"], obj.properties?["type"])
-                XCTAssertEqual(expectedProperties["value"], obj.properties?["value"])
-                XCTAssertEqual(expectedProperties["animals"], obj.properties?["animals"])
-                XCTAssertEqual(expectedProperties["jsonBlob"], obj.properties?["jsonBlob"])
-                XCTAssertEqual(expectedProperties["timestamp"], obj.properties?["timestamp"])
-                XCTAssertEqual(expectedProperties["numberMap"], obj.properties?["numberMap"])
-            }
-            else {
-                XCTFail("Missing definition mapping for \(key)")
+                XCTFail("Did not create schema for `Sample`")
             }
         }
         catch let err {
             XCTFail("Failed to build the JsonSchema: \(err)")
         }
+    }
+    
+    func checkSampleSchema(_ jsonSchema: JsonSchema, _ externalSampleItem: Bool) {
+        
+        XCTAssertEqual("http://sagebionetworks.org/Example/jsonSchema/Sample.json", jsonSchema.id.classPath)
+        XCTAssertEqual("Sample", jsonSchema.title)
+        XCTAssertEqual("Sample is an example interface used for unit testing.", jsonSchema.description)
+        
+        XCTAssertTrue(jsonSchema.isOpen)
+        XCTAssertNil(jsonSchema.allOf)
+        XCTAssertNil(jsonSchema.examples)
+        XCTAssertNotNil(jsonSchema.definitions)
+        
+        let expectedProperties: [String : JsonSchemaProperty] = [
+            "type" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleType")))
+        ]
+        XCTAssertEqual(expectedProperties, jsonSchema.properties)
+        XCTAssertEqual(["type"], jsonSchema.required)
+        
+        guard let definitions = jsonSchema.definitions else {
+            XCTFail("Failed to build the jsonSchema definitions")
+            return
+        }
+
+        let expectedCount = externalSampleItem ? 5 : 6
+        XCTAssertEqual(expectedCount, definitions.count)
+        
+        var key: String = "SampleColor"
+        if let def = definitions[key], case .stringEnum(let obj) = def {
+            XCTAssertEqual(key, obj.id.className)
+            XCTAssertEqual(key, obj.title)
+            XCTAssertEqual(["red", "yellow", "blue"], obj.values)
+        }
+        else {
+            XCTFail("Missing definition mapping for \(key)")
+        }
+        
+        key = "SampleType"
+        if let def = definitions[key], case .stringLiteral(let obj) = def {
+            XCTAssertEqual(key, obj.id.className)
+            XCTAssertEqual(key, obj.title)
+            XCTAssertEqual(["a","b"], obj.examples)
+        }
+        else {
+            XCTFail("Missing definition mapping for \(key)")
+        }
+        
+        key = "SampleAnimals"
+        if let def = definitions[key], case .stringOptionSet(let obj) = def {
+            XCTAssertEqual(key, obj.id.className)
+            XCTAssertEqual(key, obj.title)
+            XCTAssertEqual(["bear", "cow", "fox"], Set(obj.examples ?? []))
+        }
+        else {
+            XCTFail("Missing definition mapping for \(key)")
+        }
+        
+        key = "SampleA"
+        if let def = definitions[key], case .object(let obj) = def {
+            XCTAssertEqual(key, obj.id.className)
+            XCTAssertEqual(key, obj.title)
+            XCTAssertEqual(obj.allOf?.map { $0.ref }, [JsonSchemaReferenceId("Sample", isExternal: true)])
+            XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
+            XCTAssertFalse(obj.isOpen)
+            let expectedExamples = [
+                AnyCodableDictionary(["type":"a","value":3]),
+                AnyCodableDictionary(["type":"a","value":2,"color":"yellow","animalMap": ["blue":["robin","sparrow"]]])
+            ]
+            XCTAssertEqual(expectedExamples, obj.examples)
+            let expectedProperties: [String : JsonSchemaProperty] = [
+                "type" : .const(JsonSchemaConst(const: "a", ref: JsonSchemaReferenceId("SampleType"))),
+                "value" : .primitive(.integer),
+                "color" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleColor"))),
+                "animalMap" : .dictionary(JsonSchemaTypedDictionary(items: .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleAnimals")))))
+            ]
+            XCTAssertEqual(expectedProperties, obj.properties)
+        }
+        else {
+            XCTFail("Missing definition mapping for \(key)")
+        }
+        
+        key = "SampleB"
+        if let def = definitions[key], case .object(let obj) = def {
+            XCTAssertEqual(key, obj.id.className)
+            XCTAssertEqual(key, obj.title)
+            XCTAssertEqual(obj.allOf?.map { $0.ref.className }, ["Sample"])
+            XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
+            XCTAssertFalse(obj.isOpen)
+            
+            let sampleItemRef = JsonSchemaReferenceId("SampleItem", isExternal: externalSampleItem)
+            
+            let expectedProperties: [String : JsonSchemaProperty] = [
+                "type" : .const(JsonSchemaConst(const: "b", ref: JsonSchemaReferenceId("SampleType"))),
+                "value" : .primitive(.string),
+                "animals" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleAnimals"))),
+                "jsonBlob" : .primitive(.any),
+                "timestamp" : .primitive(JsonSchemaPrimitive(format: .dateTime)),
+                "numberMap" : .dictionary(JsonSchemaTypedDictionary(items: .primitive(.integer))),
+                "sampleItem" : .reference(JsonSchemaObjectRef(ref: sampleItemRef))
+            ]
+            
+            XCTAssertEqual(expectedProperties.count, obj.properties?.count)
+            XCTAssertEqual(expectedProperties, obj.properties)
+            XCTAssertEqual(expectedProperties["type"], obj.properties?["type"])
+            XCTAssertEqual(expectedProperties["value"], obj.properties?["value"])
+            XCTAssertEqual(expectedProperties["animals"], obj.properties?["animals"])
+            XCTAssertEqual(expectedProperties["jsonBlob"], obj.properties?["jsonBlob"])
+            XCTAssertEqual(expectedProperties["timestamp"], obj.properties?["timestamp"])
+            XCTAssertEqual(expectedProperties["numberMap"], obj.properties?["numberMap"])
+        }
+        else {
+            XCTFail("Missing definition mapping for \(key)")
+        }
+    }
+}
+
+class AnotherTestFactory : SerializationFactory {
+    let sampleSerializer = SampleSerializer()
+    let anotherSerializer = AnotherSerializer()
+    required init() {
+        super.init()
+        self.registerSerializer(sampleSerializer)
+        self.registerSerializer(anotherSerializer)
+    }
+}
+
+class AnotherSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
+
+    var documentDescription: String? {
+        "Another example interface used for unit testing."
+    }
+    
+    let examples: [Another] = [
+        AnotherA(),
+        AnotherB(),
+    ]
+    
+    override class func typeDocumentProperty() -> DocumentProperty {
+        DocumentProperty(propertyType: .reference(AnotherType.self))
+    }
+    
+    override func isSealed() -> Bool {
+        true
+    }
+}
+
+protocol Another : PolymorphicRepresentable, Encodable {
+    var exampleType: AnotherType { get }
+}
+
+extension Another {
+    var typeName: String { return exampleType.rawValue }
+}
+
+enum AnotherType : String, Codable, CaseIterable, StringEnumSet, DocumentableStringEnum {
+    case a, b
+}
+
+struct AnotherA : Another, Codable {
+    static let defaultType: AnotherType = .a
+    private enum CodingKeys : String, CodingKey, CaseIterable {
+        case exampleType = "type", animals, samples, sampleItem
+    }
+    
+    private (set) var exampleType: AnotherType = Self.defaultType
+    
+    let animals: [SampleAnimals]?
+    let samples: [Sample]?
+    let sampleItem: SampleItem?
+    
+    init(animals: [SampleAnimals]? = nil, samples: [Sample]? = nil, sampleItem: SampleItem? = nil) {
+        self.animals = animals
+        self.samples = samples
+        self.sampleItem = sampleItem
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.animals = try container.decodeIfPresent([SampleAnimals].self, forKey: .animals)
+        self.sampleItem = try container.decodeIfPresent(SampleItem.self, forKey: .sampleItem)
+        if container.contains(.samples) {
+            let nestedContainer = try container.nestedUnkeyedContainer(forKey: .samples)
+            self.samples = try decoder.serializationFactory.decodePolymorphicArray(Sample.self, from: nestedContainer)
+        } else {
+            self.samples = nil
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(self.animals, forKey: .animals)
+        try container.encodeIfPresent(self.sampleItem, forKey: .sampleItem)
+        if let samples = self.samples {
+            var nestedContainer = container.nestedUnkeyedContainer(forKey: .samples)
+            try samples.forEach {
+                let encodable = $0 as! Encodable
+                let nestedEncoder = nestedContainer.superEncoder()
+                try encodable.encode(to: nestedEncoder)
+            }
+        }
+    }
+}
+
+extension AnotherA : DocumentableStruct {
+    static func codingKeys() -> [CodingKey] {
+        return self.CodingKeys.allCases
+    }
+
+    static func isRequired(_ codingKey: CodingKey) -> Bool {
+        guard let key = codingKey as? CodingKeys else { return false }
+        return key == .exampleType
+    }
+    
+    static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let key = codingKey as? CodingKeys else {
+            throw DocumentableError.invalidCodingKey(codingKey, "Not a mappable coding key for \(self)")
+        }
+        switch key {
+        case .exampleType:
+            return DocumentProperty(constValue: defaultType)
+        case .animals:
+            return DocumentProperty(propertyType: .referenceArray(SampleAnimals.documentableType()))
+        case .samples:
+            return DocumentProperty(propertyType: .interfaceArray("\(Sample.self)"))
+        case .sampleItem:
+            return DocumentProperty(propertyType: .reference(SampleItem.documentableType()))
+        }
+    }
+    
+    static func examples() -> [AnotherA] {
+        return [AnotherA(),
+                AnotherA(animals: [.birds], samples: [SampleA(value: 4)], sampleItem: SampleItem(name: "foo", color: .red))]
+    }
+}
+
+struct AnotherB : Another, Codable, Equatable {
+    static let defaultType: AnotherType = .b
+    private enum CodingKeys : String, CodingKey, CaseIterable {
+        case exampleType = "type"
+    }
+    
+    private (set) var exampleType: AnotherType = Self.defaultType
+}
+
+extension AnotherB : DocumentableStruct {
+    static func codingKeys() -> [CodingKey] {
+        return self.CodingKeys.allCases
+    }
+
+    static func isRequired(_ codingKey: CodingKey) -> Bool {
+        true
+    }
+    
+    static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        return DocumentProperty(constValue: defaultType)
+    }
+    
+    static func examples() -> [AnotherB] {
+        return [AnotherB()]
     }
 }

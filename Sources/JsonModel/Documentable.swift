@@ -256,6 +256,7 @@ public class JsonDocumentBuilder {
             guard let docType = rootDocument else { return nil }
             let baseUrl = factory?.baseUrl(for: docType) ?? self.baseUrl
             let pointer = KlassPointer(klass: docType, baseUrl: baseUrl, className: nil)
+            pointer.modelName = factory?.modelName(for: pointer.className) ?? pointer.className
             self.objects.append(pointer)
             return (docType, pointer)
         }()
@@ -263,6 +264,7 @@ public class JsonDocumentBuilder {
             let docType = type(of: serializer)
             let baseUrl = factory?.baseUrl(for: docType) ?? self.baseUrl
             let pointer = KlassPointer(klass: docType, baseUrl: baseUrl, className: interfaceName)
+            pointer.modelName = factory?.modelName(for: pointer.className) ?? pointer.className
             pointer.isSealed = serializer.isSealed()
             pointer.documentDescription = serializer.documentDescription
             self.objects.append(pointer)
@@ -281,6 +283,8 @@ public class JsonDocumentBuilder {
                 recursiveAddObject(documentableType: type(of: $0), parent: pointer, isSubclass: true)
             }
         }
+        
+        recursiveUpdateRoots()
     }
     
     private func recursiveAddObject(documentableType: Documentable.Type, parent: KlassPointer, isSubclass: Bool) {
@@ -289,11 +293,11 @@ public class JsonDocumentBuilder {
         if let pointer = self.objects.first(where: { $0.className == className }) {
             // If the pointer is already found, then update the mapping and pointers.
             addMappings(to: pointer, parent: parent, isSubclass: isSubclass)
-            pointer.isRoot = pointer.isRoot || parent.isRoot
         }
         else {
             // Create a new pointer.
             let pointer = KlassPointer(klass: documentableType, baseUrl: baseUrl, parent: parent)
+            pointer.modelName = factory?.modelName(for: pointer.className) ?? pointer.className
             
             // First add the object in case there is recursive mapping.
             self.objects.append(pointer)
@@ -317,6 +321,16 @@ public class JsonDocumentBuilder {
         // or subclass) and to the parent's definitions.
         pointer.parentPointers.insert(parent)
         parent.definitions.insert(pointer)
+    }
+    
+    private func recursiveUpdateRoots() {
+        var didChange = false
+        self.objects.forEach {
+            didChange = didChange || $0.updateIsRootIfNeeded()
+        }
+        if didChange {
+            recursiveUpdateRoots()
+        }
     }
     
     private func recursiveAddProps(docType: DocumentableBase.Type, pointer: KlassPointer) {
@@ -443,9 +457,11 @@ public class JsonDocumentBuilder {
         let klass: Documentable.Type
         let className: String
         let baseUrl: URL
+        
         var isRoot: Bool
         var isInterface: Bool
         var isSealed: Bool = false
+        lazy var modelName: String = self.className
         
         var interfaces = Set<KlassPointer>()
         var parentPointers: Set<KlassPointer>!
@@ -475,7 +491,18 @@ public class JsonDocumentBuilder {
         }
         
         var refId: JsonSchemaReferenceId {
-            JsonSchemaReferenceId(className, isExternal: isRoot, baseURL: isRoot ? baseUrl : nil)
+            JsonSchemaReferenceId(modelName, isExternal: isRoot, baseURL: isRoot ? baseUrl : nil)
+        }
+        
+        fileprivate func updateIsRootIfNeeded() -> Bool {
+            guard !self.isRoot && klass is DocumentableBase.Type else { return false }
+            let roots = Set(_recursiveRootParents())
+            self.isRoot = (roots.count > 1)
+            return self.isRoot
+        }
+        
+        private func _recursiveRootParents() -> [KlassPointer] {
+            self.isRoot ? [self] : self.parentPointers.flatMap { $0._recursiveRootParents() }
         }
         
         func allDefinitions(using builder: JsonDocumentBuilder) throws -> [JsonSchemaDefinition] {
@@ -493,7 +520,7 @@ public class JsonDocumentBuilder {
         }
         
         func buildDefinition(using builder: JsonDocumentBuilder) throws -> JsonSchemaDefinition {
-            let ref = JsonSchemaReferenceId(className)
+            let ref = JsonSchemaReferenceId(modelName)
             if let docType = klass as? DocumentableStringLiteral.Type {
                 return .stringLiteral(JsonSchemaStringLiteral(id: ref,
                                                               description: "",
