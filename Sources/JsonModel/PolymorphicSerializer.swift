@@ -143,6 +143,32 @@ open class AbstractPolymorphicSerializer {
         }
         return type
     }
+    
+    open func isSealed() -> Bool {
+        false
+    }
+    
+    /// Default is to return the "type" key.
+    open class func codingKeys() -> [CodingKey] {
+        TypeKeys.allCases
+    }
+    
+    /// Default is to return `true`.
+    open class func isRequired(_ codingKey: CodingKey) -> Bool {
+        true
+    }
+    
+    open class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let _ = codingKey as? TypeKeys else {
+            throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not handled by \(self).")
+        }
+        return typeDocumentProperty()
+    }
+    
+    /// Default is a string but this can be overriden to return a `TypeRepresentable` reference.
+    open class func typeDocumentProperty() -> DocumentProperty {
+        DocumentProperty(propertyType: .primitive(.string))
+    }
 }
 
 enum PolymorphicSerializerError : Error {

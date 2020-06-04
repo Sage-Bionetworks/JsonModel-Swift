@@ -129,6 +129,7 @@ struct SampleWrapper : Codable {
 }
 
 class SampleSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
+
     var documentDescription: String? {
         "Sample is an example interface used for unit testing."
     }
@@ -137,6 +138,10 @@ class SampleSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
         SampleA(value: 3),
         SampleB(value: "foo"),
     ]
+    
+    override class func typeDocumentProperty() -> DocumentProperty {
+        DocumentProperty(propertyType: .reference(SampleType.self))
+    }
 }
 
 protocol Sample {
@@ -177,6 +182,41 @@ extension SampleType : ExpressibleByStringLiteral {
 extension SampleType : DocumentableStringLiteral {
     static func examples() -> [String] {
         return allStandardValues().map { $0.rawValue }
+    }
+}
+
+struct SampleItem : Codable, Hashable {
+    private enum CodingKeys : String, CodingKey, CaseIterable {
+        case name, color
+    }
+    let name: String
+    let color: SampleColor
+}
+
+extension SampleItem : DocumentableStruct {
+    
+    static func examples() -> [SampleItem] {
+        [SampleItem(name: "foo", color: .blue)]
+    }
+    
+    static func codingKeys() -> [CodingKey] {
+        CodingKeys.allCases
+    }
+    
+    static func isRequired(_ codingKey: CodingKey) -> Bool {
+        true
+    }
+    
+    static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let key = codingKey as? CodingKeys else {
+            throw DocumentableError.invalidCodingKey(codingKey, "Not a mappable coding key for \(self)")
+        }
+        switch key {
+        case .name:
+            return .init(propertyType: .primitive(.string))
+        case .color:
+            return .init(propertyType: .reference(SampleColor.documentableType()))
+        }
     }
 }
 
@@ -262,7 +302,7 @@ extension SampleA : DocumentableStruct {
 struct SampleB : SerializableSample, Codable, Equatable {
     static let defaultType: SampleType = .b
     private enum CodingKeys : String, CodingKey, CaseIterable {
-        case value, exampleType = "type", animals, jsonBlob, timestamp, numberMap
+        case value, exampleType = "type", animals, jsonBlob, timestamp, numberMap, sampleItem
     }
     
     private (set) var exampleType: SampleType = Self.defaultType
@@ -272,17 +312,20 @@ struct SampleB : SerializableSample, Codable, Equatable {
     let jsonBlob: JsonElement?
     let timestamp: Date?
     let numberMap: [String : Int]?
+    let sampleItem: SampleItem?
     
     init(value: String,
          animals: SampleAnimals? = nil,
          jsonBlob: JsonElement? = nil,
          timestamp: Date? = nil,
-         numberMap: [String : Int]? = nil) {
+         numberMap: [String : Int]? = nil,
+         sampleItem: SampleItem? = nil) {
         self.value = value
         self.animals = animals
         self.jsonBlob = jsonBlob
         self.timestamp = timestamp
         self.numberMap = numberMap
+        self.sampleItem = sampleItem
     }
 }
 
@@ -313,6 +356,8 @@ extension SampleB : DocumentableStruct {
             return DocumentProperty(propertyType: .format(.dateTime))
         case .numberMap:
             return DocumentProperty(propertyType: .primitiveDictionary(.integer))
+        case .sampleItem:
+            return DocumentProperty(propertyType: .reference(SampleItem.documentableType()))
         }
     }
     
