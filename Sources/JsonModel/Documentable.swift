@@ -389,7 +389,7 @@ public class JsonDocumentBuilder {
         let isRoot = self.objects.contains(where: {
             $0.baseUrl == interface.baseUrl && $0.className == interface.className })
         let baseUrl = (interface.baseUrl == self.baseUrl) ? nil : interface.baseUrl
-        return JsonSchemaReferenceId(interface.className, isExternal: isRoot, baseURL: baseUrl)
+        return JsonSchemaReferenceId(interface.modelName, isExternal: isRoot, baseURL: baseUrl)
     }
     
     fileprivate func objectSchemaRef(for dType: Documentable.Type) throws -> JsonSchemaReferenceId {
@@ -397,7 +397,7 @@ public class JsonDocumentBuilder {
             throw DocumentableError.invalidMapping("Could not find the pointer for the object mapping for \(dType).")
         }
         let baseUrl = (pointer.baseUrl == self.baseUrl) ? nil : pointer.baseUrl
-        return JsonSchemaReferenceId(pointer.className, isExternal: pointer.isRoot, baseURL: baseUrl)
+        return JsonSchemaReferenceId(pointer.modelName, isExternal: pointer.isRoot, baseURL: baseUrl)
     }
     
     fileprivate func buildSchemaProperty(for prop: DocumentProperty) throws -> JsonSchemaProperty {
