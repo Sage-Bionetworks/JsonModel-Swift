@@ -86,6 +86,30 @@ final class DocumentableTests: XCTestCase {
             else {
                 XCTFail("Did not create schema for `Sample`")
             }
+            
+            if let _ = schemas.first(where: { $0.id.className == "Another"}) {
+            }
+            else {
+                XCTFail("Did not create schema for `Sample`")
+            }
+            
+            if let obj = schemas.first(where: { $0.id.className == "SampleItem"}) {
+                XCTAssertEqual("http://sagebionetworks.org/Example/jsonSchema/SampleItem.json", obj.id.classPath)
+                XCTAssertEqual("SampleItem", obj.title)
+                
+                let colorRootId = JsonSchemaReferenceId("Sample", isExternal: true, baseURL: nil)
+                let colorRef = JsonSchemaReferenceId("SampleColor", root: colorRootId)
+                let expectedProperties: [String : JsonSchemaProperty] = [
+                    "name" : .primitive(.string),
+                    "color" : .reference(JsonSchemaObjectRef(ref: colorRef))
+                ]
+                XCTAssertEqual(expectedProperties, obj.properties)
+                
+                XCTAssertTrue(obj.definitions?.isEmpty ?? true)
+            }
+            else {
+                XCTFail("Did not create schema for `SampleItem`")
+            }
         }
         catch let err {
             XCTFail("Failed to build the JsonSchema: \(err)")
@@ -213,6 +237,10 @@ class AnotherTestFactory : SerializationFactory {
         super.init()
         self.registerSerializer(sampleSerializer)
         self.registerSerializer(anotherSerializer)
+    }
+    
+    override func documentableInterfaces() -> [DocumentableInterface] {
+        [sampleSerializer, anotherSerializer]
     }
 }
 
