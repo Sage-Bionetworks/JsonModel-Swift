@@ -218,24 +218,21 @@ public enum DocumentableError : Error {
 
 public class JsonDocumentBuilder {
     public let baseUrl: URL
-    public let rootDocument: DocumentableObject.Type?
     public let factory: SerializationFactory?
     
     private(set) var interfaces: [KlassPointer] = []
     private(set) var objects: [KlassPointer] = []
     
-    public init(baseUrl: URL, factory: SerializationFactory, rootDocument: DocumentableObject.Type? = nil) {
+    public init(baseUrl: URL, factory: SerializationFactory, rootDocuments: [DocumentableObject.Type] = []) {
         self.baseUrl = baseUrl
         self.factory = factory
-        self.rootDocument = rootDocument
-        commonInit(factory.documentableInterfaces())
+        commonInit(factory.documentableInterfaces(), rootDocuments)
     }
     
-    init(baseUrl: URL, interfaces: [DocumentableInterface], rootDocument: DocumentableObject.Type?) {
+    init(baseUrl: URL, interfaces: [DocumentableInterface], rootDocuments: [DocumentableObject.Type] = []) {
         self.baseUrl = baseUrl
         self.factory = nil
-        self.rootDocument = rootDocument
-        commonInit(interfaces)
+        commonInit(interfaces, rootDocuments)
     }
     
     @available(*, unavailable, message: "Root replaced with a root document that is optional.")
@@ -248,15 +245,16 @@ public class JsonDocumentBuilder {
         fatalError("Not available")
     }
     
-    private func commonInit(_ interfaces: [DocumentableInterface]) {
-        let rootDocPointer: (DocumentableObject.Type, KlassPointer)? = {
-            guard let docType = rootDocument else { return nil }
+    private func commonInit(_ interfaces: [DocumentableInterface], _ rootDocuments: [DocumentableObject.Type]) {
+        
+        // First create all the top-level pointers
+        let rootDocPointers: [(DocumentableObject.Type, KlassPointer)] = rootDocuments.map { docType in
             let baseUrl = factory?.baseUrl(for: docType) ?? self.baseUrl
             let pointer = KlassPointer(klass: docType, baseUrl: baseUrl, className: nil)
             pointer.modelName = factory?.modelName(for: pointer.className) ?? pointer.className
             self.objects.append(pointer)
             return (docType, pointer)
-        }()
+        }
         let interfacePointers = interfaces.map { (serializer) -> (DocumentableInterface, KlassPointer) in
             let docType = type(of: serializer)
             let baseUrl = factory?.baseUrl(for: docType) ?? self.baseUrl
@@ -268,11 +266,8 @@ public class JsonDocumentBuilder {
             self.interfaces.append(pointer)
             return (serializer, pointer)
         }
-        
-        if let root = rootDocPointer {
-            recursiveAddProps(docType: root.0, pointer: root.1)
-        }
-        
+
+        // Then add the properties and documentables from each pointer.
         interfacePointers.forEach { (serializer, pointer) in
             let docType = type(of: serializer)
             recursiveAddProps(docType: docType, pointer: pointer)
@@ -280,7 +275,11 @@ public class JsonDocumentBuilder {
                 recursiveAddObject(documentableType: type(of: $0), parent: pointer, isSubclass: true)
             }
         }
+        rootDocPointers.forEach { root in
+            recursiveAddProps(docType: root.0, pointer: root.1)
+        }
         
+        // Finally update the roots.
         recursiveUpdateRoots()
     }
     
