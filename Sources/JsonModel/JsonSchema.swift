@@ -498,6 +498,11 @@ public struct JsonSchemaReferenceId : Codable, Hashable {
         return classPath.hasPrefix("http") ? URL(string: classPath)?.deletingLastPathComponent() : nil
     }
     
+    init(_ className: String, root: JsonSchemaReferenceId) {
+        self.className = className
+        self.classPath = "\(root.classPath)#\(className)"
+    }
+    
     init(_ className: String, isExternal: Bool = false, baseURL: URL? = nil) {
         self.className = className
         if isExternal {
@@ -523,8 +528,8 @@ public struct JsonSchemaReferenceId : Codable, Hashable {
         let container = try decoder.singleValueContainer()
         let stringValue = try container.decode(String.self)
 
-        if stringValue.hasPrefix("#"), stringValue.count > 1 {
-            self.className = String(stringValue[stringValue.index(after: stringValue.startIndex)...])
+        if let idx = stringValue.lastIndex(of: "#") {
+            self.className = String(stringValue[stringValue.index(after: idx)...])
         }
         else if stringValue.lowercased().hasSuffix(".json"), stringValue.count > 5, let url = URL(string: stringValue) {
             self.className = url.deletingPathExtension().lastPathComponent

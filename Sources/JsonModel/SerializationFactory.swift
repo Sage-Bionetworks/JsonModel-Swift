@@ -165,6 +165,11 @@ open class SerializationFactory : FactoryRegistration {
         className
     }
     
+    /// An ordered array of the documentable interfaces included in this factory.
+    open func documentableInterfaces() -> [DocumentableInterface] {
+        serializerMap.map { $0.value as DocumentableInterface }.sorted(by: { $0.interfaceName < $1.interfaceName })
+    }
+    
     // MARK: Date Result Format
     
     /// Get the date result formatter to use for the given calendar components.
