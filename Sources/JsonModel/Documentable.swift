@@ -378,13 +378,27 @@ public class JsonDocumentBuilder {
     }
     
     fileprivate func interfaceSchemaRef(for className: String) throws -> JsonSchemaReferenceId {
-        guard let interface = self.interfaces.first(where: { $0.className == className }) else {
+        guard let interface = interface(for: className) else {
             throw DocumentableError.invalidMapping("Could not find the pointer for the interface mapping for \(className).")
         }
         let isRoot = self.objects.contains(where: {
             $0.baseUrl == interface.baseUrl && $0.className == interface.className })
         let baseUrl = (interface.baseUrl == self.baseUrl) ? nil : interface.baseUrl
         return JsonSchemaReferenceId(interface.modelName, isExternal: isRoot, baseURL: baseUrl)
+    }
+    
+    fileprivate func interface(for className: String) -> KlassPointer? {
+        if let ret = self.interfaces.first(where: { $0.className == className || $0.subclassNames.contains(className) }) {
+            return ret
+        }
+        else if let interface = self.factory?.serializerMap[className],
+                  let ptr = self.interfaces.first(where: { $0.className == interface.interfaceName }) {
+            ptr.subclassNames.append(className)
+            return ptr
+        }
+        else {
+            return nil
+        }
     }
     
     fileprivate func objectSchemaRef(for dType: Documentable.Type, in objPointer: KlassPointer) throws -> JsonSchemaReferenceId {
@@ -475,6 +489,7 @@ public class JsonDocumentBuilder {
         var isInterface: Bool
         var isSealed: Bool = false
         lazy var modelName: String = self.className
+        var subclassNames: [String] = []
         
         var definitionOwner: KlassPointer {
             self.isRoot ? self : (mainParent ?? self)

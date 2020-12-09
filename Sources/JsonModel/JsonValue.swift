@@ -32,12 +32,14 @@
 
 import Foundation
 
-/// Protocol for converting an object to a dictionary representation. This is included for reverse-compatiblility to
-/// older implementations that are not Swift `Codable` and instead use a dictionary representation.
+/// Protocol for converting an object to a dictionary representation. This is included for
+/// reverse-compatiblility to older implementations that are not Swift `Codable` and instead
+/// use a dictionary representation. Additionally, this can be used to implement Kotlin-Native
+/// serializable objects that do not conform to the Codable protocol.
 public protocol DictionaryRepresentable {
     
     /// Return the dictionary representation for this object.
-    func dictionaryRepresentation() -> [String : JsonSerializable]
+    func jsonDictionary() throws -> [String : JsonSerializable]
 }
 
 /// Protocol for converting objects to JSON serializable objects.
@@ -274,8 +276,8 @@ fileprivate func _convertToJSONValue(from object: Any) -> JsonSerializable {
     if let obj = object as? JsonValue {
         return obj.jsonObject()
     }
-    else if let obj = object as? DictionaryRepresentable {
-        return obj.dictionaryRepresentation()
+    else if let obj = object as? DictionaryRepresentable, let json = try? obj.jsonDictionary() {
+        return json
     }
     else if let obj = object as? NSObjectProtocol {
         return obj.description

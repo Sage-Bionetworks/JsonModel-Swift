@@ -81,6 +81,10 @@ open class SerializationFactory : FactoryRegistration {
         serializerMap[serializer.interfaceName] = serializer
     }
     
+    public final func registerSerializer<T>(_ serializer: GenericSerializer, for type: T.Type) {
+        serializerMap["\(type)"] = serializer
+    }
+    
     open func serializer<T>(for type: T.Type) -> GenericSerializer? {
         serializerMap["\(type)"]
     }
