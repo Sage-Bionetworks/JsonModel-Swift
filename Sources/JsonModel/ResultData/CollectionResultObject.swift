@@ -33,7 +33,7 @@
 
 import Foundation
 
-/// `CollectionResultObject` is used include multiple results associated with a single action.
+/// `CollectionResultObject` is used to include multiple results associated with a single action.
 public final class CollectionResultObject : SerializableResultData {
     private enum CodingKeys : String, CodingKey, CaseIterable {
         case serializableResultType="type", identifier, startDate, endDate, children="inputResults"

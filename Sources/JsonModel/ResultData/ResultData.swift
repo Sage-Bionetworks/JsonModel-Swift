@@ -37,14 +37,14 @@ import Foundation
 ///  syoung 12/09/2020 `ResultData` is included as a part of the JsonModel module to allow
 ///  progress and additions to be made to the frameworks used by SageResearch that are independant
 ///  of the version of https://github.com/Sage-Bionetworks/SageResearch-Apple.git that is
-///  referenced by third-party frameworks. Our experience is that third-party developers will to
+///  referenced by third-party frameworks. Our experience is that third-party developers will
 ///  pin to a specific version of SageResearch, which breaks the dependency model that we use
 ///  internally in our applications.
 ///
 ///  The work-around to this is to include a light-weight model here since this framework is fairly
 ///  static and in most cases where the `RSDResult` is referenced, those classes already import
 ///  JsonModel. This will allow us to divorce *our* code from SageResearch so that we can iterate
-///  independantly of third-party frameworks.
+///  independently of third-party frameworks.
 ///
 public protocol ResultData : PolymorphicTyped, DictionaryRepresentable {
     
@@ -57,4 +57,3 @@ public protocol ResultData : PolymorphicTyped, DictionaryRepresentable {
     /// The end date timestamp for the result.
     var endDate: Date { get set }
 }
-
