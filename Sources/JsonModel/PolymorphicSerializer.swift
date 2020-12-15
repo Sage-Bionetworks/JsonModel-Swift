@@ -47,7 +47,11 @@ import Foundation
 ///
 /// - seealso: `PolymorphicSerializerTests`
 ///
-public protocol PolymorphicRepresentable : Decodable {
+public protocol PolymorphicRepresentable : PolymorphicTyped, Decodable {
+}
+
+public protocol PolymorphicTyped {
+    /// A "name" for the class of object that can be used in Dictionary representable objects.
     var typeName: String { get }
 }
 

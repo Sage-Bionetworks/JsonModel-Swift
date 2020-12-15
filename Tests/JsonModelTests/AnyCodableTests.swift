@@ -200,6 +200,16 @@ final class AnyCodableTests: XCTestCase {
             let dictionary = try test.jsonEncodedDictionary()
             XCTAssertEqual(expected as NSDictionary, dictionary as NSDictionary)
             
+            let data = try test.jsonEncodedData()
+            let obj = try SerializationFactory.defaultFactory.createJSONDecoder().decode(TestDecodable.self, from: data)
+            XCTAssertEqual(test.string, obj.string)
+            XCTAssertEqual(test.integer, obj.integer)
+            XCTAssertEqual(test.uuid, obj.uuid)
+            XCTAssertEqual(test.date.timeIntervalSinceReferenceDate, obj.date.timeIntervalSinceReferenceDate, accuracy: 1)
+            XCTAssertEqual(test.bool, obj.bool)
+            XCTAssertEqual(test.array, obj.array)
+            XCTAssertEqual(test.null, obj.null)
+
         } catch let err {
             XCTFail("Failed to decode/encode object: \(err)")
             return
