@@ -9,7 +9,7 @@ TODO: syoung 03/31/2020 Link to the examples in the test cases.
 
 JsonModel is available under the BSD license:
 
-Copyright (c) 2017-2020, Sage Bionetworks
+Copyright (c) 2017-2021, Sage Bionetworks
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

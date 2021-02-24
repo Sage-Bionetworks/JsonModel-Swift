@@ -1,8 +1,8 @@
 //
-//  FileResultObject.swift
+//  ErrorResultObject.swift
 //  
 //
-//  Copyright © 2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -33,56 +33,77 @@
 
 import Foundation
 
-/// `FileResultObject` is a concrete implementation of a result that holds a pointer to a file url.
-public final class FileResultObject : SerializableResultData {
+/// `ErrorResult` is a result that holds information about an error.
+public protocol ErrorResult : ResultData {
+    
+    /// A description associated with an `NSError`.
+    var errorDescription: String { get }
+    
+    /// A domain associated with an `NSError`.
+    var errorDomain: String { get }
+    
+    /// The error code associated with an `NSError`.
+    var errorCode: Int { get }
+}
+
+/// `ErrorResultObject` is a result that holds information about an error.
+public struct ErrorResultObject : SerializableResultData, ErrorResult, Equatable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableResultType="type", identifier, startDate, endDate, relativePath, contentType, startUptime
+        case serializableType="type", identifier, startDate, endDate, errorDescription, errorDomain, errorCode
     }
-    public private(set) var serializableResultType: SerializableResultType = .file
+    public private(set) var serializableType: SerializableResultType = .error
     
     public let identifier: String
     public var startDate: Date
     public var endDate: Date
     
-    /// The system clock uptime when the recorder was started (if applicable).
-    public var startUptime: TimeInterval?
+    /// A description associated with an `NSError`.
+    public let errorDescription: String
     
-    /// The URL with the full path to the file-based result. This should *not*
-    /// be encoded in the file result.
-    public var url: URL? {
-        get { return _url }
-        set {
-            _url = newValue
-            relativePath = newValue?.relativePath
-        }
-    }
-    private var _url: URL? = nil
+    /// A domain associated with an `NSError`.
+    public let errorDomain: String
     
-    /// The relative path to the file-based result.
-    public var relativePath: String?
+    /// The error code associated with an `NSError`.
+    public let errorCode: Int
     
-    /// The MIME content type of the result.
-    public var contentType: String?
-    
-    public init(identifier: String, url: URL? = nil, contentType: String? = nil, startUptime: TimeInterval? = nil) {
+    /// Initialize using a description, domain, and code.
+    /// - parameters:
+    ///     - identifier: The identifier for the result.
+    ///     - description: The description of the error.
+    ///     - domain: The error domain.
+    ///     - code: The error code.
+    public init(identifier: String, description: String, domain: String, code: Int, startDate: Date = Date(), endDate: Date = Date()) {
         self.identifier = identifier
-        self._url = url
-        self.relativePath = url?.relativePath
-        self.contentType = contentType
-        self.startUptime = startUptime
         self.startDate = Date()
         self.endDate = Date()
+        self.errorDescription = description
+        self.errorDomain = domain
+        self.errorCode = code
     }
+    
+    /// Initialize using an error.
+    /// - parameters:
+    ///     - identifier: The identifier for the result.
+    ///     - error: The error for the result.
+    public init(identifier: String, error: Error) {
+        self.identifier = identifier
+        self.startDate = Date()
+        self.endDate = Date()
+        self.errorDescription = (error as NSError).localizedDescription
+        self.errorDomain = (error as NSError).domain
+        self.errorCode = (error as NSError).code
+    }
+    
+    public func deepCopy() -> ErrorResultObject { self }
 }
 
-extension FileResultObject : DocumentableStruct {
+extension ErrorResultObject : DocumentableStruct {
     public static func codingKeys() -> [CodingKey] {
         return CodingKeys.allCases
     }
     
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
-        guard let key = codingKey as? CodingKeys else { return false }
-        return key == .identifier || key == .serializableResultType
+        true
     }
     
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -90,24 +111,20 @@ extension FileResultObject : DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableResultType:
-            return .init(constValue: SerializableResultType.file)
+        case .serializableType:
+            return .init(constValue: SerializableResultType.error)
         case .identifier:
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
-        case .contentType, .relativePath:
+        case .errorDomain, .errorDescription:
             return .init(propertyType: .primitive(.string))
-        case .startUptime:
-            return .init(propertyType: .primitive(.number))
+        case .errorCode:
+            return .init(propertyType: .primitive(.integer))
         }
     }
     
-    public static func examples() -> [FileResultObject] {
-        let fileResult = FileResultObject(identifier: "fileResult")
-        fileResult.startDate = ISO8601TimestampFormatter.date(from: "2017-10-16T22:28:09.000-07:00")!
-        fileResult.endDate = fileResult.startDate.addingTimeInterval(5 * 60)
-        fileResult.startUptime = 1234.567
-        return [fileResult]
+    public static func examples() -> [ErrorResultObject] {
+        return [ErrorResultObject(identifier: "errorResult", description: "example error", domain: "ExampleDomain", code: 1)]
     }
 }

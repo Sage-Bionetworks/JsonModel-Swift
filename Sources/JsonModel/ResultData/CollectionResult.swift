@@ -2,7 +2,7 @@
 //  CollectionResultObject.swift
 //  
 //
-//  Copyright © 2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -33,26 +33,73 @@
 
 import Foundation
 
-/// `CollectionResultObject` is used to include multiple results associated with a single action.
-public final class CollectionResultObject : SerializableResultData {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableResultType="type", identifier, startDate, endDate, children="inputResults"
+/// A `CollectionResult` is used to describe a collection of results.
+public protocol CollectionResult : ResultData, AnswerFinder {
+
+    /// The collection of results. This can be the async results of a sensor recorder, a response
+    /// to a service call, or the results from a form where all the fields are displayed together
+    /// and the results do not represent a linear path. The results within this set should each
+    /// have a unique identifier.
+    var children: [ResultData] { get set }
+}
+
+public extension CollectionResult {
+    func findAnswer(with identifier: String) -> AnswerResult? {
+        self.findResult(with: identifier) as? AnswerResult
     }
-    public private(set) var serializableResultType: SerializableResultType = .collection
+    
+    /// Find a result within this collection.
+    /// - parameter identifier: The identifier associated with the result.
+    /// - returns: The result or `nil` if not found.
+    func findResult(with identifier: String) -> ResultData? {
+        return self.children.first(where: { $0.identifier == identifier })
+    }
+    
+    /// Insert the result at the end of the `children`, replacing the previous instance with the same identifier.
+    /// - parameter result: The result to add to the input results.
+    /// - returns: The previous result or `nil` if there wasn't one.
+    @discardableResult
+    mutating func insert(_ result: ResultData) -> ResultData? {
+        var previousResult: ResultData?
+        if let idx = children.firstIndex(where: { $0.identifier == result.identifier }) {
+            previousResult = children.remove(at: idx)
+        }
+        children.append(result)
+        return previousResult
+    }
+    
+    /// Remove the result with the given identifier.
+    /// - parameter result: The result to remove from the input results.
+    /// - returns: The previous result or `nil` if there wasn't one.
+    @discardableResult
+    mutating func remove(with identifier: String) -> ResultData? {
+        guard let idx = children.firstIndex(where: { $0.identifier == identifier }) else {
+            return nil
+        }
+        return children.remove(at: idx)
+    }
+}
+
+/// `CollectionResultObject` is used to include multiple results associated with a single action.
+public final class CollectionResultObject : SerializableResultData, CollectionResult {
+    private enum CodingKeys : String, CodingKey, CaseIterable {
+        case serializableType="type", identifier, startDate, endDate, children="inputResults"
+    }
+    public private(set) var serializableType: SerializableResultType = .collection
     
     public let identifier: String
     public var startDate: Date
     public var endDate: Date
     
     /// The list of input results associated with this step. These are generally assumed to be answers to
-    /// field inputs, but they are not required to implement the `RSDAnswerResult` protocol.
+    /// field inputs, but they are not required to implement the `AnswerResult` protocol.
     public var children: [ResultData]
     
-    public init(identifier: String) {
+    public init(identifier: String, children: [ResultData] = []) {
         self.identifier = identifier
+        self.children = children
         self.startDate = Date()
         self.endDate = Date()
-        self.children = []
     }
     
     /// Initialize from a `Decoder`. This decoding method will use the `RSDFactory` instance associated
@@ -70,12 +117,21 @@ public final class CollectionResultObject : SerializableResultData {
         self.children = try decoder.serializationFactory.decodePolymorphicArray(ResultData.self, from: resultsContainer)
     }
     
+    public func deepCopy() -> CollectionResultObject {
+        let copyChildren = self.children.map { $0.deepCopy() }
+        let copy = CollectionResultObject(identifier: self.identifier,
+                                          children: copyChildren)
+        copy.startDate = self.startDate
+        copy.endDate = self.endDate
+        return copy
+    }
+    
     /// Encode the result to the given encoder.
     /// - parameter encoder: The encoder to use to encode this instance.
     /// - throws: `EncodingError`
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(serializableResultType, forKey: .serializableResultType)
+        try container.encode(serializableType, forKey: .serializableType)
         try container.encode(identifier, forKey: .identifier)
         try container.encode(startDate, forKey: .startDate)
         try container.encode(endDate, forKey: .endDate)
@@ -109,7 +165,7 @@ extension CollectionResultObject : DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableResultType:
+        case .serializableType:
             return .init(constValue: SerializableResultType.collection)
         case .identifier:
             return .init(propertyType: .primitive(.string))
@@ -124,7 +180,7 @@ extension CollectionResultObject : DocumentableStruct {
         let result = CollectionResultObject(identifier: "answers")
         result.startDate = ISO8601TimestampFormatter.date(from: "2017-10-16T22:28:09.000-07:00")!
         result.endDate = result.startDate.addingTimeInterval(5 * 60)
-        result.children = JsonElementResultObject.examples()
+        result.children = AnswerResultObject.examples()
         return [result]
     }
 }

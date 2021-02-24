@@ -1,5 +1,5 @@
 //
-//  ErrorResultObject.swift
+//  JsonElementResultObject.swift
 //  
 //
 //  Copyright © 2020 Sage Bionetworks. All rights reserved.
@@ -33,62 +33,50 @@
 
 import Foundation
 
-/// `ErrorResultObject` is a result that holds information about an error.
-public struct ErrorResultObject : SerializableResultData {
+/// `JsonElementResultObject` is a `ResultData` implementation that can be used to store simple
+/// json values.
+@available(*, deprecated, message: "Use `AnswerResultObject` instead.")
+public final class JsonElementResultObject : SerializableResultData, AnswerResult {
     private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableResultType="type", identifier, startDate, endDate, errorDescription, errorDomain, errorCode
+        case serializableType="type", identifier, jsonValue="value", startDate, endDate, questionText
     }
-    public private(set) var serializableResultType: SerializableResultType = .error
+    public private(set) var serializableType: SerializableResultType = .jsonValue
     
     public let identifier: String
+    public var jsonValue: JsonElement?
+    public var questionText: String?
     public var startDate: Date
     public var endDate: Date
     
-    /// A description associated with an `NSError`.
-    public let errorDescription: String
+    public var codingInfo: AnswerCodingInfo? { _codingInfo }
+    private var _codingInfo: AnswerCodingInfo? = nil
     
-    /// A domain associated with an `NSError`.
-    public let errorDomain: String
-    
-    /// The error code associated with an `NSError`.
-    public let errorCode: Int
-    
-    /// Initialize using a description, domain, and code.
-    /// - parameters:
-    ///     - identifier: The identifier for the result.
-    ///     - description: The description of the error.
-    ///     - domain: The error domain.
-    ///     - code: The error code.
-    public init(identifier: String, description: String, domain: String, code: Int) {
+    public init(identifier: String, value: JsonElement, questionText: String? = nil) {
         self.identifier = identifier
         self.startDate = Date()
         self.endDate = Date()
-        self.errorDescription = description
-        self.errorDomain = domain
-        self.errorCode = code
+        self.jsonValue = value
+        self._codingInfo = value.codingInfo
+        self.questionText = questionText
     }
     
-    /// Initialize using an error.
-    /// - parameters:
-    ///     - identifier: The identifier for the result.
-    ///     - error: The error for the result.
-    public init(identifier: String, error: Error) {
-        self.identifier = identifier
-        self.startDate = Date()
-        self.endDate = Date()
-        self.errorDescription = (error as NSError).localizedDescription
-        self.errorDomain = (error as NSError).domain
-        self.errorCode = (error as NSError).code
+    public func deepCopy() -> JsonElementResultObject {
+        let copy = JsonElementResultObject(identifier: identifier, value: jsonValue ?? .null, questionText: questionText)
+        copy.startDate = self.startDate
+        copy.endDate = self.endDate
+        return copy
     }
 }
 
-extension ErrorResultObject : DocumentableStruct {
+@available(*, deprecated, message: "Use `AnswerResultObject` instead.")
+extension JsonElementResultObject : DocumentableStruct {
     public static func codingKeys() -> [CodingKey] {
-        return CodingKeys.allCases
+        CodingKeys.allCases
     }
     
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
-        true
+        guard let key = codingKey as? CodingKeys else { return false }
+        return key == .serializableType || key == .identifier || key == .startDate || key == .endDate
     }
     
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -96,20 +84,27 @@ extension ErrorResultObject : DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableResultType:
-            return .init(constValue: SerializableResultType.error)
+        case .serializableType:
+            return .init(constValue: SerializableResultType.jsonValue)
         case .identifier:
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
-        case .errorDomain, .errorDescription:
+        case .jsonValue:
+            return .init(propertyType: .any)
+        case .questionText:
             return .init(propertyType: .primitive(.string))
-        case .errorCode:
-            return .init(propertyType: .primitive(.integer))
         }
     }
-    
-    public static func examples() -> [ErrorResultObject] {
-        return [ErrorResultObject(identifier: "errorResult", description: "example error", domain: "ExampleDomain", code: 1)]
+
+    public static func examples() -> [JsonElementResultObject] {
+        let date = ISO8601TimestampFormatter.date(from: "2017-10-16T22:28:09.000-07:00")!
+        let values: [JsonElement] = [.string("foo"), .integer(42), .boolean(true)]
+        return values.enumerated().map {
+            let result = JsonElementResultObject(identifier: "\($0.offset)", value: $0.element)
+            result.startDate = date
+            result.endDate = date
+            return result
+        }
     }
 }
