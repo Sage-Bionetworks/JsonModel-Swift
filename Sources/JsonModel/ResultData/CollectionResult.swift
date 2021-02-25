@@ -44,8 +44,18 @@ public protocol CollectionResult : ResultData, AnswerFinder {
 }
 
 public extension CollectionResult {
+    
+    /// The `CollectionResult` conformance to the `AnswerFinder` protocol.
     func findAnswer(with identifier: String) -> AnswerResult? {
-        self.findResult(with: identifier) as? AnswerResult
+        self.children.compactMap {
+            if let finder = $0 as? AnswerFinder,
+               let answer = finder.findAnswer(with: identifier) {
+                return answer
+            }
+            else {
+                return nil
+            }
+        }.last
     }
     
     /// Find a result within this collection.
@@ -55,7 +65,8 @@ public extension CollectionResult {
         return self.children.first(where: { $0.identifier == identifier })
     }
     
-    /// Insert the result at the end of the `children`, replacing the previous instance with the same identifier.
+    /// Insert the result at the end of the `children` collection and, if found,  remove the previous instance
+    /// with the same identifier.
     /// - parameter result: The result to add to the input results.
     /// - returns: The previous result or `nil` if there wasn't one.
     @discardableResult

@@ -38,7 +38,7 @@ import Foundation
 /// controller to keep replacing the result in the collection or task result that contains the
 /// value. However, that means that the instance *must* be explicitly copied when using this
 /// to revisit a question.
-public protocol AnswerResult : ResultData {
+public protocol AnswerResult : ResultData, AnswerFinder {
     
     /// Optional property for defining additional information about the answer expected for this result.
     var codingInfo: AnswerCodingInfo? { get }
@@ -50,21 +50,6 @@ public protocol AnswerResult : ResultData {
     var questionText: String? { get }
 }
 
-public extension AnswerResult {
-    
-    var value: Any? {
-        return jsonValue?.jsonObject()
-    }
-    
-    func findAnswer(with identifier:String ) -> AnswerResult? {
-        return self.identifier == identifier ? self : nil
-    }
-    
-    func encodingValue() throws -> JsonElement? {
-        try self.codingInfo?.encodeAnswer(from: self.jsonValue) ?? self.jsonValue
-    }
-}
-
 public protocol AnswerFinder {
     
     /// Find an *answer* result within this result. This method will return `nil` if there is a
@@ -73,6 +58,23 @@ public protocol AnswerFinder {
     /// - parameter identifier: The identifier associated with the result.
     /// - returns: The result or `nil` if not found.
     func findAnswer(with identifier: String) -> AnswerResult?
+}
+
+public extension AnswerResult {
+    
+    /// The `AnswerResult` conformance to the `AnswerFinder` protocol.
+    func findAnswer(with identifier:String ) -> AnswerResult? {
+        return self.identifier == identifier ? self : nil
+    }
+    
+    /// When this protocol is used to support generic data in a research project, the researchers often want
+    /// to encode the value in some special way (comma-delimited, for example) that is not supported as a
+    /// `JsonElement` directly. By using the `codingInfo`, this allows this result to conform to any
+    /// encoding strategy desired by the researchers who are using it in their studies, while keeping the
+    /// model generic and reusable for the developers.
+    func encodingValue() throws -> JsonElement? {
+        try self.codingInfo?.encodeAnswer(from: self.jsonValue) ?? self.jsonValue
+    }
 }
 
 public final class AnswerResultObject : SerializableResultData, AnswerResult {
@@ -88,7 +90,7 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
     public var startDate: Date
     public var endDate: Date
     
-    // Additional data that researchers may wish to include with an answer result.
+    /// Additional data that researchers may wish to include with an answer result.
     public var questionData: JsonElement?
     
     public init(identifier: String, value: JsonElement, questionText: String? = nil, questionData: JsonElement? = nil) {

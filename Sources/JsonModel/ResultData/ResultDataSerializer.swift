@@ -126,6 +126,8 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
         }
     }
     
+    /// Insert the given example into the example array, replacing any existing example with the
+    /// same `typeName` as one of the new example.
     public func add(_ example: SerializableResultData) {
         examples.removeAll(where: { $0.typeName == example.typeName })
         examples.append(example)
