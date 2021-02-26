@@ -2,7 +2,7 @@
 //  ResultDataFactory.swift
 //  
 //
-//  Copyright © 2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2020-2021 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -38,101 +38,12 @@ import Foundation
 open class ResultDataFactory : SerializationFactory {
     
     public let resultSerializer = ResultDataSerializer()
+    public let answerCodingInfoSerializer = AnswerCodingInfoSerializer()
     
     public required init() {
         super.init()
         self.registerSerializer(resultSerializer)
+        self.registerSerializer(answerCodingInfoSerializer)
     }
 }
 
-/// `SerializableResultData` is the base implementation for `ResultData` that is serialized using
-/// the `Codable` protocol and the polymorphic serialization defined by this framework.
-///
-public protocol SerializableResultData : ResultData, PolymorphicRepresentable, Encodable {
-    var serializableResultType: SerializableResultType { get }
-}
-
-extension SerializableResultData {
-    public var typeName: String { serializableResultType.stringValue }
-    
-    public func jsonDictionary() throws -> [String : JsonSerializable] {
-        try jsonEncodedDictionary()
-    }
-}
-
-/// `SerializableResultType` is an extendable string enum used by the `SerializationFactory` to
-/// create the appropriate result type.
-public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
-    
-    public let rawValue: String
-    
-    public init(rawValue: String) {
-        self.rawValue = rawValue
-    }
-    
-    /// Defaults to creating a `JsonElementResultObject`.
-    public static let jsonValue: SerializableResultType = "jsonValue"
-
-    /// Defaults to creating a `CollectionResultObject`.
-    public static let collection: SerializableResultType = "collection"
-
-    /// Defaults to creating a `FileResultObject`.
-    public static let file: SerializableResultType = "file"
-
-    /// Defaults to creating a `ErrorResultObject`.
-    public static let error: SerializableResultType = "error"
-    
-    /// List of all the standard types.
-    public static func allStandardTypes() -> [SerializableResultType] {
-        [.jsonValue, .collection, .file, .error]
-    }
-}
-
-extension SerializableResultType : ExpressibleByStringLiteral {
-    public init(stringLiteral value: String) {
-        self.init(rawValue: value)
-    }
-}
-
-extension SerializableResultType : DocumentableStringLiteral {
-    public static func examples() -> [String] {
-        return allStandardTypes().map{ $0.rawValue }
-    }
-}
-
-public final class ResultDataSerializer : IdentifiableInterfaceSerializer, PolymorphicSerializer {
-    public var documentDescription: String? {
-        """
-        `JsonResultData` is the base implementation for `ResultData` that is serialized using
-        the `Codable` protocol and the polymorphic serialization defined by this framework.
-        """.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "  ", with: "\n")
-    }
-    
-    override init() {
-        self.examples = [
-            JsonElementResultObject.examples().first!,
-            CollectionResultObject.examples().first!,
-            ErrorResultObject.examples().first!,
-            FileResultObject.examples().first!,
-        ]
-    }
-    
-    public private(set) var examples: [ResultData]
-    
-    public override class func typeDocumentProperty() -> DocumentProperty {
-        .init(propertyType: .reference(SerializableResultType.documentableType()))
-    }
-    
-    public func add(_ example: SerializableResultData) {
-        examples.removeAll(where: { $0.typeName == example.typeName })
-        examples.append(example)
-    }
-    
-    /// Insert the given examples into the example array, replacing any existing examples with the
-    /// same `typeName` as one of the new examples.
-    public func add(contentsOf newExamples: [SerializableResultData]) {
-        let newNames = newExamples.map { $0.typeName }
-        self.examples.removeAll(where: { newNames.contains($0.typeName) })
-        self.examples.append(contentsOf: newExamples)
-    }
-}

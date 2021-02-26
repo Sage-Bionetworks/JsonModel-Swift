@@ -1,7 +1,7 @@
 //
 //  ResultData.swift
 //
-//  Copyright © 2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -56,4 +56,11 @@ public protocol ResultData : PolymorphicTyped, DictionaryRepresentable {
     
     /// The end date timestamp for the result.
     var endDate: Date { get set }
+    
+    /// The `deepCopy()` method is intended to allow copying a result to retain the previous result
+    /// when revisiting an action. Since a class with get/set variables will use a pointer to the instance
+    /// this allows results to either be structs *or* classes and allows collections of results to use
+    /// mapping to deep copy their children.
+    func deepCopy() -> Self
 }
+

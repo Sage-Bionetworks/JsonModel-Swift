@@ -2,7 +2,7 @@
 //  PolymorphicSerializer.swift
 //  
 //
-//  Copyright © 2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2020-2021 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -175,7 +175,7 @@ open class AbstractPolymorphicSerializer {
     }
 }
 
-enum PolymorphicSerializerError : Error {
+public enum PolymorphicSerializerError : Error {
     case typeKeyNotFound
     case exampleNotFound(String)
 }
