@@ -54,8 +54,7 @@ extension Encodable {
         return dictionary
     }
     
-    /// Returns JSON-encoded data created by encoding this object using a JSON encoder created
-    /// by the shared `RSDFactory` singleton.
+    /// Returns JSON-encoded data created by encoding this object.
     public func jsonEncodedData(using factory: SerializationFactory = SerializationFactory.defaultFactory) throws -> Data {
         let jsonEncoder = factory.createJSONEncoder()
         return try self.encodeObject(to: jsonEncoder)

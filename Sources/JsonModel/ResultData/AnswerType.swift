@@ -1,5 +1,5 @@
 //
-//  AnswerCodingInfo.swift
+//  AnswerType.swift
 //
 //
 //  Copyright © 2020-2021 Sage Bionetworks. All rights reserved.
@@ -36,7 +36,7 @@ import Foundation
 /// The coding information for an answer. This allows for adding custom information to the "kind" of question because
 /// JSON only supports a small subset of value types that are often encoded and can be described using JSON Schema
 /// or Swagger.
-public protocol AnswerCodingInfo : PolymorphicTyped, DictionaryRepresentable {
+public protocol AnswerType : PolymorphicTyped, DictionaryRepresentable {
 
     /// The `JsonType` for the base value.
     var baseType: JsonType { get }
@@ -62,34 +62,34 @@ public protocol AnswerCodingInfo : PolymorphicTyped, DictionaryRepresentable {
     func encodeAnswer(from value: Any?) throws -> JsonElement
 }
 
-public final class AnswerCodingInfoSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
+public final class AnswerTypeSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
     public var documentDescription: String? {
         """
-        `AnswerCodingInfo` is used to allow carrying additional information about the properties of a
+        `AnswerType` is used to allow carrying additional information about the properties of a
         JSON-encoded `AnswerResult`.
         """.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "  ", with: "\n")
     }
     
     override init() {
         examples = [
-            AnswerCodingInfoArray.examples().first!,
-            AnswerCodingInfoBoolean.examples().first!,
-            AnswerCodingInfoDateTime.examples().first!,
-            AnswerCodingInfoInteger.examples().first!,
-            AnswerCodingInfoMeasurement.examples().first!,
-            AnswerCodingInfoNumber.examples().first!,
-            AnswerCodingInfoObject.examples().first!,
-            AnswerCodingInfoString.examples().first!,
+            AnswerTypeArray.examples().first!,
+            AnswerTypeBoolean.examples().first!,
+            AnswerTypeDateTime.examples().first!,
+            AnswerTypeInteger.examples().first!,
+            AnswerTypeMeasurement.examples().first!,
+            AnswerTypeNumber.examples().first!,
+            AnswerTypeObject.examples().first!,
+            AnswerTypeString.examples().first!,
         ]
     }
     
-    public private(set) var examples: [AnswerCodingInfo]
+    public private(set) var examples: [AnswerType]
     
     public override class func typeDocumentProperty() -> DocumentProperty {
-        .init(propertyType: .reference(AnswerCodingInfoType.documentableType()))
+        .init(propertyType: .reference(AnswerTypeType.documentableType()))
     }
     
-    public func add(_ example: AnswerCodingInfo) {
+    public func add(_ example: AnswerType) {
         if let idx = examples.firstIndex(where: { $0.typeName == example.typeName }) {
             examples.remove(at: idx)
         }
@@ -97,11 +97,11 @@ public final class AnswerCodingInfoSerializer : AbstractPolymorphicSerializer, P
     }
 }
 
-public protocol SerializableAnswerCodingInfo : AnswerCodingInfo, PolymorphicRepresentable, Encodable {
-    var serializableType: AnswerCodingInfoType { get }
+public protocol SerializableAnswerType : AnswerType, PolymorphicRepresentable, Encodable {
+    var serializableType: AnswerTypeType { get }
 }
 
-extension SerializableAnswerCodingInfo {
+extension SerializableAnswerType {
     public var typeName: String { serializableType.stringValue }
     
     public func jsonDictionary() throws -> [String : JsonSerializable] {
@@ -109,7 +109,7 @@ extension SerializableAnswerCodingInfo {
     }
 }
 
-public struct AnswerCodingInfoType : TypeRepresentable, Codable, Hashable {
+public struct AnswerTypeType : TypeRepresentable, Codable, Hashable {
     public let rawValue: String
     public init(rawValue: String) {
         self.rawValue = rawValue
@@ -119,38 +119,38 @@ public struct AnswerCodingInfoType : TypeRepresentable, Codable, Hashable {
         self.rawValue = jsonType.rawValue
     }
     
-    static public let measurement: AnswerCodingInfoType = "measurement"
-    static public let dateTime: AnswerCodingInfoType = "date-time"
-    static public let string: AnswerCodingInfoType = AnswerCodingInfoType(jsonType: .string)
-    static public let number: AnswerCodingInfoType = AnswerCodingInfoType(jsonType: .number)
-    static public let integer: AnswerCodingInfoType = AnswerCodingInfoType(jsonType: .integer)
-    static public let boolean: AnswerCodingInfoType = AnswerCodingInfoType(jsonType: .boolean)
-    static public let array: AnswerCodingInfoType = AnswerCodingInfoType(jsonType: .array)
-    static public let object: AnswerCodingInfoType = AnswerCodingInfoType(jsonType: .object)
-    static public let null: AnswerCodingInfoType = AnswerCodingInfoType(jsonType: .null)
+    static public let measurement: AnswerTypeType = "measurement"
+    static public let dateTime: AnswerTypeType = "date-time"
+    static public let string: AnswerTypeType = AnswerTypeType(jsonType: .string)
+    static public let number: AnswerTypeType = AnswerTypeType(jsonType: .number)
+    static public let integer: AnswerTypeType = AnswerTypeType(jsonType: .integer)
+    static public let boolean: AnswerTypeType = AnswerTypeType(jsonType: .boolean)
+    static public let array: AnswerTypeType = AnswerTypeType(jsonType: .array)
+    static public let object: AnswerTypeType = AnswerTypeType(jsonType: .object)
+    static public let null: AnswerTypeType = AnswerTypeType(jsonType: .null)
     
-    static func allStandardTypes() -> [AnswerCodingInfoType] {
+    static func allStandardTypes() -> [AnswerTypeType] {
         return [.array, .boolean, .dateTime, .integer, .measurement, .null, .number, .object]
     }
 }
 
-extension AnswerCodingInfoType : ExpressibleByStringLiteral {
+extension AnswerTypeType : ExpressibleByStringLiteral {
     public init(stringLiteral value: String) {
         self.init(rawValue: value)
     }
 }
 
-extension AnswerCodingInfoType : DocumentableStringLiteral {
+extension AnswerTypeType : DocumentableStringLiteral {
     public static func examples() -> [String] {
         allStandardTypes().map { $0.rawValue }
     }
 }
 
-public protocol BaseAnswerCodingInfo : SerializableAnswerCodingInfo {
+public protocol BaseAnswerType : SerializableAnswerType {
     static var defaultJsonType: JsonType { get }
 }
 
-extension BaseAnswerCodingInfo {
+extension BaseAnswerType {
     public var typeName: String { serializableType.rawValue }
     
     public var baseType: JsonType {
@@ -159,27 +159,27 @@ extension BaseAnswerCodingInfo {
 }
 
 extension JsonType {
-    public var AnswerCodingInfo : AnswerCodingInfo {
+    public var AnswerType : AnswerType {
         switch self {
         case .boolean:
-            return AnswerCodingInfoBoolean()
+            return AnswerTypeBoolean()
         case .string:
-            return AnswerCodingInfoString()
+            return AnswerTypeString()
         case .number:
-            return AnswerCodingInfoNumber()
+            return AnswerTypeNumber()
         case .integer:
-            return AnswerCodingInfoInteger()
+            return AnswerTypeInteger()
         case .null:
-            return AnswerCodingInfoNull()
+            return AnswerTypeNull()
         case .array:
-            return AnswerCodingInfoArray()
+            return AnswerTypeArray()
         case .object:
-            return AnswerCodingInfoObject()
+            return AnswerTypeObject()
         }
     }
 }
 
-extension AnswerCodingInfo {
+extension AnswerType {
     fileprivate func decodingError(_ codingPath: [CodingKey] = []) -> DecodingError {
         let context = DecodingError.Context(codingPath: codingPath,
                                             debugDescription: "Could not decode the value into the expected JsonType for \(self)")
@@ -192,13 +192,13 @@ extension AnswerCodingInfo {
     }
 }
 
-public struct AnswerCodingInfoObject : BaseAnswerCodingInfo, Codable, Hashable {
+public struct AnswerTypeObject : BaseAnswerType, Codable, Hashable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
         case serializableType = "type"
     }
     public static let defaultJsonType: JsonType = .object
-    public static let defaultType: AnswerCodingInfoType = .object
-    public private(set) var serializableType: AnswerCodingInfoType = Self.defaultType
+    public static let defaultType: AnswerTypeType = .object
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     public init() {
     }
     
@@ -234,13 +234,13 @@ public struct AnswerCodingInfoObject : BaseAnswerCodingInfo, Codable, Hashable {
     }
 }
 
-public struct AnswerCodingInfoString : BaseAnswerCodingInfo, Codable, Hashable {
+public struct AnswerTypeString : BaseAnswerType, Codable, Hashable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
         case serializableType = "type"
     }
     public static let defaultJsonType: JsonType = .string
-    public static let defaultType: AnswerCodingInfoType = .string
-    public private(set) var serializableType: AnswerCodingInfoType = Self.defaultType
+    public static let defaultType: AnswerTypeType = .string
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     public init() {
     }
     
@@ -278,13 +278,13 @@ public struct AnswerCodingInfoString : BaseAnswerCodingInfo, Codable, Hashable {
     }
 }
 
-public struct AnswerCodingInfoBoolean : BaseAnswerCodingInfo, Codable, Hashable {
+public struct AnswerTypeBoolean : BaseAnswerType, Codable, Hashable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
         case serializableType = "type"
     }
     public static let defaultJsonType: JsonType = .boolean
-    public static let defaultType: AnswerCodingInfoType = .boolean
-    public private(set) var serializableType: AnswerCodingInfoType = Self.defaultType
+    public static let defaultType: AnswerTypeType = .boolean
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     public init() {
     }
     
@@ -334,13 +334,13 @@ public struct AnswerCodingInfoBoolean : BaseAnswerCodingInfo, Codable, Hashable 
     }
 }
 
-public struct AnswerCodingInfoInteger : BaseAnswerCodingInfo, Codable, Hashable {
+public struct AnswerTypeInteger : BaseAnswerType, Codable, Hashable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
         case serializableType = "type"
     }
     public static let defaultJsonType: JsonType = .integer
-    public static let defaultType: AnswerCodingInfoType = .integer
-    public private(set) var serializableType: AnswerCodingInfoType = Self.defaultType
+    public static let defaultType: AnswerTypeType = .integer
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     public init() {
     }
     
@@ -386,23 +386,23 @@ public struct AnswerCodingInfoInteger : BaseAnswerCodingInfo, Codable, Hashable 
     }
 }
 
-public struct AnswerCodingInfoNumber : BaseAnswerCodingInfo, Codable, Hashable {
+public struct AnswerTypeNumber : BaseAnswerType, Codable, Hashable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
         case serializableType = "type"
     }
     public static let defaultJsonType: JsonType = .number
-    public static let defaultType: AnswerCodingInfoType = .number
-    public private(set) var serializableType: AnswerCodingInfoType = Self.defaultType
+    public static let defaultType: AnswerTypeType = .number
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     public init() {
     }
 }
-extension AnswerCodingInfoNumber : RSDNumberAnswerCodingInfo {
+extension AnswerTypeNumber : NumberJsonType {
 }
 
-protocol RSDNumberAnswerCodingInfo : AnswerCodingInfo {
+protocol NumberJsonType : AnswerType {
 }
 
-extension RSDNumberAnswerCodingInfo {
+extension NumberJsonType {
     public func decodeValue(from decoder: Decoder) throws -> JsonElement {
         let obj = try JsonElement(from: decoder)
         switch obj {
@@ -445,13 +445,13 @@ extension RSDNumberAnswerCodingInfo {
     }
 }
 
-public struct AnswerCodingInfoNull : BaseAnswerCodingInfo, Codable, Hashable {
+public struct AnswerTypeNull : BaseAnswerType, Codable, Hashable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
         case serializableType = "type"
     }
     public static let defaultJsonType: JsonType = .null
-    public static let defaultType: AnswerCodingInfoType = .null
-    public private(set) var serializableType: AnswerCodingInfoType = Self.defaultType
+    public static let defaultType: AnswerTypeType = .null
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     public init() {
     }
     
@@ -468,12 +468,12 @@ public struct AnswerCodingInfoNull : BaseAnswerCodingInfo, Codable, Hashable {
     }
 }
 
-public struct AnswerCodingInfoArray : SerializableAnswerCodingInfo, Codable, Hashable {
+public struct AnswerTypeArray : SerializableAnswerType, Codable, Hashable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
         case serializableType = "type", baseType, sequenceSeparator
     }
-    public static let defaultType: AnswerCodingInfoType = .array
-    public private(set) var serializableType: AnswerCodingInfoType = Self.defaultType
+    public static let defaultType: AnswerTypeType = .array
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     public let baseType: JsonType
     public let sequenceSeparator: String?
     public init(baseType: JsonType = .string, sequenceSeparator: String? = nil) {
@@ -502,7 +502,7 @@ public struct AnswerCodingInfoArray : SerializableAnswerCodingInfo, Codable, Has
                     return $0
                 default:
                     let context = DecodingError.Context(codingPath: codingPath,
-                                                        debugDescription: "A base type of `object` is not valid for an AnswerCodingInfoArray with a non-nil separator")
+                                                        debugDescription: "A base type of `object` is not valid for an AnswerTypeArray with a non-nil separator")
                     throw DecodingError.dataCorrupted(context)
                 }
             }
@@ -546,13 +546,13 @@ public struct AnswerCodingInfoArray : SerializableAnswerCodingInfo, Codable, Has
     }
 }
 
-public struct AnswerCodingInfoDateTime : BaseAnswerCodingInfo, Codable, Hashable {
+public struct AnswerTypeDateTime : BaseAnswerType, Codable, Hashable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
         case serializableType = "type", _codingFormat = "codingFormat"
     }
     public static let defaultJsonType: JsonType = .string
-    public static let defaultType: AnswerCodingInfoType = .dateTime
-    public private(set) var serializableType: AnswerCodingInfoType = Self.defaultType
+    public static let defaultType: AnswerTypeType = .dateTime
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     
     public var codingFormat: String {
         _codingFormat ?? ISO8601TimestampFormatter.dateFormat
@@ -605,127 +605,127 @@ public struct AnswerCodingInfoDateTime : BaseAnswerCodingInfo, Codable, Hashable
     }
 }
 
-public struct AnswerCodingInfoMeasurement : BaseAnswerCodingInfo, Codable, Hashable {
+public struct AnswerTypeMeasurement : BaseAnswerType, Codable, Hashable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
         case serializableType = "type", unit
     }
     public static let defaultJsonType: JsonType = .number
-    public static let defaultType: AnswerCodingInfoType = .measurement
-    public private(set) var serializableType: AnswerCodingInfoType = Self.defaultType
+    public static let defaultType: AnswerTypeType = .measurement
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     public let unit: String?
     
     public init(unit: String? = nil) {
         self.unit = unit
     }
 }
-extension AnswerCodingInfoMeasurement : RSDNumberAnswerCodingInfo {
+extension AnswerTypeMeasurement : NumberJsonType {
 }
 
 // MARK: Documentable
 
-protocol AnswerCodingInfoDocumentable {
-    static func exampleTypeAndValues() -> [(AnswerCodingInfo, JsonElement)]
+protocol AnswerTypeDocumentable {
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)]
 }
 
-struct AnswerCodingInfoExamples {
+struct AnswerTypeExamples {
     
-    static func examplesWithValues() -> [(AnswerCodingInfo, JsonElement)] {
+    static func examplesWithValues() -> [(AnswerType, JsonElement)] {
         documentableTypes.flatMap { $0.exampleTypeAndValues() }
     }
     
-    static let documentableTypes: [AnswerCodingInfoDocumentable.Type] = [
-        AnswerCodingInfoBoolean.self,
-        AnswerCodingInfoInteger.self,
-        AnswerCodingInfoNumber.self,
-        AnswerCodingInfoObject.self,
-        AnswerCodingInfoString.self,
-        AnswerCodingInfoArray.self,
-        AnswerCodingInfoDateTime.self,
-        AnswerCodingInfoMeasurement.self,
+    static let documentableTypes: [AnswerTypeDocumentable.Type] = [
+        AnswerTypeBoolean.self,
+        AnswerTypeInteger.self,
+        AnswerTypeNumber.self,
+        AnswerTypeObject.self,
+        AnswerTypeString.self,
+        AnswerTypeArray.self,
+        AnswerTypeDateTime.self,
+        AnswerTypeMeasurement.self,
     ]
 }
 
-extension AnswerCodingInfoObject : AnswerCodingInfoDocumentable, DocumentableStruct {
+extension AnswerTypeObject : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
         .init(constValue: defaultType)
     }
     
-    public static func examples() -> [AnswerCodingInfoObject] {
+    public static func examples() -> [AnswerTypeObject] {
         exampleTypeAndValues().map { $0.0 as! Self }
     }
 
-    static func exampleTypeAndValues() -> [(AnswerCodingInfo, JsonElement)] {
-        [(AnswerCodingInfoObject(), .object(["foo":"ba"]))]
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)] {
+        [(AnswerTypeObject(), .object(["foo":"ba"]))]
     }
 }
 
-extension AnswerCodingInfoString : AnswerCodingInfoDocumentable, DocumentableStruct {
+extension AnswerTypeString : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
         .init(constValue: defaultType)
     }
 
-    public static func examples() -> [AnswerCodingInfoString] {
+    public static func examples() -> [AnswerTypeString] {
         exampleTypeAndValues().map { $0.0 as! Self }
     }
 
-    static func exampleTypeAndValues() -> [(AnswerCodingInfo, JsonElement)] {
-        [(AnswerCodingInfoString(), .string("foo"))]
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)] {
+        [(AnswerTypeString(), .string("foo"))]
     }
 }
 
-extension AnswerCodingInfoBoolean : AnswerCodingInfoDocumentable, DocumentableStruct {
+extension AnswerTypeBoolean : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
         .init(constValue: defaultType)
     }
 
-    public static func examples() -> [AnswerCodingInfoBoolean] {
+    public static func examples() -> [AnswerTypeBoolean] {
         exampleTypeAndValues().map { $0.0 as! Self }
     }
 
-    static func exampleTypeAndValues() -> [(AnswerCodingInfo, JsonElement)] {
-        [(AnswerCodingInfoBoolean(), .boolean(true))]
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)] {
+        [(AnswerTypeBoolean(), .boolean(true))]
     }
 }
 
-extension AnswerCodingInfoInteger : AnswerCodingInfoDocumentable, DocumentableStruct {
+extension AnswerTypeInteger : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
         .init(constValue: defaultType)
     }
 
-    public static func examples() -> [AnswerCodingInfoInteger] {
+    public static func examples() -> [AnswerTypeInteger] {
         exampleTypeAndValues().map { $0.0 as! Self }
     }
 
-    static func exampleTypeAndValues() -> [(AnswerCodingInfo, JsonElement)] {
-        [(AnswerCodingInfoInteger(), .integer(42))]
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)] {
+        [(AnswerTypeInteger(), .integer(42))]
     }
 }
 
-extension AnswerCodingInfoNumber : AnswerCodingInfoDocumentable, DocumentableStruct {
+extension AnswerTypeNumber : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
         .init(constValue: defaultType)
     }
 
-    public static func examples() -> [AnswerCodingInfoNumber] {
+    public static func examples() -> [AnswerTypeNumber] {
         exampleTypeAndValues().map { $0.0 as! Self }
     }
 
-    static func exampleTypeAndValues() -> [(AnswerCodingInfo, JsonElement)] {
-        [(AnswerCodingInfoNumber(), .number(3.14))]
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)] {
+        [(AnswerTypeNumber(), .number(3.14))]
     }
 }
 
-extension AnswerCodingInfoArray : AnswerCodingInfoDocumentable, DocumentableStruct {
+extension AnswerTypeArray : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
@@ -747,20 +747,20 @@ extension AnswerCodingInfoArray : AnswerCodingInfoDocumentable, DocumentableStru
         }
     }
 
-    public static func examples() -> [AnswerCodingInfoArray] {
+    public static func examples() -> [AnswerTypeArray] {
         exampleTypeAndValues().map { $0.0 as! Self }
     }
     
-    static func exampleTypeAndValues() -> [(AnswerCodingInfo, JsonElement)] {
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)] {
         [
-            (AnswerCodingInfoArray(baseType: .number), .array([3.2, 5.1])),
-            (AnswerCodingInfoArray(baseType: .integer), .array([1, 5])),
-            (AnswerCodingInfoArray(baseType: .string), .array(["foo", "ba", "lalala"])),
+            (AnswerTypeArray(baseType: .number), .array([3.2, 5.1])),
+            (AnswerTypeArray(baseType: .integer), .array([1, 5])),
+            (AnswerTypeArray(baseType: .string), .array(["foo", "ba", "lalala"])),
         ]
     }
 }
 
-extension AnswerCodingInfoDateTime : AnswerCodingInfoDocumentable, DocumentableStruct {
+extension AnswerTypeDateTime : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
 
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
@@ -780,20 +780,20 @@ extension AnswerCodingInfoDateTime : AnswerCodingInfoDocumentable, DocumentableS
         }
     }
 
-    public static func examples() -> [AnswerCodingInfoDateTime] {
+    public static func examples() -> [AnswerTypeDateTime] {
         exampleTypeAndValues().map { $0.0 as! Self }
     }
     
-    static func exampleTypeAndValues() -> [(AnswerCodingInfo, JsonElement)] {
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)] {
         [
-            (AnswerCodingInfoDateTime(codingFormat: "yyyy-MM"), .string("2020-04")),
-            (AnswerCodingInfoDateTime(codingFormat: "HH:mm"), .string("08:30")),
-            (AnswerCodingInfoDateTime(), .string("2017-10-16T22:28:09.000-07:00")),
+            (AnswerTypeDateTime(codingFormat: "yyyy-MM"), .string("2020-04")),
+            (AnswerTypeDateTime(codingFormat: "HH:mm"), .string("08:30")),
+            (AnswerTypeDateTime(), .string("2017-10-16T22:28:09.000-07:00")),
         ]
     }
 }
 
-extension AnswerCodingInfoMeasurement : AnswerCodingInfoDocumentable, DocumentableStruct {
+extension AnswerTypeMeasurement : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
 
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
@@ -813,40 +813,40 @@ extension AnswerCodingInfoMeasurement : AnswerCodingInfoDocumentable, Documentab
         }
     }
 
-    public static func examples() -> [AnswerCodingInfoMeasurement] {
+    public static func examples() -> [AnswerTypeMeasurement] {
         exampleTypeAndValues().map { $0.0 as! Self }
     }
     
-    static func exampleTypeAndValues() -> [(AnswerCodingInfo, JsonElement)] {
-        [(AnswerCodingInfoMeasurement(unit: "cm"), .number(170.2))]
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)] {
+        [(AnswerTypeMeasurement(unit: "cm"), .number(170.2))]
     }
 }
 
 extension JsonElement {
-    var codingInfo: AnswerCodingInfo {
+    var answerType: AnswerType {
         switch self {
         case .null:
-            return AnswerCodingInfoNull()
+            return AnswerTypeNull()
         case .boolean(_):
-            return AnswerCodingInfoBoolean()
+            return AnswerTypeBoolean()
         case .string(_):
-            return AnswerCodingInfoString()
+            return AnswerTypeString()
         case .integer(_):
-            return AnswerCodingInfoInteger()
+            return AnswerTypeInteger()
         case .number(_):
-            return AnswerCodingInfoNumber()
+            return AnswerTypeNumber()
         case .array(let arr):
             if arr is [Int] {
-                return AnswerCodingInfoArray(baseType: .integer)
+                return AnswerTypeArray(baseType: .integer)
             } else if arr is [NSNumber] || arr is [JsonNumber] {
-                return AnswerCodingInfoArray(baseType: .number)
+                return AnswerTypeArray(baseType: .number)
             } else if arr is [String] {
-                return AnswerCodingInfoArray(baseType: .string)
+                return AnswerTypeArray(baseType: .string)
             } else {
-                return AnswerCodingInfoArray(baseType: .object)
+                return AnswerTypeArray(baseType: .object)
             }
         case .object(_):
-            return AnswerCodingInfoObject()
+            return AnswerTypeObject()
         }
     }
 }

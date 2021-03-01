@@ -232,7 +232,7 @@ open class SerializationFactory : FactoryRegistration {
         decoder.userInfo[.factory] = self
         decoder.userInfo[.bundle] = resourceInfo?.factoryBundle
         decoder.userInfo[.packageName] = resourceInfo?.packageName
-        decoder.userInfo[.codingInfo] = CodingInfo()
+        decoder.userInfo[.answerType] = CodingInfo()
         decoder.nonConformingFloatDecodingStrategy = .convertFromString(positiveInfinity: nonConformingCodingStrategy.positiveInfinity,
                                                                         negativeInfinity: nonConformingCodingStrategy.negativeInfinity,
                                                                         nan: nonConformingCodingStrategy.nan)
@@ -247,7 +247,7 @@ open class SerializationFactory : FactoryRegistration {
         decoder.userInfo[.factory] = self
         decoder.userInfo[.bundle] = resourceInfo?.factoryBundle
         decoder.userInfo[.packageName] = resourceInfo?.packageName
-        decoder.userInfo[.codingInfo] = CodingInfo()
+        decoder.userInfo[.answerType] = CodingInfo()
         return decoder
     }
     
@@ -316,7 +316,7 @@ open class SerializationFactory : FactoryRegistration {
         })
         encoder.outputFormatting = .prettyPrinted
         encoder.userInfo[.factory] = self
-        encoder.userInfo[.codingInfo] = CodingInfo()
+        encoder.userInfo[.answerType] = CodingInfo()
         encoder.nonConformingFloatEncodingStrategy = .convertToString(positiveInfinity: nonConformingCodingStrategy.positiveInfinity,
                                                                         negativeInfinity: nonConformingCodingStrategy.negativeInfinity,
                                                                         nan: nonConformingCodingStrategy.nan)
@@ -333,7 +333,7 @@ open class SerializationFactory : FactoryRegistration {
     open func createPropertyListEncoder() -> PropertyListEncoder {
         let encoder = PropertyListEncoder()
         encoder.userInfo[.factory] = self
-        encoder.userInfo[.codingInfo] = CodingInfo()
+        encoder.userInfo[.answerType] = CodingInfo()
         return encoder
     }
     
@@ -362,7 +362,7 @@ extension CodingUserInfoKey {
     public static let packageName = CodingUserInfoKey(rawValue: "Factory.packageName")!
     
     /// The key for pointing to mutable coding info.
-    public static let codingInfo = CodingUserInfoKey(rawValue: "Factory.codingInfo")!
+    public static let answerType = CodingUserInfoKey(rawValue: "Factory.answerType")!
 }
 
 /// `JSONDecoder` and `PropertyListDecoder` do not share a common protocol so extend them to be
@@ -406,8 +406,8 @@ extension Decoder {
     }
     
     /// The coding info object to use when decoding.
-    public var codingInfo: CodingInfo? {
-        return self.userInfo[.codingInfo] as? CodingInfo
+    public var answerType: CodingInfo? {
+        return self.userInfo[.answerType] as? CodingInfo
     }
 }
 
@@ -434,8 +434,8 @@ extension Encoder {
     }
     
     /// The coding info object to use when encoding.
-    public var codingInfo: CodingInfo? {
-        return self.userInfo[.codingInfo] as? CodingInfo
+    public var answerType: CodingInfo? {
+        return self.userInfo[.answerType] as? CodingInfo
     }
 }
 

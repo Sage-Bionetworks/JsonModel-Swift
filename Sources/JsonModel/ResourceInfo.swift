@@ -68,7 +68,7 @@ extension Bundle : ResourceBundle {
 }
 
 
-/// `RSDDecodableBundleInfo` is a convenience protocol for setting the resource information on a
+/// `DecodableBundleInfo` is a convenience protocol for setting the resource information on a
 /// decoded object.
 public protocol DecodableBundleInfo : Decodable, ResourceInfo {
     

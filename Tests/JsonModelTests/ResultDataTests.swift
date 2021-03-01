@@ -98,8 +98,8 @@ class ResultDataTests: XCTestCase {
             
             if let result1 = object.children.first as? AnswerResultObject {
                 XCTAssertEqual(result1.identifier, answerResult1.identifier)
-                let expected = AnswerCodingInfoBoolean()
-                XCTAssertEqual(expected, answerResult1.codingInfo as? AnswerCodingInfoBoolean)
+                let expected = AnswerTypeBoolean()
+                XCTAssertEqual(expected, answerResult1.answerType as? AnswerTypeBoolean)
                 XCTAssertEqual(result1.startDate.timeIntervalSinceNow, answerResult1.startDate.timeIntervalSinceNow, accuracy: 1)
                 XCTAssertEqual(result1.endDate.timeIntervalSinceNow, answerResult1.endDate.timeIntervalSinceNow, accuracy: 1)
                 XCTAssertEqual(result1.jsonValue, answerResult1.jsonValue)
@@ -177,7 +177,7 @@ class ResultDataTests: XCTestCase {
     
     func testAnswerResultObject_Copy() {
         let result = AnswerResultObject(identifier: "foo",
-                                        codingInfo: AnswerCodingInfoMeasurement(unit: "cm"),
+                                        answerType: AnswerTypeMeasurement(unit: "cm"),
                                         value: .number(42),
                                         questionText: "What is your favorite color?",
                                         questionData: .boolean(true))
@@ -190,7 +190,7 @@ class ResultDataTests: XCTestCase {
         XCTAssertEqual(result.jsonValue, copy.jsonValue)
         XCTAssertEqual(result.questionText, copy.questionText)
         XCTAssertEqual(result.questionData, copy.questionData)
-        XCTAssertEqual("cm", (copy.codingInfo as? AnswerCodingInfoMeasurement)?.unit)
+        XCTAssertEqual("cm", (copy.answerType as? AnswerTypeMeasurement)?.unit)
     }
     
     func testSerializers() {
@@ -198,8 +198,8 @@ class ResultDataTests: XCTestCase {
         
         XCTAssertTrue(checkPolymorphicExamples(for: factory.resultSerializer.examples,
                                                 using: factory, protocolType: ResultData.self))
-        XCTAssertTrue(checkPolymorphicExamples(for: factory.answerCodingInfoSerializer.examples,
-                                                using: factory, protocolType: AnswerCodingInfo.self))
+        XCTAssertTrue(checkPolymorphicExamples(for: factory.answerTypeSerializer.examples,
+                                                using: factory, protocolType: AnswerType.self))
 
     }
     

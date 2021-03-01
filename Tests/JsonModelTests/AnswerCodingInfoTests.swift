@@ -33,7 +33,7 @@
 import XCTest
 @testable import JsonModel
 
-class AnswerCodingInfoTests: XCTestCase {
+class AnswerTypeTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
@@ -47,14 +47,14 @@ class AnswerCodingInfoTests: XCTestCase {
         super.tearDown()
     }
 
-    func testAnswerCodingInfoString_Codable() {
+    func testAnswerTypeString_Codable() {
         do {
             let expectedObject = "hello"
             let expectedJson: JsonElement = .string("hello")
 
-            let AnswerCodingInfo = AnswerCodingInfoString()
-            let objectValue = try AnswerCodingInfo.decodeAnswer(from: expectedJson)
-            let jsonValue = try AnswerCodingInfo.encodeAnswer(from: expectedObject)
+            let AnswerType = AnswerTypeString()
+            let objectValue = try AnswerType.decodeAnswer(from: expectedJson)
+            let jsonValue = try AnswerType.encodeAnswer(from: expectedObject)
             
             XCTAssertEqual(objectValue as? String, expectedObject)
             XCTAssertEqual(jsonValue, expectedJson)
@@ -64,14 +64,14 @@ class AnswerCodingInfoTests: XCTestCase {
         }
     }
 
-    func testAnswerCodingInfoBoolean_Codable() {
+    func testAnswerTypeBoolean_Codable() {
          do {
             let expectedObject = true
             let expectedJson: JsonElement = .boolean(true)
             
-            let AnswerCodingInfo = AnswerCodingInfoBoolean()
-            let objectValue = try AnswerCodingInfo.decodeAnswer(from: expectedJson)
-            let jsonValue = try AnswerCodingInfo.encodeAnswer(from: expectedObject)
+            let AnswerType = AnswerTypeBoolean()
+            let objectValue = try AnswerType.decodeAnswer(from: expectedJson)
+            let jsonValue = try AnswerType.encodeAnswer(from: expectedObject)
             
             XCTAssertEqual(objectValue as? Bool, expectedObject)
             XCTAssertEqual(jsonValue, expectedJson)
@@ -81,14 +81,14 @@ class AnswerCodingInfoTests: XCTestCase {
         }
     }
 
-    func testAnswerCodingInfoInteger_Codable() {
+    func testAnswerTypeInteger_Codable() {
         do {
             let expectedObject = 12
             let expectedJson: JsonElement = .integer(12)
             
-            let AnswerCodingInfo = AnswerCodingInfoInteger()
-            let objectValue = try AnswerCodingInfo.decodeAnswer(from: expectedJson)
-            let jsonValue = try AnswerCodingInfo.encodeAnswer(from: expectedObject)
+            let AnswerType = AnswerTypeInteger()
+            let objectValue = try AnswerType.decodeAnswer(from: expectedJson)
+            let jsonValue = try AnswerType.encodeAnswer(from: expectedObject)
             
             XCTAssertEqual(objectValue as? Int, expectedObject)
             XCTAssertEqual(jsonValue, expectedJson)
@@ -98,14 +98,14 @@ class AnswerCodingInfoTests: XCTestCase {
         }
     }
 
-    func testAnswerCodingInfoNumber_Codable() {
+    func testAnswerTypeNumber_Codable() {
         do {
             let expectedObject = 12.5
             let expectedJson: JsonElement = .number(12.5)
             
-            let AnswerCodingInfo = AnswerCodingInfoNumber()
-            let objectValue = try AnswerCodingInfo.decodeAnswer(from: expectedJson)
-            let jsonValue = try AnswerCodingInfo.encodeAnswer(from: expectedObject)
+            let AnswerType = AnswerTypeNumber()
+            let objectValue = try AnswerType.decodeAnswer(from: expectedJson)
+            let jsonValue = try AnswerType.encodeAnswer(from: expectedObject)
             
             XCTAssertEqual(objectValue as? Double, expectedObject)
             XCTAssertEqual(jsonValue, expectedJson)
@@ -115,14 +115,14 @@ class AnswerCodingInfoTests: XCTestCase {
         }
     }
 
-    func testAnswerCodingInfoDateTime_Codable() {
+    func testAnswerTypeDateTime_Codable() {
 
         do {
             let expectedJson: JsonElement = .string("2016-02-20")
             
-            let AnswerCodingInfo = AnswerCodingInfoDateTime(codingFormat: "yyyy-MM-dd")
+            let AnswerType = AnswerTypeDateTime(codingFormat: "yyyy-MM-dd")
 
-            let objectValue = try AnswerCodingInfo.decodeAnswer(from: expectedJson)
+            let objectValue = try AnswerType.decodeAnswer(from: expectedJson)
             if let date = objectValue as? Date {
                 let calendar = Calendar(identifier: .iso8601)
                 let calendarComponents: Set<Calendar.Component> = [.year, .month, .day]
@@ -131,7 +131,7 @@ class AnswerCodingInfoTests: XCTestCase {
                 XCTAssertEqual(comp.month, 2)
                 XCTAssertEqual(comp.day, 20)
                 
-                let jsonValue = try AnswerCodingInfo.encodeAnswer(from: date)
+                let jsonValue = try AnswerType.encodeAnswer(from: date)
                 XCTAssertEqual(expectedJson, jsonValue)
             }
             else {
@@ -143,14 +143,14 @@ class AnswerCodingInfoTests: XCTestCase {
         }
     }
 
-    func testAnswerCodingInfoArray_String_Codable() {
+    func testAnswerTypeArray_String_Codable() {
         do {
             let expectedObject = ["alpha", "beta", "gamma"]
             let expectedJson: JsonElement = .array(["alpha", "beta", "gamma"])
             
-            let AnswerCodingInfo = AnswerCodingInfoArray(baseType: .string)
-            let objectValue = try AnswerCodingInfo.decodeAnswer(from: expectedJson)
-            let jsonValue = try AnswerCodingInfo.encodeAnswer(from: expectedObject)
+            let AnswerType = AnswerTypeArray(baseType: .string)
+            let objectValue = try AnswerType.decodeAnswer(from: expectedJson)
+            let jsonValue = try AnswerType.encodeAnswer(from: expectedObject)
             
             XCTAssertEqual(objectValue as? [String], expectedObject)
             XCTAssertEqual(jsonValue, expectedJson)
@@ -160,14 +160,14 @@ class AnswerCodingInfoTests: XCTestCase {
         }
     }
 
-    func testAnswerCodingInfoArray_Integer_Codable() {
+    func testAnswerTypeArray_Integer_Codable() {
         do {
             let expectedObject = [65, 47, 99]
             let expectedJson: JsonElement = .array([65, 47, 99])
             
-            let AnswerCodingInfo = AnswerCodingInfoArray(baseType: .integer)
-            let objectValue = try AnswerCodingInfo.decodeAnswer(from: expectedJson)
-            let jsonValue = try AnswerCodingInfo.encodeAnswer(from: expectedObject)
+            let AnswerType = AnswerTypeArray(baseType: .integer)
+            let objectValue = try AnswerType.decodeAnswer(from: expectedJson)
+            let jsonValue = try AnswerType.encodeAnswer(from: expectedObject)
             
             XCTAssertEqual(objectValue as? [Int], expectedObject)
             XCTAssertEqual(jsonValue, expectedJson)
@@ -177,14 +177,14 @@ class AnswerCodingInfoTests: XCTestCase {
         }
     }
 
-    func testAnswerCodingInfoArray_Double_Codable() {
+    func testAnswerTypeArray_Double_Codable() {
         do {
             let expectedObject = [65.3, 47.2, 99.8]
             let expectedJson: JsonElement = .array([65.3, 47.2, 99.8])
             
-            let AnswerCodingInfo = AnswerCodingInfoArray(baseType: .number)
-            let objectValue = try AnswerCodingInfo.decodeAnswer(from: expectedJson)
-            let jsonValue = try AnswerCodingInfo.encodeAnswer(from: expectedObject)
+            let AnswerType = AnswerTypeArray(baseType: .number)
+            let objectValue = try AnswerType.decodeAnswer(from: expectedJson)
+            let jsonValue = try AnswerType.encodeAnswer(from: expectedObject)
             
             XCTAssertEqual(objectValue as? [Double], expectedObject)
             XCTAssertEqual(jsonValue, expectedJson)
