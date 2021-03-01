@@ -38,10 +38,10 @@ import Foundation
 /// controller to keep replacing the result in the collection or task result that contains the
 /// value. However, that means that the instance *must* be explicitly copied when using this
 /// to revisit a question.
-public protocol AnswerResult : ResultData, AnswerFinder {
+public protocol AnswerResult : class, ResultData, AnswerFinder {
     
     /// Optional property for defining additional information about the answer expected for this result.
-    var answerType: AnswerType? { get }
+    var jsonAnswerType: AnswerType? { get }
 
     /// The answer held by this result.
     var jsonValue: JsonElement? { get set }
@@ -73,18 +73,18 @@ public extension AnswerResult {
     /// encoding strategy desired by the researchers who are using it in their studies, while keeping the
     /// model generic and reusable for the developers.
     func encodingValue() throws -> JsonElement? {
-        try self.answerType?.encodeAnswer(from: self.jsonValue) ?? self.jsonValue
+        try self.jsonAnswerType?.encodeAnswer(from: self.jsonValue) ?? self.jsonValue
     }
 }
 
 public final class AnswerResultObject : SerializableResultData, AnswerResult {
     private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType = "type", identifier, answerType, jsonValue = "value", questionText, questionData, startDate, endDate
+        case serializableType = "type", identifier, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData, startDate, endDate
     }
     public private(set) var serializableType: SerializableResultType = .answer
     
     public let identifier: String
-    public let answerType: AnswerType?
+    public let jsonAnswerType: AnswerType?
     public var jsonValue: JsonElement?
     public var questionText: String?
     public var startDate: Date
@@ -95,7 +95,7 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
     
     public init(identifier: String, value: JsonElement, questionText: String? = nil, questionData: JsonElement? = nil) {
         self.identifier = identifier
-        self.answerType = value.answerType
+        self.jsonAnswerType = value.answerType
         self.jsonValue = value
         self.questionText = questionText
         self.questionData = questionData
@@ -105,7 +105,7 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
     
     public init(identifier: String, answerType: AnswerType?, value: JsonElement? = nil, questionText: String? = nil, questionData: JsonElement? = nil, startDate: Date = Date(), endDate: Date = Date()) {
         self.identifier = identifier
-        self.answerType = answerType
+        self.jsonAnswerType = answerType
         self.jsonValue = value
         self.questionText = questionText
         self.questionData = questionData
@@ -115,7 +115,7 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
     
     public func deepCopy() -> AnswerResultObject {
         AnswerResultObject(identifier: identifier,
-                           answerType: answerType,
+                           answerType: jsonAnswerType,
                            value: jsonValue,
                            questionText: questionText,
                            questionData: questionData,
@@ -129,8 +129,8 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
         self.serializableType = try container.decode(SerializableResultType.self, forKey: .serializableType)
         self.questionData = try container.decodeIfPresent(JsonElement.self, forKey: .questionData)
         self.questionText = try container.decodeIfPresent(String.self, forKey: .questionText)
-        if container.contains(.answerType) {
-            let nestedDecoder = try container.superDecoder(forKey: .answerType)
+        if container.contains(.jsonAnswerType) {
+            let nestedDecoder = try container.superDecoder(forKey: .jsonAnswerType)
             let answerType = try decoder.serializationFactory.decodePolymorphicObject(AnswerType.self, from: nestedDecoder)
             if container.contains(.jsonValue) {
                 let jsonValueDecoder = try container.superDecoder(forKey: .jsonValue)
@@ -139,11 +139,11 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
             else {
                 self.jsonValue = nil
             }
-            self.answerType = answerType
+            self.jsonAnswerType = answerType
         }
         else {
             self.jsonValue = try container.decodeIfPresent(JsonElement.self, forKey: .jsonValue)
-            self.answerType = nil
+            self.jsonAnswerType = nil
         }
         self.startDate = try container.decodeIfPresent(Date.self, forKey: .startDate) ?? Date()
         self.endDate = try container.decodeIfPresent(Date.self, forKey: .endDate) ?? Date()
@@ -157,9 +157,9 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
         try container.encodeIfPresent(self.questionText, forKey: .questionText)
         try container.encodeIfPresent(self.startDate, forKey: .startDate)
         try container.encodeIfPresent(self.endDate, forKey: .endDate)
-        if let info = self.answerType {
+        if let info = self.jsonAnswerType {
             let encodable = try info as? Encodable ?? JsonElement.object(try info.jsonDictionary())
-            let nestedEncoder = container.superEncoder(forKey: .answerType)
+            let nestedEncoder = container.superEncoder(forKey: .jsonAnswerType)
             try encodable.encode(to: nestedEncoder)
         }
         let jsonVal = try self.encodingValue()
@@ -189,7 +189,7 @@ extension AnswerResultObject : DocumentableStruct {
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
-        case .answerType:
+        case .jsonAnswerType:
             return .init(propertyType: .interface("\(AnswerType.self)"))
         case .jsonValue:
             return .init(propertyType: .any)

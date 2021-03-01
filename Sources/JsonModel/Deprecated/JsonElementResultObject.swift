@@ -48,7 +48,7 @@ public final class JsonElementResultObject : SerializableResultData, AnswerResul
     public var startDate: Date
     public var endDate: Date
     
-    public var answerType: AnswerType? { _answerType }
+    public var jsonAnswerType: AnswerType? { _answerType }
     private var _answerType: AnswerType? = nil
     
     public init(identifier: String, value: JsonElement, questionText: String? = nil) {

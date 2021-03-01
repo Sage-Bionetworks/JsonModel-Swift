@@ -99,7 +99,7 @@ class ResultDataTests: XCTestCase {
             if let result1 = object.children.first as? AnswerResultObject {
                 XCTAssertEqual(result1.identifier, answerResult1.identifier)
                 let expected = AnswerTypeBoolean()
-                XCTAssertEqual(expected, answerResult1.answerType as? AnswerTypeBoolean)
+                XCTAssertEqual(expected, answerResult1.jsonAnswerType as? AnswerTypeBoolean)
                 XCTAssertEqual(result1.startDate.timeIntervalSinceNow, answerResult1.startDate.timeIntervalSinceNow, accuracy: 1)
                 XCTAssertEqual(result1.endDate.timeIntervalSinceNow, answerResult1.endDate.timeIntervalSinceNow, accuracy: 1)
                 XCTAssertEqual(result1.jsonValue, answerResult1.jsonValue)
@@ -190,7 +190,7 @@ class ResultDataTests: XCTestCase {
         XCTAssertEqual(result.jsonValue, copy.jsonValue)
         XCTAssertEqual(result.questionText, copy.questionText)
         XCTAssertEqual(result.questionData, copy.questionData)
-        XCTAssertEqual("cm", (copy.answerType as? AnswerTypeMeasurement)?.unit)
+        XCTAssertEqual("cm", (copy.jsonAnswerType as? AnswerTypeMeasurement)?.unit)
     }
     
     func testSerializers() {

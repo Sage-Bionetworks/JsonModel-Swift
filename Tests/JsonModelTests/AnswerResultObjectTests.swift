@@ -70,7 +70,7 @@ class AnswerResultObjectTests: XCTestCase {
             XCTAssertEqual(object.identifier, "foo")
             XCTAssertEqual(object.typeName, "answer")
             XCTAssertGreaterThan(object.endDate, object.startDate)
-            XCTAssertTrue(object.answerType is AnswerTypeString, "\(String(describing: object.answerType))")
+            XCTAssertTrue(object.jsonAnswerType is AnswerTypeString, "\(String(describing: object.jsonAnswerType))")
             XCTAssertNil(object.jsonValue)
             
             let jsonData = try encoder.encode(object)
@@ -109,7 +109,7 @@ class AnswerResultObjectTests: XCTestCase {
             XCTAssertEqual(object.identifier, "foo")
             XCTAssertEqual(object.typeName, "answer")
             XCTAssertGreaterThan(object.endDate, object.startDate)
-            XCTAssertTrue(object.answerType is AnswerTypeString, "\(String(describing: object.answerType))")
+            XCTAssertTrue(object.jsonAnswerType is AnswerTypeString, "\(String(describing: object.jsonAnswerType))")
             XCTAssertEqual(object.jsonValue, .string("hello"))
             
             let jsonData = try encoder.encode(object)
@@ -155,7 +155,7 @@ class AnswerResultObjectTests: XCTestCase {
             XCTAssertEqual(object.identifier, "foo")
             XCTAssertEqual(object.typeName, "answer")
             XCTAssertGreaterThan(object.endDate, object.startDate)
-            XCTAssertTrue(object.answerType is AnswerTypeBoolean, "\(String(describing: object.answerType))")
+            XCTAssertTrue(object.jsonAnswerType is AnswerTypeBoolean, "\(String(describing: object.jsonAnswerType))")
             XCTAssertEqual(object.jsonValue, .boolean(true))
             
             let jsonData = try encoder.encode(object)
@@ -201,7 +201,7 @@ class AnswerResultObjectTests: XCTestCase {
             XCTAssertEqual(object.identifier, "foo")
             XCTAssertEqual(object.typeName, "answer")
             XCTAssertGreaterThan(object.endDate, object.startDate)
-            XCTAssertTrue(object.answerType is AnswerTypeInteger, "\(String(describing: object.answerType))")
+            XCTAssertTrue(object.jsonAnswerType is AnswerTypeInteger, "\(String(describing: object.jsonAnswerType))")
             XCTAssertEqual(object.jsonValue, .integer(12))
             
             let jsonData = try encoder.encode(object)
@@ -247,7 +247,7 @@ class AnswerResultObjectTests: XCTestCase {
             XCTAssertEqual(object.identifier, "foo")
             XCTAssertEqual(object.typeName, "answer")
             XCTAssertGreaterThan(object.endDate, object.startDate)
-            XCTAssertTrue(object.answerType is AnswerTypeNumber, "\(String(describing: object.answerType))")
+            XCTAssertTrue(object.jsonAnswerType is AnswerTypeNumber, "\(String(describing: object.jsonAnswerType))")
             XCTAssertEqual(object.jsonValue, .number(12.5))
             
             let jsonData = try encoder.encode(object)
@@ -294,7 +294,7 @@ class AnswerResultObjectTests: XCTestCase {
             XCTAssertEqual(object.typeName, "answer")
             XCTAssertGreaterThan(object.endDate, object.startDate)
             
-            if let answerType = object.answerType as? AnswerTypeDateTime {
+            if let answerType = object.jsonAnswerType as? AnswerTypeDateTime {
                 XCTAssertEqual(answerType.codingFormat, "yyyy-MM-dd")
             }
             else {
@@ -347,11 +347,11 @@ class AnswerResultObjectTests: XCTestCase {
             XCTAssertEqual(object.typeName, "answer")
             XCTAssertGreaterThan(object.endDate, object.startDate)
             
-            if let answerType = object.answerType as? AnswerTypeArray {
+            if let answerType = object.jsonAnswerType as? AnswerTypeArray {
                 XCTAssertEqual(answerType.baseType, .integer)
             }
             else {
-                XCTFail("Failed to decode \(String(describing: object.answerType)) as a AnswerTypeArray")
+                XCTFail("Failed to decode \(String(describing: object.jsonAnswerType)) as a AnswerTypeArray")
             }
             XCTAssertEqual(object.jsonValue, .array([1, 3, 5]))
             
@@ -405,7 +405,7 @@ class AnswerResultObjectTests: XCTestCase {
             XCTAssertEqual(object.typeName, "answer")
             XCTAssertGreaterThan(object.endDate, object.startDate)
             
-            if let answerType = object.answerType as? AnswerTypeArray {
+            if let answerType = object.jsonAnswerType as? AnswerTypeArray {
                 XCTAssertEqual(answerType.baseType, .integer)
                 XCTAssertEqual(answerType.sequenceSeparator, "-")
             }
@@ -460,7 +460,7 @@ class AnswerResultObjectTests: XCTestCase {
             XCTAssertEqual(object.typeName, "answer")
             XCTAssertGreaterThan(object.endDate, object.startDate)
             
-            XCTAssertTrue(object.answerType is AnswerTypeObject, "\(String(describing: object.answerType))")
+            XCTAssertTrue(object.jsonAnswerType is AnswerTypeObject, "\(String(describing: object.jsonAnswerType))")
             XCTAssertEqual(object.jsonValue, .object(["breakfast": "08:20", "lunch": "12:40", "dinner": "19:10"]))
             
             let jsonData = try encoder.encode(object)
