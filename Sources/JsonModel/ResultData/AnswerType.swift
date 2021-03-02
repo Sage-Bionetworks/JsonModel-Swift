@@ -824,7 +824,7 @@ extension AnswerTypeMeasurement : AnswerTypeDocumentable, DocumentableStruct {
     }
 }
 
-extension JsonElement {
+public extension JsonElement {
     var answerType: AnswerType {
         switch self {
         case .null:
@@ -853,7 +853,7 @@ extension JsonElement {
     }
 }
 
-extension JsonType {
+public extension JsonType {
     var answerType: AnswerType {
         switch self {
         case .string:
