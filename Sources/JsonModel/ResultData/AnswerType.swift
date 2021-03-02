@@ -388,12 +388,14 @@ public struct AnswerTypeInteger : BaseAnswerType, Codable, Hashable {
 
 public struct AnswerTypeNumber : BaseAnswerType, Codable, Hashable {
     private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType = "type"
+        case serializableType = "type", significantDigits
     }
     public static let defaultJsonType: JsonType = .number
     public static let defaultType: AnswerTypeType = .number
     public private(set) var serializableType: AnswerTypeType = Self.defaultType
-    public init() {
+    public let significantDigits: Int?
+    public init(significantDigits: Int? = nil) {
+        self.significantDigits = significantDigits
     }
 }
 extension AnswerTypeNumber : NumberJsonType {
@@ -846,6 +848,27 @@ extension JsonElement {
                 return AnswerTypeArray(baseType: .object)
             }
         case .object(_):
+            return AnswerTypeObject()
+        }
+    }
+}
+
+extension JsonType {
+    var answerType: AnswerType {
+        switch self {
+        case .string:
+            return AnswerTypeString()
+        case .number:
+            return AnswerTypeNumber()
+        case .integer:
+            return AnswerTypeInteger()
+        case .boolean:
+            return AnswerTypeBoolean()
+        case .null:
+            return AnswerTypeNull()
+        case .array:
+            return AnswerTypeArray()
+        case .object:
             return AnswerTypeObject()
         }
     }
