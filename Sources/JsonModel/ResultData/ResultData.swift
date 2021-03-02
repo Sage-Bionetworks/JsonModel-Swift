@@ -46,7 +46,7 @@ import Foundation
 ///  JsonModel. This will allow us to divorce *our* code from SageResearch so that we can iterate
 ///  independently of third-party frameworks.
 ///
-public protocol ResultData : PolymorphicTyped, DictionaryRepresentable {
+public protocol ResultData : PolymorphicTyped, Encodable, DictionaryRepresentable {
     
     /// The identifier associated with the task, step, or asynchronous action.
     var identifier: String { get }
@@ -62,5 +62,11 @@ public protocol ResultData : PolymorphicTyped, DictionaryRepresentable {
     /// this allows results to either be structs *or* classes and allows collections of results to use
     /// mapping to deep copy their children.
     func deepCopy() -> Self
+}
+
+extension ResultData {
+    public func jsonDictionary() throws -> [String : JsonSerializable] {
+        try jsonEncodedDictionary()
+    }
 }
 

@@ -37,16 +37,12 @@ import Foundation
 /// `SerializableResultData` is the base implementation for `ResultData` that is serialized using
 /// the `Codable` protocol and the polymorphic serialization defined by this framework.
 ///
-public protocol SerializableResultData : ResultData, PolymorphicRepresentable, Encodable {
+public protocol SerializableResultData : ResultData, PolymorphicRepresentable {
     var serializableType: SerializableResultType { get }
 }
 
 extension SerializableResultData {
     public var typeName: String { serializableType.stringValue }
-    
-    public func jsonDictionary() throws -> [String : JsonSerializable] {
-        try jsonEncodedDictionary()
-    }
 }
 
 /// `serializableType` is an extendable string enum used by the `SerializationFactory` to

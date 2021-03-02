@@ -145,14 +145,7 @@ public final class CollectionResultObject : SerializableResultData, CollectionRe
         var nestedContainer = container.nestedUnkeyedContainer(forKey: .children)
         try children.forEach { result in
             let nestedEncoder = nestedContainer.superEncoder()
-            if let encodable = result as? Encodable {
-                try encodable.encode(to: nestedEncoder)
-            }
-            else {
-                let json = try result.jsonDictionary()
-                let element: JsonElement = .object(json)
-                try element.encode(to: nestedEncoder)
-            }
+            try result.encode(to: nestedEncoder)
         }
     }
 }
