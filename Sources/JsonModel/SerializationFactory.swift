@@ -1,7 +1,7 @@
 //
 //  SerializationFactory.swift
 //
-//  Copyright © 2017-2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -200,18 +200,18 @@ open class SerializationFactory : FactoryRegistration {
     
     /// `DateFormatter` to use for coding date-only strings. Default = `_ISO8601DateOnlyFormatter`.
     open var dateOnlyFormatter: DateFormatter {
-        return ISO8601DateOnlyFormatter
+        ISO8601DateOnlyFormatter
     }
     
     /// `DateFormatter` to use for coding time-only strings. Default = `_ISO8601TimeOnlyFormatter`.
     open var timeOnlyFormatter: DateFormatter {
-        return ISO8601TimeOnlyFormatter
+        ISO8601TimeOnlyFormatter
     }
     
     /// `DateFormatter` to use for coding timestamp strings that include both date and time components.
     /// Default = `_ISO8601TimestampFormatter`.
     open var timestampFormatter: DateFormatter {
-        return ISO8601TimestampFormatter
+        ISO8601TimestampFormatter
     }
     
     /// The default coding strategy to use for non-conforming elements.
@@ -382,7 +382,7 @@ extension FactoryDecoder {
     
     /// The factory to use when decoding.
     public var serializationFactory: SerializationFactory {
-        return self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.defaultFactory
+        self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.defaultFactory
     }
 }
 
@@ -392,22 +392,22 @@ extension Decoder {
     
     /// The factory to use when decoding.
     public var serializationFactory: SerializationFactory {
-        return self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.defaultFactory
+        self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.defaultFactory
     }
     
     /// The default bundle to use for embedded resources.
     public var bundle: ResourceBundle? {
-        return self.userInfo[.bundle] as? ResourceBundle
+        self.userInfo[.bundle] as? ResourceBundle
     }
     
     /// The default package to use for embedded resources.
     public var packageName: String? {
-        return self.userInfo[.packageName] as? String
+        self.userInfo[.packageName] as? String
     }
     
     /// The coding info object to use when decoding.
-    public var answerType: CodingInfo? {
-        return self.userInfo[.codingInfo] as? CodingInfo
+    public var codingInfo: CodingInfo? {
+        self.userInfo[.codingInfo] as? CodingInfo
     }
 }
 
@@ -430,12 +430,12 @@ extension Encoder {
     
     /// The factory to use when encoding.
     public var serializationFactory: SerializationFactory {
-        return self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.defaultFactory
+        self.userInfo[.factory] as? SerializationFactory ?? SerializationFactory.defaultFactory
     }
     
     /// The coding info object to use when encoding.
-    public var answerType: CodingInfo? {
-        return self.userInfo[.codingInfo] as? CodingInfo
+    public var codingInfo: CodingInfo? {
+        self.userInfo[.codingInfo] as? CodingInfo
     }
 }
 
