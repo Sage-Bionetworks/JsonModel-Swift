@@ -38,12 +38,12 @@ import Foundation
 open class ResultDataFactory : SerializationFactory {
     
     public let resultSerializer = ResultDataSerializer()
-    public let answerCodingInfoSerializer = AnswerCodingInfoSerializer()
+    public let answerTypeSerializer = AnswerTypeSerializer()
     
     public required init() {
         super.init()
         self.registerSerializer(resultSerializer)
-        self.registerSerializer(answerCodingInfoSerializer)
+        self.registerSerializer(answerTypeSerializer)
     }
 }
 
