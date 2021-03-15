@@ -198,18 +198,18 @@ open class SerializationFactory : FactoryRegistration {
         }
     }
     
-    /// `DateFormatter` to use for coding date-only strings. Default = `_ISO8601DateOnlyFormatter`.
+    /// `DateFormatter` to use for coding date-only strings. Default = `ISO8601DateOnlyFormatter`.
     open var dateOnlyFormatter: DateFormatter {
         ISO8601DateOnlyFormatter
     }
     
-    /// `DateFormatter` to use for coding time-only strings. Default = `_ISO8601TimeOnlyFormatter`.
+    /// `DateFormatter` to use for coding time-only strings. Default = `ISO8601TimeOnlyFormatter`.
     open var timeOnlyFormatter: DateFormatter {
         ISO8601TimeOnlyFormatter
     }
     
     /// `DateFormatter` to use for coding timestamp strings that include both date and time components.
-    /// Default = `_ISO8601TimestampFormatter`.
+    /// Default = `ISO8601TimestampFormatter`.
     open var timestampFormatter: DateFormatter {
         ISO8601TimestampFormatter
     }
