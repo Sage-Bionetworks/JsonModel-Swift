@@ -713,9 +713,20 @@ extension AnswerTypeInteger : AnswerTypeDocumentable, DocumentableStruct {
 
 extension AnswerTypeNumber : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
-    public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
+    public static func isRequired(_ codingKey: CodingKey) -> Bool {
+        guard let key = codingKey as? CodingKeys else { return false }
+        return key == .serializableType
+    }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        .init(constValue: defaultType)
+        guard let key = codingKey as? CodingKeys else {
+            throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
+        }
+        switch key {
+        case .serializableType:
+            return .init(constValue: defaultType)
+        case .significantDigits:
+            return .init(propertyType: .primitive(.number))
+        }
     }
 
     public static func examples() -> [AnswerTypeNumber] {
