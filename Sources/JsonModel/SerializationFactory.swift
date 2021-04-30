@@ -32,7 +32,7 @@
 
 import Foundation
 
-public protocol FactoryRegistration : class {
+public protocol FactoryRegistration : AnyObject {
     init()
     func isRegistered<T>(for type: T.Type, with typeName: String) -> Bool
 }

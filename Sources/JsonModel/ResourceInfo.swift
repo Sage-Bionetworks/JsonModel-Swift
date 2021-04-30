@@ -58,7 +58,7 @@ public protocol ResourceInfo {
 /// A resource bundle is used on Apple platforms to point to the `Bundle` for the resource. It is
 /// not directly referenced within this framework to avoid any Apple-specific resource handling
 /// classes and to allow for testing.
-public protocol ResourceBundle : class {
+public protocol ResourceBundle : AnyObject {
     
     /// The identifier of the bundle within which the resource is embedded on Apple platforms.
     var bundleIdentifier: String? { get }
