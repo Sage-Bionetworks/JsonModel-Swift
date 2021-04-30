@@ -128,13 +128,20 @@ open class SerializationFactory : FactoryRegistration {
         }()
         if let obj = decodedObject as? DecodableBundleInfo {
             var resource = obj
-            resource.factoryBundle = decoder.bundle
+            resource.factoryBundle = self.resourceBundle(for: obj, from: decoder)
             resource.packageName = decoder.packageName
             return resource as! T
         }
         else {
             return decodedObject
         }
+    }
+    
+    /// By default, it is assumed that a single resource bundle will be used for all resources used by a module.
+    /// However, this allows a factory subclass to inspect the bundle info and return a different resource bundle
+    /// if need be.
+    open func resourceBundle(for bundleInfo: DecodableBundleInfo, from decoder: Decoder) -> ResourceBundle? {
+        decoder.bundle
     }
     
     /// If required, allow the factory to set up pointers or transform the decoded objects.
