@@ -38,7 +38,7 @@ import Foundation
 /// controller to keep replacing the result in the collection or task result that contains the
 /// value. However, that means that the instance *must* be explicitly copied when using this
 /// to revisit a question.
-public protocol AnswerResult : class, ResultData, AnswerFinder {
+public protocol AnswerResult : AnyObject, ResultData, AnswerFinder {
     
     /// Optional property for defining additional information about the answer expected for this result.
     var jsonAnswerType: AnswerType? { get }
