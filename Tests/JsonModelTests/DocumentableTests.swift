@@ -95,7 +95,7 @@ final class DocumentableTests: XCTestCase {
             
             if let obj = schemas.first(where: { $0.id.className == "SampleItem"}) {
                 XCTAssertEqual("http://sagebionetworks.org/Example/jsonSchema/SampleItem.json", obj.id.classPath)
-                XCTAssertEqual("SampleItem", obj.title)
+                XCTAssertEqual("SampleItem", obj.root.title)
                 
                 let colorRootId = JsonSchemaReferenceId("Sample", isExternal: true, baseURL: nil)
                 let colorRef = JsonSchemaReferenceId("SampleColor", root: colorRootId)
@@ -103,7 +103,7 @@ final class DocumentableTests: XCTestCase {
                     "name" : .primitive(.string),
                     "color" : .reference(JsonSchemaObjectRef(ref: colorRef))
                 ]
-                XCTAssertEqual(expectedProperties, obj.properties)
+                XCTAssertEqual(expectedProperties, obj.root.properties)
                 
                 XCTAssertTrue(obj.definitions?.isEmpty ?? true)
             }
@@ -119,19 +119,19 @@ final class DocumentableTests: XCTestCase {
     func checkSampleSchema(_ jsonSchema: JsonSchema, _ externalSampleItem: Bool) {
         
         XCTAssertEqual("http://sagebionetworks.org/Example/jsonSchema/Sample.json", jsonSchema.id.classPath)
-        XCTAssertEqual("Sample", jsonSchema.title)
-        XCTAssertEqual("Sample is an example interface used for unit testing.", jsonSchema.description)
+        XCTAssertEqual("Sample", jsonSchema.root.title)
+        XCTAssertEqual("Sample is an example interface used for unit testing.", jsonSchema.root.description)
         
-        XCTAssertTrue(jsonSchema.isOpen)
-        XCTAssertNil(jsonSchema.allOf)
-        XCTAssertNil(jsonSchema.examples)
+        XCTAssertTrue(jsonSchema.root.isOpen)
+        XCTAssertNil(jsonSchema.root.allOf)
+        XCTAssertNil(jsonSchema.root.examples)
         XCTAssertNotNil(jsonSchema.definitions)
         
         let expectedProperties: [String : JsonSchemaProperty] = [
             "type" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("SampleType")))
         ]
-        XCTAssertEqual(expectedProperties, jsonSchema.properties)
-        XCTAssertEqual(["type"], jsonSchema.required)
+        XCTAssertEqual(expectedProperties, jsonSchema.root.properties)
+        XCTAssertEqual(["type"], jsonSchema.root.required)
         
         guard let definitions = jsonSchema.definitions else {
             XCTFail("Failed to build the jsonSchema definitions")
@@ -173,7 +173,7 @@ final class DocumentableTests: XCTestCase {
         
         key = "SampleA"
         if let def = definitions[key], case .object(let obj) = def {
-            XCTAssertEqual(key, obj.id.className)
+            XCTAssertEqual(key, obj.className)
             XCTAssertEqual(key, obj.title)
             XCTAssertEqual(obj.allOf?.map { $0.ref }, [JsonSchemaReferenceId("Sample", isExternal: true)])
             XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
@@ -197,7 +197,7 @@ final class DocumentableTests: XCTestCase {
         
         key = "SampleB"
         if let def = definitions[key], case .object(let obj) = def {
-            XCTAssertEqual(key, obj.id.className)
+            XCTAssertEqual(key, obj.className)
             XCTAssertEqual(key, obj.title)
             XCTAssertEqual(obj.allOf?.map { $0.ref.className }, ["Sample"])
             XCTAssertEqual(Set(obj.required ?? []), ["type","value"])

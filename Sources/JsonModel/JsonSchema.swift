@@ -32,52 +32,22 @@
 
 import Foundation
 
-public protocol PolymorphicSchemaElement {
-    var id: JsonSchemaReferenceId { get }
-    var description: String? { get }
-    var properties: [String : JsonSchemaProperty]? { get }
-    var required: [String]? { get }
-    var allOf: [JsonSchemaObjectRef]? { get }
-    var isOpen: Bool { get }
-    var examples: [AnyCodableDictionary]? { get }
-}
-
 /// `JsonSchema` includes a subset of the json schema defined by
 /// http://json-schema.org/draft-07/schema# with some additional rules to simplify creating
 /// serializable definitions in Swift and Kotlin.
 ///
 /// - note: The composable elements in this code file are defined as public to allow for extending
 /// the documentation, but should only be used at your own risk.
-public struct JsonSchema : PolymorphicSchemaElement, Codable, Hashable {
+public struct JsonSchema : Codable, Hashable {
     private enum CodingKeys : String, CodingKey {
-        case schema = "$schema",
-        id = "$id",
-        jsonType = "type",
-        title,
-        description,
-        definitions,
-        properties,
-        required,
-        allOf,
-        examples,
-        additionalProperties
+        case id = "$id", schema = "$schema", jsonType = "type", description, definitions, items
     }
 
-    public private(set) var schema: String = "http://json-schema.org/draft-07/schema#"
     public let id: JsonSchemaReferenceId
-    public private(set) var jsonType: JsonType = .object
-    public let title: String?
-    public let description: String?
+    public let schema: String
+    public let jsonType: JsonType
     public let definitions: [String : JsonSchemaDefinition]?
-    public let allOf: [JsonSchemaObjectRef]?
-    public let properties: [String : JsonSchemaProperty]?
-    public let required: [String]?
-    public let examples: [AnyCodableDictionary]?
-    private let additionalProperties: JsonElement?
-    
-    public var isOpen: Bool {
-        return additionalProperties == nil
-    }
+    public let root: JsonSchemaObject
     
     public init(id: URL,
                 description: String = "",
@@ -86,14 +56,15 @@ public struct JsonSchema : PolymorphicSchemaElement, Codable, Hashable {
                 definitions: [JsonSchemaDefinition] = [],
                 properties: [String : JsonSchemaProperty]? = nil,
                 required: [String]? = nil,
-                examples: [[String : JsonSerializable]]? = nil) {
+                examples: [[String : JsonSerializable]]? = nil,
+                isArray: Bool = false) {
+        
         let refId = JsonSchemaReferenceId(url: id)
         self.id = refId
-        self.title = refId.className
-        self.description = description
-        self.additionalProperties = isOpen ? nil : .boolean(false)
-        let allOf = interfaces?.map { JsonSchemaObjectRef(ref: $0) }
-        self.allOf = (allOf?.count ?? 0) == 0 ? nil : allOf
+        self.schema = "http://json-schema.org/draft-07/schema#"
+        self.jsonType = isArray ? .array : .object
+
+        // Build the definitions
         var allDefinitions: [JsonSchemaDefinition] = interfaces?.compactMap {
             $0.isExternal ? nil : .object(JsonSchemaObject(id: $0, isOpen: true))
         } ?? []
@@ -103,9 +74,65 @@ public struct JsonSchema : PolymorphicSchemaElement, Codable, Hashable {
             $0[className] = $1
         }
         self.definitions = defs.count == 0 ? nil : defs
-        self.properties = (properties?.count ?? 0) == 0 ? nil : properties
-        self.required = required
-        self.examples = (examples?.count ?? 0) == 0 ? nil : examples!.map { AnyCodableDictionary($0)}
+        
+        // Nil out the root of the object used to store typed info about this schema
+        var root = JsonSchemaObject(id: refId,
+                                    properties: properties,
+                                    required: required,
+                                    isOpen: isOpen,
+                                    description: description,
+                                    interfaces: interfaces,
+                                    examples: examples)
+        root.id = nil
+        self.root = root
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.schema = try container.decode(String.self, forKey: .schema)
+        self.id = try container.decode(JsonSchemaReferenceId.self, forKey: .id)
+        self.definitions = try container.decodeIfPresent([String : JsonSchemaDefinition].self, forKey: .definitions)
+        let jsonType = try container.decode(JsonType.self, forKey: .jsonType)
+        self.jsonType = jsonType
+        var root: JsonSchemaObject = try {
+            switch jsonType {
+            case .object:
+                return try JsonSchemaObject(from: decoder)
+            case .array:
+                return try container.decode(JsonSchemaObject.self, forKey: .items)
+            default:
+                throw DecodingError.typeMismatch(JsonType.self,
+                                                    .init(codingPath: decoder.codingPath,
+                                                          debugDescription: "Unsupported root json type \(jsonType)",
+                                                          underlyingError: nil))
+            }
+        }()
+        root.id = nil
+        if !root.isValidDecoding {
+            throw DecodingError.typeMismatch(JsonType.self,
+                                                .init(codingPath: decoder.codingPath,
+                                                      debugDescription: "Unsupported root object json type \(root.jsonType)",
+                                                      underlyingError: nil))
+        }
+        self.root = root
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.schema, forKey: .schema)
+        try container.encode(self.jsonType, forKey: .jsonType)
+        try container.encodeIfPresent(self.definitions, forKey: .definitions)
+        switch jsonType {
+        case .object:
+            try self.root.encode(to: encoder)
+        case .array:
+            let description = "An array of `\(root.className ?? "Unknown")` objects."
+            try container.encode(description, forKey: .description)
+            try container.encode(self.root, forKey: .items)
+        default:
+            throw EncodingError.invalidValue(jsonType, .init(codingPath: encoder.codingPath, debugDescription: "Can only have a root that is an object or array", underlyingError: nil))
+        }
     }
 }
 
@@ -118,7 +145,7 @@ public enum JsonSchemaDefinition : Codable, Hashable {
     public var className: String? {
         switch self {
         case .object(let value):
-            return value.id.className
+            return value.className
         case .stringEnum(let value):
             return value.id.className
         case .stringLiteral(let value):
@@ -211,6 +238,7 @@ public enum JsonSchemaProperty : Codable, Hashable {
 public enum JsonSchemaElement : Codable, Hashable {
     case primitive(JsonSchemaPrimitive)
     case reference(JsonSchemaObjectRef)
+    case object(JsonSchemaObject)
     
     public init(from decoder: Decoder) throws {
         if let obj = try? JsonSchemaObjectRef(from: decoder) {
@@ -218,6 +246,9 @@ public enum JsonSchemaElement : Codable, Hashable {
         }
         else if let obj = try? JsonSchemaPrimitive(from: decoder), obj.isValidDecoding {
             self = .primitive(obj)
+        }
+        else if let obj = try? JsonSchemaObject(from: decoder), obj.isValidDecoding {
+            self = .object(obj)
         }
         else {
             let context = DecodingError.Context(codingPath: decoder.codingPath,
@@ -231,6 +262,8 @@ public enum JsonSchemaElement : Codable, Hashable {
         case .primitive(let value):
             try value.encode(to: encoder)
         case .reference(let value):
+            try value.encode(to: encoder)
+        case .object(let value):
             try value.encode(to: encoder)
         }
     }
@@ -271,14 +304,16 @@ public struct JsonSchemaTypedDictionary : Codable, Hashable {
     }
 }
 
-public struct JsonSchemaObject : PolymorphicSchemaElement, Codable, Hashable {
+public struct JsonSchemaObject : Codable, Hashable {
     private enum CodingKeys : String, CodingKey {
         case id = "$id", jsonType = "type", title, description, properties, required, allOf, additionalProperties, examples
     }
     
-    public let id: JsonSchemaReferenceId
+    public fileprivate(set) var id: JsonSchemaReferenceId?
+    public fileprivate(set) var title: String?
+    public var className: String? { id?.className ?? title }
+    
     public private(set) var jsonType: JsonType = .object
-    public let title: String?
     public let description: String?
     public let allOf: [JsonSchemaObjectRef]?
     public let properties: [String : JsonSchemaProperty]?
