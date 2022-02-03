@@ -92,18 +92,20 @@ public struct JsonSchema : PolymorphicSchemaElement, Codable, Hashable {
         self.title = refId.className
         self.description = description
         self.additionalProperties = isOpen ? nil : .boolean(false)
-        self.allOf = interfaces?.map { JsonSchemaObjectRef(ref: $0) }
+        let allOf = interfaces?.map { JsonSchemaObjectRef(ref: $0) }
+        self.allOf = (allOf?.count ?? 0) == 0 ? nil : allOf
         var allDefinitions: [JsonSchemaDefinition] = interfaces?.compactMap {
             $0.isExternal ? nil : .object(JsonSchemaObject(id: $0, isOpen: true))
         } ?? []
         allDefinitions.append(contentsOf: definitions)
-        self.definitions = allDefinitions.reduce(into: [String : JsonSchemaDefinition]()) {
+        let defs = allDefinitions.reduce(into: [String : JsonSchemaDefinition]()) {
             guard let className = $1.className else { return }
             $0[className] = $1
         }
-        self.properties = properties
+        self.definitions = defs.count == 0 ? nil : defs
+        self.properties = (properties?.count ?? 0) == 0 ? nil : properties
         self.required = required
-        self.examples = (examples == nil) ? nil : examples!.map { AnyCodableDictionary($0)}
+        self.examples = (examples?.count ?? 0) == 0 ? nil : examples!.map { AnyCodableDictionary($0)}
     }
 }
 
@@ -299,10 +301,11 @@ public struct JsonSchemaObject : PolymorphicSchemaElement, Codable, Hashable {
         self.title = id.className
         self.description = description
         self.additionalProperties = isOpen ? nil : false
-        self.allOf = interfaces?.map { JsonSchemaObjectRef(ref: $0) }
-        self.properties = properties
+        let allOf = interfaces?.map { JsonSchemaObjectRef(ref: $0) }
+        self.allOf = (allOf?.count ?? 0) == 0 ? nil : allOf
+        self.properties = (properties?.count ?? 0) == 0 ? nil : properties
         self.required = required
-        self.examples = (examples == nil) ? nil : examples!.map { AnyCodableDictionary($0)}
+        self.examples = (examples?.count ?? 0) == 0 ? nil : examples!.map { AnyCodableDictionary($0)}
     }
     
     fileprivate var isValidDecoding: Bool {
