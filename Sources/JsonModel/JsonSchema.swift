@@ -1,7 +1,7 @@
 //
 //  JsonSchema.swift
 //
-//  Copyright © 2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2020-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -39,8 +39,19 @@ import Foundation
 /// - note: The composable elements in this code file are defined as public to allow for extending
 /// the documentation, but should only be used at your own risk.
 public struct JsonSchema : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey {
-        case id = "$id", schema = "$schema", jsonType = "type", description, definitions, items
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case id = "$id",
+             schema = "$schema",
+             jsonType = "type",
+             title,
+             description,
+             definitions,
+             items,
+             properties,
+             required,
+             allOf,
+             additionalProperties,
+             examples
     }
 
     public let id: JsonSchemaReferenceId
@@ -125,11 +136,19 @@ public struct JsonSchema : Codable, Hashable {
         try container.encodeIfPresent(self.definitions, forKey: .definitions)
         switch jsonType {
         case .object:
-            try self.root.encode(to: encoder)
+            try container.encodeIfPresent(root.title, forKey: .title)
+            try container.encodeIfPresent(root.description, forKey: .description)
+            try container.encodeIfPresent(root.properties, forKey: .properties)
+            try container.encodeIfPresent(root.required, forKey: .required)
+            try container.encodeIfPresent(root.allOf, forKey: .allOf)
+            try container.encodeIfPresent(root.additionalProperties, forKey: .additionalProperties)
+            try container.encodeIfPresent(root.examples, forKey: .examples)
+
         case .array:
             let description = "An array of `\(root.className ?? "Unknown")` objects."
             try container.encode(description, forKey: .description)
             try container.encode(self.root, forKey: .items)
+            
         default:
             throw EncodingError.invalidValue(jsonType, .init(codingPath: encoder.codingPath, debugDescription: "Can only have a root that is an object or array", underlyingError: nil))
         }
@@ -270,7 +289,7 @@ public enum JsonSchemaElement : Codable, Hashable {
 }
 
 public struct JsonSchemaObjectRef : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case ref = "$ref", description
     }
     public let ref: JsonSchemaReferenceId
@@ -283,7 +302,7 @@ public struct JsonSchemaObjectRef : Codable, Hashable {
 }
 
 public struct JsonSchemaTypedDictionary : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case jsonType = "type", description, additionalProperties
     }
     public private(set) var jsonType: JsonType = .object
@@ -305,7 +324,7 @@ public struct JsonSchemaTypedDictionary : Codable, Hashable {
 }
 
 public struct JsonSchemaObject : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case id = "$id", jsonType = "type", title, description, properties, required, allOf, additionalProperties, examples
     }
     
@@ -323,7 +342,7 @@ public struct JsonSchemaObject : Codable, Hashable {
     public var isOpen: Bool {
         return additionalProperties ?? true
     }
-    private let additionalProperties: Bool?
+    fileprivate let additionalProperties: Bool?
     
     public init(id: JsonSchemaReferenceId,
                 properties: [String : JsonSchemaProperty]? = nil,
@@ -349,8 +368,8 @@ public struct JsonSchemaObject : Codable, Hashable {
 }
 
 public struct JsonSchemaArray : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey {
-        case jsonType = "type", items, description
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case jsonType = "type", description, items
     }
     
     public private(set) var jsonType: JsonType = .array
@@ -372,13 +391,13 @@ public enum JsonSchemaFormat : String, Codable, Hashable {
 }
 
 public struct JsonSchemaPrimitive : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey {
-        case jsonType = "type", defaultValue = "default", description, format
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case jsonType = "type", description, defaultValue = "default", format
     }
     
     public let jsonType: JsonType?
-    public let defaultValue: JsonElement?
     public let description: String?
+    public let defaultValue: JsonElement?
     public let format: JsonSchemaFormat?
     
     static public let string = JsonSchemaPrimitive(jsonType: .string)
@@ -421,7 +440,7 @@ public struct JsonSchemaPrimitive : Codable, Hashable {
 }
 
 public struct JsonSchemaStringLiteral : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case id = "$id", jsonType = "type", title, description, pattern, examples
     }
     public let id: JsonSchemaReferenceId
@@ -448,7 +467,7 @@ public struct JsonSchemaStringLiteral : Codable, Hashable {
 }
 
 public struct JsonSchemaStringOptionSet : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case id = "$id", jsonType = "type", title, description, items
     }
     public let id: JsonSchemaReferenceId
@@ -488,8 +507,8 @@ public struct JsonSchemaStringOptionSet : Codable, Hashable {
 }
 
 public struct JsonSchemaStringEnum : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey {
-        case id = "$id", jsonType = "type", title, values = "enum", description
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case id = "$id", jsonType = "type", title, description, values = "enum"
     }
     public let id: JsonSchemaReferenceId
     public private(set) var jsonType: JsonType = .string
@@ -508,7 +527,7 @@ public struct JsonSchemaStringEnum : Codable, Hashable {
 }
 
 public struct JsonSchemaConst : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case const, ref = "$ref", description
     }
     public let const: String

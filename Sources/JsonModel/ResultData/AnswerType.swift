@@ -2,7 +2,7 @@
 //  AnswerType.swift
 //
 //
-//  Copyright © 2020-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2020-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -121,16 +121,17 @@ public struct AnswerTypeType : TypeRepresentable, Codable, Hashable {
     
     static public let measurement: AnswerTypeType = "measurement"
     static public let dateTime: AnswerTypeType = "date-time"
-    static public let string: AnswerTypeType = AnswerTypeType(jsonType: .string)
-    static public let number: AnswerTypeType = AnswerTypeType(jsonType: .number)
-    static public let integer: AnswerTypeType = AnswerTypeType(jsonType: .integer)
-    static public let boolean: AnswerTypeType = AnswerTypeType(jsonType: .boolean)
+    
     static public let array: AnswerTypeType = AnswerTypeType(jsonType: .array)
-    static public let object: AnswerTypeType = AnswerTypeType(jsonType: .object)
+    static public let boolean: AnswerTypeType = AnswerTypeType(jsonType: .boolean)
+    static public let integer: AnswerTypeType = AnswerTypeType(jsonType: .integer)
     static public let null: AnswerTypeType = AnswerTypeType(jsonType: .null)
+    static public let number: AnswerTypeType = AnswerTypeType(jsonType: .number)
+    static public let object: AnswerTypeType = AnswerTypeType(jsonType: .object)
+    static public let string: AnswerTypeType = AnswerTypeType(jsonType: .string)
     
     static func allStandardTypes() -> [AnswerTypeType] {
-        return [.array, .boolean, .dateTime, .integer, .measurement, .null, .number, .object]
+        return [.measurement, .dateTime, .array, .boolean, .integer, .null, .number, .object, .string]
     }
 }
 
@@ -387,7 +388,7 @@ public struct AnswerTypeInteger : BaseAnswerType, Codable, Hashable {
 }
 
 public struct AnswerTypeNumber : BaseAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType = "type", significantDigits
     }
     public static let defaultJsonType: JsonType = .number
@@ -471,7 +472,7 @@ public struct AnswerTypeNull : BaseAnswerType, Codable, Hashable {
 }
 
 public struct AnswerTypeArray : SerializableAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType = "type", baseType, sequenceSeparator
     }
     public static let defaultType: AnswerTypeType = .array
@@ -549,7 +550,7 @@ public struct AnswerTypeArray : SerializableAnswerType, Codable, Hashable {
 }
 
 public struct AnswerTypeDateTime : BaseAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType = "type", _codingFormat = "codingFormat"
     }
     public static let defaultJsonType: JsonType = .string
@@ -608,7 +609,7 @@ public struct AnswerTypeDateTime : BaseAnswerType, Codable, Hashable {
 }
 
 public struct AnswerTypeMeasurement : BaseAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType = "type", unit
     }
     public static let defaultJsonType: JsonType = .number

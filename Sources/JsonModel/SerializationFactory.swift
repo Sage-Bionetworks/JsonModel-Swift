@@ -315,7 +315,7 @@ open class SerializationFactory : FactoryRegistration {
     /// Create a `JSONEncoder` with this factory assigned in the user info keys as the factory
     /// to use when encoding objects.
     open func createJSONEncoder() -> JSONEncoder {
-        let encoder = JSONEncoder()
+        let encoder = OrderedJSONEncoder()
         encoder.dateEncodingStrategy = .custom({ (date, encoder) in
             let string = self.encodeString(from: date, codingPath: encoder.codingPath)
             var container = encoder.singleValueContainer()

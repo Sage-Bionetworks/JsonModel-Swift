@@ -56,7 +56,9 @@ class ResultDataTests: XCTestCase {
                                       rootDocuments: [])
         
         do {
-            let _ = try doc.buildSchemas()
+            let schemas = try doc.buildSchemas()
+            
+            
         }
         catch let err {
             XCTFail("Failed to build the JsonSchema: \(err)")

@@ -58,8 +58,8 @@ public protocol FileResult : ResultData {
 
 /// `FileResultObject` is a concrete implementation of a result that holds a pointer to a file url.
 public struct FileResultObject : SerializableResultData, FileResult, Equatable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType="type", identifier, startDate, endDate, relativePath, contentType, startUptime
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case identifier, serializableType="type", startDate, endDate, relativePath, contentType, startUptime, jsonSchema
     }
     public private(set) var serializableType: SerializableResultType = .file
     
@@ -80,7 +80,10 @@ public struct FileResultObject : SerializableResultData, FileResult, Equatable {
     /// The MIME content type of the result.
     public var contentType: String?
     
-    public init(identifier: String, url: URL, contentType: String? = nil, startUptime: TimeInterval? = nil) {
+    /// The url for the json schema that defined the content if this file has a content type of "application/json".
+    public var jsonSchema: URL?
+    
+    public init(identifier: String, url: URL, contentType: String? = nil, startUptime: TimeInterval? = nil, jsonSchema: URL? = nil) {
         self.identifier = identifier
         self.url = url
         self.relativePath = url.relativePath
@@ -118,11 +121,13 @@ extension FileResultObject : DocumentableStruct {
             return .init(propertyType: .primitive(.string))
         case .startUptime:
             return .init(propertyType: .primitive(.number))
+        case .jsonSchema:
+            return .init(propertyType: .format(.uri), propertyDescription: "The URL for the json schema of the JSON for this file.")
         }
     }
     
     public static func examples() -> [FileResultObject] {
-        var fileResult = FileResultObject(identifier: "fileResult", url: URL(string: "file://temp/foo.json")!, contentType: "application/json", startUptime: 1234.567)
+        var fileResult = FileResultObject(identifier: "fileResult", url: URL(string: "file://temp/foo.json")!, contentType: "application/json", startUptime: 1234.567, jsonSchema: URL(string: "file://temp/foo.schema.json")!)
         fileResult.startDate = ISO8601TimestampFormatter.date(from: "2017-10-16T22:28:09.000-07:00")!
         fileResult.endDate = fileResult.startDate.addingTimeInterval(5 * 60)
         return [fileResult]

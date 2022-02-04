@@ -2,7 +2,7 @@
 //  AnswerResult.swift
 //  
 //
-//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -78,8 +78,8 @@ public extension AnswerResult {
 }
 
 public final class AnswerResultObject : SerializableResultData, AnswerResult {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType = "type", identifier, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData, startDate, endDate
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case identifier, serializableType = "type", startDate, endDate, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData
     }
     public private(set) var serializableType: SerializableResultType = .answer
     

@@ -2,7 +2,7 @@
 //  ResultDataSerializer.swift
 //  
 //
-//  Copyright © 2020-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2020-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -57,6 +57,9 @@ public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
     
     /// Defaults to creating a `JsonElementResultObject`.
     static let jsonValue: SerializableResultType = "jsonValue"
+    
+    /// Defaults to creating a `AnswerResultObject`.
+    public static let answer: SerializableResultType = "answer"
 
     /// Defaults to creating a `CollectionResultObject`.
     public static let collection: SerializableResultType = "collection"
@@ -67,12 +70,9 @@ public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
     /// Defaults to creating a `ErrorResultObject`.
     public static let error: SerializableResultType = "error"
     
-    /// Defaults to creating a `AnswerResultObject`.
-    public static let answer: SerializableResultType = "answer"
-    
     /// List of all the standard types.
     public static func allStandardTypes() -> [SerializableResultType] {
-        [.jsonValue, .collection, .file, .error]
+        [.answer, .collection, .file, .error]
     }
 }
 

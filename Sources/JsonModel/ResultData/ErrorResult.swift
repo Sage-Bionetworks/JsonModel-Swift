@@ -2,7 +2,7 @@
 //  ErrorResultObject.swift
 //  
 //
-//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -48,8 +48,8 @@ public protocol ErrorResult : ResultData {
 
 /// `ErrorResultObject` is a result that holds information about an error.
 public struct ErrorResultObject : SerializableResultData, ErrorResult, Equatable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType="type", identifier, startDate, endDate, errorDescription, errorDomain, errorCode
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case identifier, serializableType="type", startDate, endDate, errorDescription, errorDomain, errorCode
     }
     public private(set) var serializableType: SerializableResultType = .error
     
