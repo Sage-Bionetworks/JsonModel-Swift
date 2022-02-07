@@ -387,7 +387,7 @@ public struct JsonSchemaArray : Codable, Hashable {
 }
 
 public enum JsonSchemaFormat : String, Codable, Hashable {
-    case dateTime = "date-time", date, time, uuid, uri, email
+    case dateTime = "date-time", date, time, uuid, uri, uriRelative = "uri-relative", email
 }
 
 public struct JsonSchemaPrimitive : Codable, Hashable {

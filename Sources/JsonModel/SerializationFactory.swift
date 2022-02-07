@@ -1,7 +1,7 @@
 //
 //  SerializationFactory.swift
 //
-//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -165,6 +165,16 @@ open class SerializationFactory : FactoryRegistration {
     
     // MARK: Documentation
     
+    /// The base url for the objects for this factory.
+    open var jsonSchemaBaseURL: URL {
+        kSageJsonSchemaBaseURL
+    }
+    
+    /// A list of root objects included in this factory that are *not* included as definition on an existing `DocumentableInterface`.
+    /// This are the objects that should be pulled out of a root interface (if referenced by any) or json schemas for object serialization
+    /// that does not adher to any polymorphic interface types.
+    public private(set) var documentableRootObjects: [DocumentableRoot] = []
+    
     /// Return the baseUrl for building documentation for the given `Documentable` object, or `nil`
     /// if undefined.
     open func baseUrl(for docRef: Documentable.Type) -> URL? {
@@ -179,6 +189,11 @@ open class SerializationFactory : FactoryRegistration {
     /// An ordered array of the documentable interfaces included in this factory.
     open func documentableInterfaces() -> [DocumentableInterface] {
         serializerMap.map { $0.value as DocumentableInterface }.sorted(by: { $0.interfaceName < $1.interfaceName })
+    }
+
+    /// Register a root object with this factory.
+    public final func registerRootObject(_ rootObject: DocumentableRoot) {
+        documentableRootObjects.append(rootObject)
     }
     
     // MARK: Date Result Format

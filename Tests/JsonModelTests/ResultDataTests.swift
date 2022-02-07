@@ -48,17 +48,11 @@ class ResultDataTests: XCTestCase {
     }
 
     func testCreateJsonSchemaDocumentation() {
-        let factory = ResultDataFactory()
-        let baseUrl = URL(string: "http://sagebionetworks.org/SageResearch/jsonSchema/")!
-        
-        let doc = JsonDocumentBuilder(baseUrl: baseUrl,
-                                      factory: factory,
-                                      rootDocuments: [])
+        let factory = ResultDataFactory()        
+        let doc = JsonDocumentBuilder(factory: factory)
         
         do {
-            let schemas = try doc.buildSchemas()
-            
-            
+            let _ = try doc.buildSchemas()
         }
         catch let err {
             XCTFail("Failed to build the JsonSchema: \(err)")

@@ -39,10 +39,8 @@ final class DocumentableTests: XCTestCase {
     func testFactoryDocumentBuilder() {
         
         let factory = TestFactory.defaultFactory
-        let baseUrl = URL(string: "http://sagebionetworks.org/Example/jsonSchema/")!
         
-        let doc = JsonDocumentBuilder(baseUrl: baseUrl,
-                                      factory: factory)
+        let doc = JsonDocumentBuilder(factory: factory)
         
         XCTAssertEqual(doc.interfaces.count, 1, "\(doc.interfaces.map { $0.className })")
         XCTAssertEqual(doc.objects.count, 7, "\(doc.objects.map { $0.className })")
@@ -67,10 +65,8 @@ final class DocumentableTests: XCTestCase {
     func testFactoryDocumentBuilder_Recursive() {
         
         let factory = AnotherTestFactory.defaultFactory
-        let baseUrl = URL(string: "http://sagebionetworks.org/Example/jsonSchema/")!
         
-        let doc = JsonDocumentBuilder(baseUrl: baseUrl,
-                                      factory: factory)
+        let doc = JsonDocumentBuilder(factory: factory)
         
         XCTAssertEqual(doc.interfaces.count, 2, "\(doc.interfaces.map { $0.className })")
         XCTAssertEqual(doc.objects.count, 11, "\(doc.objects.map { $0.className })")
@@ -94,7 +90,7 @@ final class DocumentableTests: XCTestCase {
             }
             
             if let obj = schemas.first(where: { $0.id.className == "SampleItem"}) {
-                XCTAssertEqual("http://sagebionetworks.org/Example/jsonSchema/SampleItem.json", obj.id.classPath)
+                XCTAssertEqual("\(kSageJsonSchemaBaseURL)SampleItem.json", obj.id.classPath)
                 XCTAssertEqual("SampleItem", obj.root.title)
                 
                 let colorRootId = JsonSchemaReferenceId("Sample", isExternal: true, baseURL: nil)
@@ -118,7 +114,7 @@ final class DocumentableTests: XCTestCase {
     
     func checkSampleSchema(_ jsonSchema: JsonSchema, _ externalSampleItem: Bool) {
         
-        XCTAssertEqual("http://sagebionetworks.org/Example/jsonSchema/Sample.json", jsonSchema.id.classPath)
+        XCTAssertEqual("\(kSageJsonSchemaBaseURL)Sample.json", jsonSchema.id.classPath)
         XCTAssertEqual("Sample", jsonSchema.root.title)
         XCTAssertEqual("Sample is an example interface used for unit testing.", jsonSchema.root.description)
         
