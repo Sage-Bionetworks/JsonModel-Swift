@@ -2,7 +2,7 @@
 //  FileResultObject.swift
 //  
 //
-//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -94,6 +94,18 @@ public struct FileResultObject : SerializableResultData, FileResult, Equatable {
     }
     
     public func deepCopy() -> FileResultObject { self }
+}
+
+extension FileResultObject : FileArchivable {
+    
+    /// Build the archiveable or uploadable data for this result.
+    public func buildArchivableData(at stepPath: String?) throws -> (fileInfo: FileInfo, data: Data)? {
+        let filename = self.relativePath
+        guard let url = self.url else { return nil }
+        let manifest = FileInfo(filename: filename, timestamp: self.startDate, contentType: self.contentType, identifier: self.identifier, stepPath: stepPath, jsonSchema: self.jsonSchema)
+        let data = try Data(contentsOf: url)
+        return (manifest, data)
+    }
 }
 
 extension FileResultObject : DocumentableStruct {
