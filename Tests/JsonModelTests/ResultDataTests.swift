@@ -52,7 +52,9 @@ class ResultDataTests: XCTestCase {
         let doc = JsonDocumentBuilder(factory: factory)
         
         do {
-            let _ = try doc.buildSchemas()
+            let schemas = try doc.buildSchemas()
+
+            XCTAssertEqual(schemas.count, 2)
         }
         catch let err {
             XCTFail("Failed to build the JsonSchema: \(err)")

@@ -36,9 +36,10 @@ import Foundation
 
 /// `CodingKey` for converting a decoding container to a dictionary where any key in the
 /// dictionary is accessible.
-public struct AnyCodingKey: CodingKey {
+public struct AnyCodingKey: OrderedCodingKey, Hashable {
     public let stringValue: String
     public let intValue: Int?
+    public var sortOrderIndex: Int? { intValue }
     
     public init?(stringValue: String) {
         self.stringValue = stringValue
@@ -48,6 +49,35 @@ public struct AnyCodingKey: CodingKey {
     public init?(intValue: Int) {
         self.intValue = intValue
         self.stringValue = "\(intValue)"
+    }
+    
+    public init(stringValue: String, intValue: Int?) {
+        self.stringValue = stringValue
+        self.intValue = intValue
+    }
+    
+    init(stringValue: String, orderedKeys: [CodingKey]) {
+        var index: Int? = nil
+        if let codingKeyIndex = orderedKeys.firstIndex(where: { $0.stringValue == stringValue }) {
+            if let codingKey = orderedKeys[codingKeyIndex] as? OrderedCodingKey, let sortIndex = codingKey.sortOrderIndex {
+                // keys that are indexed use the prescribed sort order.
+                index = sortIndex + ((codingKey as? OpenOrderedCodingKey)?.relativeIndex ?? 0) * 1000
+            }
+            else {
+                // Keys that are ordered but not indexed go at the bottom.
+                index = codingKeyIndex + 1000000
+            }
+        }
+        self.stringValue = stringValue
+        self.intValue = index
+    }
+    
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self.stringValue)
+    }
+    
+    public static func == (lhs: AnyCodingKey, rhs: AnyCodingKey) -> Bool {
+        lhs.stringValue == rhs.stringValue
     }
 }
 
@@ -79,19 +109,35 @@ public struct AnyCodableArray : Codable, Hashable {
 
 /// Wrapper for any codable dictionary.
 public struct AnyCodableDictionary : Codable, Hashable {
-    public let dictionary : [String : JsonSerializable]
+    public let orderedDictionary : [AnyCodingKey : JsonSerializable]
     
-    public init(_ dictionary : [String : JsonSerializable]) {
-        self.dictionary = dictionary
+    public var dictionary : [String : JsonSerializable] {
+        orderedDictionary._mapKeys { $0.stringValue }
+    }
+
+    public init(_ dictionary : [String : JsonSerializable], orderedKeys: [String] = []) {
+        self.orderedDictionary = dictionary._mapKeys {
+            .init(stringValue: $0, intValue: orderedKeys.firstIndex(of: $0))
+        }
+    }
+    
+    public init(_ dictionary : [String : JsonSerializable], orderedKeys: [CodingKey]) {
+        self.orderedDictionary = dictionary._mapKeys {
+            .init(stringValue: $0, orderedKeys: orderedKeys)
+        }
     }
     
     public init(from decoder: Decoder) throws {
         let genericContainer = try decoder.container(keyedBy: AnyCodingKey.self)
-        self.dictionary = try genericContainer._decode(Dictionary<String, JsonSerializable>.self)
+        self.orderedDictionary = try genericContainer._decode(Dictionary<AnyCodingKey, JsonSerializable>.self)
     }
     
     public func encode(to encoder: Encoder) throws {
-        try (self.dictionary as NSDictionary).encode(to: encoder)
+        var container = encoder.container(keyedBy: AnyCodingKey.self)
+        try orderedDictionary.forEach { (key, value) in
+            let nestedEncoder = container.superEncoder(forKey: key)
+            try value.encode(to: nestedEncoder)
+        }
     }
     
     public static func == (lhs: AnyCodableDictionary, rhs: AnyCodableDictionary) -> Bool {
@@ -108,27 +154,29 @@ public struct AnyCodableDictionary : Codable, Hashable {
 extension KeyedDecodingContainer {
     
     /// Decode this container as a `Dictionary<String, Any>`.
-    fileprivate func _decode(_ type: Dictionary<String, JsonSerializable>.Type) throws -> Dictionary<String, JsonSerializable> {
-        var dictionary = Dictionary<String, JsonSerializable>()
+    fileprivate func _decode(_ type: Dictionary<AnyCodingKey, JsonSerializable>.Type) throws -> Dictionary<AnyCodingKey, JsonSerializable> {
+        var dictionary = Dictionary<AnyCodingKey, JsonSerializable>()
         
-        for key in allKeys {
-            if let boolValue = try? decode(Bool.self, forKey: key) {
-                dictionary[key.stringValue] = boolValue
+        for codingKey in allKeys {
+            let key: AnyCodingKey = .init(stringValue: codingKey.stringValue,
+                                          intValue: allKeys.firstIndex(where: { $0.stringValue == codingKey.stringValue }))
+            if let boolValue = try? decode(Bool.self, forKey: codingKey) {
+                dictionary[key] = boolValue
             }
-            else if let intValue = try? decode(Int.self, forKey: key) {
-                dictionary[key.stringValue] = intValue
+            else if let intValue = try? decode(Int.self, forKey: codingKey) {
+                dictionary[key] = intValue
             }
-            else if let stringValue = try? decode(String.self, forKey: key) {
-                dictionary[key.stringValue] = stringValue
+            else if let stringValue = try? decode(String.self, forKey: codingKey) {
+                dictionary[key] = stringValue
             }
-            else if let doubleValue = try? decode(Double.self, forKey: key) {
-                dictionary[key.stringValue] = doubleValue
+            else if let doubleValue = try? decode(Double.self, forKey: codingKey) {
+                dictionary[key] = doubleValue
             }
-            else if let nestedDictionary = try? decode(AnyCodableDictionary.self, forKey: key) {
-                dictionary[key.stringValue] = nestedDictionary.dictionary
+            else if let nestedDictionary = try? decode(AnyCodableDictionary.self, forKey: codingKey) {
+                dictionary[key] = nestedDictionary.dictionary
             }
-            else if let nestedArray = try? decode(AnyCodableArray.self, forKey: key) {
-                dictionary[key.stringValue] = nestedArray.array
+            else if let nestedArray = try? decode(AnyCodableArray.self, forKey: codingKey) {
+                dictionary[key] = nestedArray.array
             }
         }
         return dictionary
@@ -167,8 +215,7 @@ extension FactoryEncoder {
     /// Serialize a dictionary. This is a work around for not being able to
     /// directly encode a generic dictionary.
     public func encodeDictionary(_ value: Dictionary<String, Any>) throws -> Data {
-        let dictionary = value._mapKeys { "\($0)" }
-        let anyDictionary = AnyCodableDictionary(dictionary.jsonDictionary())
+        let anyDictionary = AnyCodableDictionary(value.jsonDictionary())
         let data = try self.encode(anyDictionary)
         return data
     }
@@ -218,7 +265,7 @@ extension Dictionary {
     /// over `self` where the returned values are the mapped keys.
     /// - parameter transform: The function used to transform the input keys into the output key
     /// - returns: A dictionary of key/value pairs.
-    fileprivate func _mapKeys<T: Hashable>(_ transform: (Key) -> T) -> [T: Value] {
+    internal func _mapKeys<T: Hashable>(_ transform: (Key) -> T) -> [T: Value] {
         var result: [T: Value] = [:]
         for (key, value) in self {
             let transformedKey = transform(key)

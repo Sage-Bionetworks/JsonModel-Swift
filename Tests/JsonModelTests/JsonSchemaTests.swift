@@ -465,15 +465,20 @@ final class JsonSchemaTests: XCTestCase {
         }
         """.data(using: .utf8)! // our data in native (JSON) format
 
+        let orderedKeys = ["type", "identifier", "baloo", "luckyNumbers"]
+        let codingKeys: [AnyCodingKey] = orderedKeys.enumerated().map {
+            .init(stringValue: $0.element, intValue: $0.offset)
+        }
         let original = JsonSchemaObject(id: JsonSchemaReferenceId("Foo"),
+                                        isOpen: false,
+                                        description: "This is an example of a polymorphic object",
+                                        codingKeys: codingKeys,
                                         properties: [
                                             "type" : .const(JsonSchemaConst(const: "foo", ref: JsonSchemaReferenceId("GooType"))),
                                             "identifier" : .primitive(.string),
                                             "baloo" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("Baloo"))),
                                             "luckyNumbers" : .array(JsonSchemaArray(items: .primitive(.integer)))],
                                         required: ["type", "identifier"],
-                                        isOpen: false,
-                                        description: "This is an example of a polymorphic object",
                                         interfaces: [JsonSchemaReferenceId("Goo")],
                                         examples: [["type":"foo","identifier":"boo"]])
         
@@ -571,24 +576,30 @@ final class JsonSchemaTests: XCTestCase {
         }
         """.data(using: .utf8)! // our data in native (JSON) format
 
+        let origObjectDef: JsonSchemaDefinition = .object(JsonSchemaObject(id: JsonSchemaReferenceId("Baloo"), properties: ["value": .primitive(.string)]))
         let origDefinitions: [JsonSchemaDefinition] = [
-        .object(JsonSchemaObject(id: JsonSchemaReferenceId("Baloo"), properties: ["value": .primitive(.string)])),
-        .stringLiteral(JsonSchemaStringLiteral(id: JsonSchemaReferenceId("GooType"))),
-        .stringEnum(JsonSchemaStringEnum(id: JsonSchemaReferenceId("RuType"), values: ["moo", "loo", "twentyToo"]))]
+            origObjectDef,
+            .stringLiteral(JsonSchemaStringLiteral(id: JsonSchemaReferenceId("GooType"))),
+            .stringEnum(JsonSchemaStringEnum(id: JsonSchemaReferenceId("RuType"), values: ["moo", "loo", "twentyToo"]))]
 
+        let codingKeys: [AnyCodingKey] = ["type","identifier","baloo","ruType"].enumerated().map {
+            .init(stringValue: $0.element, intValue: $0.offset)
+        }
         let original = JsonSchema(id: URL(string: "http://sagebionetworks.org/Foo.json")!,
                                   description: "This is an example of a polymorphic object",
+                                  isArray: false,
                                   isOpen: true,
-                                  interfaces: [JsonSchemaReferenceId("Goo"),
-                                               JsonSchemaReferenceId("Moo", isExternal: true)],
+                                  codingKeys: codingKeys,
+                                  interfaces: [JsonSchemaReferenceId("Goo"),JsonSchemaReferenceId("Moo", isExternal: true)],
                                   definitions: origDefinitions,
-                                  properties:[
-                                    "type": .const(JsonSchemaConst(const: "foo", ref: JsonSchemaReferenceId("GooType"))),
-                                    "identifier": .primitive(.string),
-                                    "baloo": .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("Baloo"))),
-                                    "ruType": .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("RuType")))],
+                                  properties: [
+                                        "type": .const(JsonSchemaConst(const: "foo", ref: JsonSchemaReferenceId("GooType"))),
+                                        "identifier": .primitive(.string),
+                                        "baloo": .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("Baloo"))),
+                                        "ruType": .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("RuType")))
+                                  ],
                                   required: ["type", "identifier"],
-                                  examples: [["type": "foo","identifier": "boo"]])
+                                  examples:  [["type": "foo","identifier": "boo"]])
 
         let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
         let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
@@ -626,6 +637,22 @@ final class JsonSchemaTests: XCTestCase {
                     return
                 }
                 XCTAssertEqual(definition, decodedDef)
+                
+                if case .object(let objDef) = definition {
+                    if case .object(let decodedObjDef) = decodedDef {
+                        XCTAssertEqual(objDef.className, decodedObjDef.className)
+                        XCTAssertEqual(objDef.description, decodedObjDef.description)
+                        XCTAssertEqual(objDef.title, decodedObjDef.title)
+                        XCTAssertEqual(objDef.id, decodedObjDef.id)
+                        XCTAssertEqual(objDef.required, decodedObjDef.required)
+                        XCTAssertEqual(objDef.allOf, decodedObjDef.allOf)
+                        XCTAssertEqual(objDef.isOpen, decodedObjDef.isOpen)
+                        XCTAssertEqual(objDef.examples, decodedObjDef.examples)
+                    }
+                    else {
+                        XCTFail("The decoded object type does not match expected")
+                    }
+                }
             }
 
             let encodedData = try encoder.encode(original)
@@ -721,13 +748,19 @@ final class JsonSchemaTests: XCTestCase {
         """.data(using: .utf8)! // our data in native (JSON) format
 
         let origDefinitions: [JsonSchemaDefinition] = [
-        .object(JsonSchemaObject(id: JsonSchemaReferenceId("Baloo"), properties: ["value": .primitive(.string)])),
-        .stringLiteral(JsonSchemaStringLiteral(id: JsonSchemaReferenceId("GooType"))),
-        .stringEnum(JsonSchemaStringEnum(id: JsonSchemaReferenceId("RuType"), values: ["moo", "loo", "twentyToo"]))]
+            .object(JsonSchemaObject(id: JsonSchemaReferenceId("Baloo"), isOpen: false, properties: ["value": .primitive(.string)])),
+            .stringLiteral(JsonSchemaStringLiteral(id: JsonSchemaReferenceId("GooType"))),
+            .stringEnum(JsonSchemaStringEnum(id: JsonSchemaReferenceId("RuType"), values: ["moo", "loo", "twentyToo"]))]
 
+        let orderedKeys = ["type", "identifier", "baloo", "ruType"]
+        let codingKeys: [AnyCodingKey] = orderedKeys.enumerated().map {
+            .init(stringValue: $0.element, intValue: $0.offset)
+        }
         let original = JsonSchema(id: URL(string: "http://sagebionetworks.org/Foo.json")!,
                                   description: "This is an example of a polymorphic object",
+                                  isArray: true,
                                   isOpen: true,
+                                  codingKeys: codingKeys,
                                   interfaces: [JsonSchemaReferenceId("Goo"),
                                                JsonSchemaReferenceId("Moo", isExternal: true)],
                                   definitions: origDefinitions,
@@ -737,8 +770,7 @@ final class JsonSchemaTests: XCTestCase {
                                     "baloo": .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("Baloo"))),
                                     "ruType": .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("RuType")))],
                                   required: ["type", "identifier"],
-                                  examples: [["type": "foo","identifier": "boo"]],
-                                  isArray: true)
+                                  examples: [["type": "foo","identifier": "boo"]])
 
         let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
         let encoder = SerializationFactory.defaultFactory.createJSONEncoder()
@@ -777,7 +809,7 @@ final class JsonSchemaTests: XCTestCase {
                 }
                 XCTAssertEqual(definition, decodedDef)
             }
-
+            
             let encodedData = try encoder.encode(original)
             let encodedJson = try JSONSerialization.jsonObject(with: encodedData, options: [])
             let originalJson = try JSONSerialization.jsonObject(with: json, options: [])

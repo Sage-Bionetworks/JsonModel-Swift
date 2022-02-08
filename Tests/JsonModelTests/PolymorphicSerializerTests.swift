@@ -186,7 +186,7 @@ extension SampleType : DocumentableStringLiteral {
 }
 
 struct SampleItem : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case name, color
     }
     let name: String
@@ -251,7 +251,7 @@ enum SampleColor : String, Codable, DocumentableStringEnum, StringEnumSet {
 
 struct SampleA : SerializableSample, Codable, Equatable {
     static let defaultType: SampleType = .a
-    private enum CodingKeys : String, CodingKey, CaseIterable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case exampleType = "type", value, color, animalMap
     }
     

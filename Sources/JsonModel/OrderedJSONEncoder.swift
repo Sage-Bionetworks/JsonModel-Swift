@@ -35,7 +35,7 @@ import Foundation
 /// Coding keys that conform to this protocol include a sort order index.
 public protocol OrderedCodingKey : CodingKey {
     /// The sort index of this key when encoding.
-    var sortOrderIndex: Int { get }
+    var sortOrderIndex: Int? { get }
 }
 
 /// An ordered enum relies upon using an enum that is `CaseIterable` to define the index position
@@ -44,7 +44,7 @@ public protocol OrderedEnumCodingKey : OrderedCodingKey, StringEnumSet {
 }
 
 extension OrderedEnumCodingKey {
-    public var sortOrderIndex: Int { indexPosition }
+    public var sortOrderIndex: Int? { indexPosition }
 }
 
 /// Open ordered coding keys are used for classes that are open to define indexes within the
@@ -111,12 +111,13 @@ open class OrderedJSONEncoder : JSONEncoder {
         return replacementJson.data(using: .utf8) ?? orderedData
     }
     
-    fileprivate struct IndexedCodingKey : CodingKey {
+    struct IndexedCodingKey : CodingKey {
         static let separator: Character = "ह"
+        static let multiplier: Int = 1000
         
-        var stringValue: String
-        var intValue: Int?
-        var keyValue: String
+        let stringValue: String
+        let intValue: Int?
+        let keyValue: String
         
         init?(stringValue: String) {
             let strings = stringValue.split(separator: IndexedCodingKey.separator)
@@ -133,17 +134,17 @@ open class OrderedJSONEncoder : JSONEncoder {
         }
         
         init?(key: CodingKey) {
-            guard let orderedKey = key as? OrderedCodingKey
+            guard let orderedKey = key as? OrderedCodingKey,
+                  let sortOrderIndex = orderedKey.sortOrderIndex
             else {
                 return nil
             }
-            var index = orderedKey.sortOrderIndex
-            if let relativeKey = key as? OpenOrderedCodingKey {
-                index += relativeKey.relativeIndex * 1000
-            }
+            let relativeIndex = (key as? OpenOrderedCodingKey)?.relativeIndex ?? 0
+            let index = sortOrderIndex + relativeIndex * IndexedCodingKey.multiplier
             self.intValue = index
-            self.keyValue = key.stringValue
             self.stringValue = "\(index)\(IndexedCodingKey.separator)\(key.stringValue)"
+            self.keyValue = key.stringValue
         }
     }
 }
+

@@ -61,14 +61,15 @@ public struct JsonSchema : Codable, Hashable {
     public let root: JsonSchemaObject
     
     public init(id: URL,
-                description: String = "",
-                isOpen: Bool = true,
-                interfaces: [JsonSchemaReferenceId]? = nil,
-                definitions: [JsonSchemaDefinition] = [],
-                properties: [String : JsonSchemaProperty]? = nil,
-                required: [String]? = nil,
-                examples: [[String : JsonSerializable]]? = nil,
-                isArray: Bool = false) {
+                description: String,
+                isArray: Bool,
+                isOpen: Bool,
+                codingKeys: [CodingKey],
+                interfaces: [JsonSchemaReferenceId]?,
+                definitions: [JsonSchemaDefinition],
+                properties: [String : JsonSchemaProperty]?,
+                required: [String]?,
+                examples: [[String : JsonSerializable]]?) {
         
         let refId = JsonSchemaReferenceId(url: id)
         self.id = refId
@@ -88,10 +89,11 @@ public struct JsonSchema : Codable, Hashable {
         
         // Nil out the root of the object used to store typed info about this schema
         var root = JsonSchemaObject(id: refId,
-                                    properties: properties,
-                                    required: required,
                                     isOpen: isOpen,
                                     description: description,
+                                    codingKeys: codingKeys,
+                                    properties: properties,
+                                    required: required,
                                     interfaces: interfaces,
                                     examples: examples)
         root.id = nil
@@ -138,7 +140,7 @@ public struct JsonSchema : Codable, Hashable {
         case .object:
             try container.encodeIfPresent(root.title, forKey: .title)
             try container.encodeIfPresent(root.description, forKey: .description)
-            try container.encodeIfPresent(root.properties, forKey: .properties)
+            try container.encodeIfPresent(root.orderedProperties, forKey: .properties)
             try container.encodeIfPresent(root.required, forKey: .required)
             try container.encodeIfPresent(root.allOf, forKey: .allOf)
             try container.encodeIfPresent(root.additionalProperties, forKey: .additionalProperties)
@@ -325,7 +327,7 @@ public struct JsonSchemaTypedDictionary : Codable, Hashable {
 
 public struct JsonSchemaObject : Codable, Hashable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case id = "$id", jsonType = "type", title, description, properties, required, allOf, additionalProperties, examples
+        case id = "$id", jsonType = "type", title, description, orderedProperties="properties", required, allOf, additionalProperties, examples
     }
     
     public fileprivate(set) var id: JsonSchemaReferenceId?
@@ -335,9 +337,13 @@ public struct JsonSchemaObject : Codable, Hashable {
     public private(set) var jsonType: JsonType = .object
     public let description: String?
     public let allOf: [JsonSchemaObjectRef]?
-    public let properties: [String : JsonSchemaProperty]?
     public let required: [String]?
     public let examples: [AnyCodableDictionary]?
+    
+    public var properties: [String : JsonSchemaProperty]? {
+        orderedProperties?.orderedDictionary._mapKeys { $0.stringValue }
+    }
+    let orderedProperties: OrderedJsonDictionary<JsonSchemaProperty>?
     
     public var isOpen: Bool {
         return additionalProperties ?? true
@@ -345,10 +351,11 @@ public struct JsonSchemaObject : Codable, Hashable {
     fileprivate let additionalProperties: Bool?
     
     public init(id: JsonSchemaReferenceId,
-                properties: [String : JsonSchemaProperty]? = nil,
-                required: [String]? = nil,
                 isOpen: Bool = false,
                 description: String? = "",
+                codingKeys: [CodingKey] = [],
+                properties: [String : JsonSchemaProperty]? = nil,
+                required: [String]? = nil,
                 interfaces: [JsonSchemaReferenceId]? = nil,
                 examples: [[String : JsonSerializable]]? = nil) {
         self.id = id
@@ -357,9 +364,11 @@ public struct JsonSchemaObject : Codable, Hashable {
         self.additionalProperties = isOpen ? nil : false
         let allOf = interfaces?.map { JsonSchemaObjectRef(ref: $0) }
         self.allOf = (allOf?.count ?? 0) == 0 ? nil : allOf
-        self.properties = (properties?.count ?? 0) == 0 ? nil : properties
+        self.orderedProperties = (properties?.count ?? 0) == 0 ? nil : .init(properties!, orderedKeys: codingKeys)
         self.required = required
-        self.examples = (examples?.count ?? 0) == 0 ? nil : examples!.map { AnyCodableDictionary($0)}
+        self.examples = (examples?.count ?? 0) == 0 ? nil : examples!.map {
+            AnyCodableDictionary($0, orderedKeys: codingKeys)
+        }
     }
     
     fileprivate var isValidDecoding: Bool {
@@ -600,5 +609,44 @@ public struct JsonSchemaReferenceId : Codable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(classPath)
+    }
+}
+
+struct OrderedJsonDictionary<Element : Codable> : Codable, Hashable where Element : Hashable {
+    let orderedDictionary : [AnyCodingKey : Element]
+    
+    init(_ dictionary : [String : Element], orderedKeys: [CodingKey]) {
+        self.orderedDictionary = dictionary._mapKeys {
+            .init(stringValue: $0, orderedKeys: orderedKeys)
+        }
+    }
+    
+    init(_ dictionary : [AnyCodingKey : Element]) {
+        self.orderedDictionary = dictionary
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: AnyCodingKey.self)
+        let allKeys = container.allKeys
+        var dictionary = Dictionary<AnyCodingKey, Element>()
+        
+        print(allKeys)
+        
+        for codingKey in allKeys {
+            let orderedKey: AnyCodingKey = .init(stringValue: codingKey.stringValue,
+                                                 intValue: allKeys.firstIndex(where: { $0.stringValue == codingKey.stringValue }))
+            let nestedDecoder = try container.superDecoder(forKey: codingKey)
+            print(orderedKey)
+            dictionary[orderedKey] = try Element.init(from: nestedDecoder)
+        }
+        self.orderedDictionary = dictionary
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: AnyCodingKey.self)
+        try orderedDictionary.forEach { (key, value) in
+            let nestedEncoder = container.superEncoder(forKey: key)
+            try value.encode(to: nestedEncoder)
+        }
     }
 }

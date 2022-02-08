@@ -427,14 +427,19 @@ public class JsonDocumentBuilder {
             let interfaces = try rootPointer.interfaces.map {
                 try self.interfaceSchemaRef(for: $0.className)
             }
+            let examples = try (docType as? DocumentableObject.Type).map {
+                try $0.jsonExamples()
+            }
             return JsonSchema(id: URL(string: rootPointer.refId.classPath)!,
                               description: rootPointer.documentDescription ?? "",
+                              isArray: rootPointer.isArray,
                               isOpen: !rootPointer.isSealed,
+                              codingKeys: docType.codingKeys(),
                               interfaces: interfaces.count > 0 ? interfaces : nil,
                               definitions: definitions,
                               properties: properties,
                               required: required,
-                              examples: nil)
+                              examples: examples)
         }
     }
     
@@ -545,6 +550,7 @@ public class JsonDocumentBuilder {
         let klass: Documentable.Type
         let className: String
         let baseUrl: URL
+        let isArray: Bool
         private let _refId: JsonSchemaReferenceId?
         
         var isRoot: Bool
@@ -565,6 +571,7 @@ public class JsonDocumentBuilder {
         
         init(klass: Documentable.Type, baseUrl: URL, parent: KlassPointer) {
             self.klass = klass
+            self.isArray = false
             self.parentPointers = [parent]
             self.isInterface = false
             self.mainParent = parent.mainParent ?? parent
@@ -586,6 +593,7 @@ public class JsonDocumentBuilder {
         
         init(root: DocumentableRoot, baseUrl: URL) {
             self.klass = root.rootDocumentType
+            self.isArray = root.isDocumentTypeArray
             self.parentPointers = []
             self.mainParent = nil
             let refId = JsonSchemaReferenceId(url: root.jsonSchema)
@@ -658,10 +666,11 @@ public class JsonDocumentBuilder {
                     try builder.interfaceSchemaRef(for: $0.className)
                 }
                 return .object(JsonSchemaObject(id: ref,
-                                                properties: properties,
-                                                required: required,
                                                 isOpen: docType.isOpen(),
                                                 description: "",
+                                                codingKeys: docType.codingKeys(),
+                                                properties: properties,
+                                                required: required,
                                                 interfaces: interfaces,
                                                 examples: examples))
             }

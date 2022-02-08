@@ -37,7 +37,7 @@ import Foundation
 open class IdentifiableInterfaceSerializer : AbstractPolymorphicSerializer {
     private enum InterfaceKeys : String, OpenOrderedCodingKey {
         case identifier
-        var sortOrderIndex: Int { 0 }
+        var sortOrderIndex: Int? { 0 }
         var relativeIndex: Int { 0 }
     }
     
