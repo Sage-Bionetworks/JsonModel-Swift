@@ -171,7 +171,8 @@ extension CollectionResultObject : DocumentableStruct {
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
         case .children:
-            return .init(propertyType: .interfaceArray("\(ResultData.self)"))
+            return .init(propertyType: .interfaceArray("\(ResultData.self)"), propertyDescription:
+                            "The list of input results associated with this step or recorder.")
         }
     }
     

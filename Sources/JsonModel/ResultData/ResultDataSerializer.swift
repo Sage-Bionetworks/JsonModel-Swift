@@ -88,7 +88,7 @@ extension SerializableResultType : DocumentableStringLiteral {
     }
 }
 
-public final class ResultDataSerializer : IdentifiableInterfaceSerializer, PolymorphicSerializer {
+public final class ResultDataSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
     public var documentDescription: String? {
         """
         `JsonResultData` is the base implementation for `ResultData` that is serialized using
@@ -135,5 +135,30 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
         let newNames = newExamples.map { $0.typeName }
         self.examples.removeAll(where: { newNames.contains($0.typeName) })
         self.examples.append(contentsOf: newExamples)
+    }
+    
+    private enum InterfaceKeys : String, OrderedEnumCodingKey {
+        case identifier, startDate, endDate
+    }
+    
+    public override class func codingKeys() -> [CodingKey] {
+        return InterfaceKeys.allCases
+    }
+    
+    public override class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let key = codingKey as? InterfaceKeys else {
+            return try super.documentProperty(for: codingKey)
+        }
+        switch key {
+        case .identifier:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The identifier associated with the task, step, or asynchronous action.")
+        case .startDate:
+            return .init(propertyType: .format(.dateTime), propertyDescription:
+                            "The start date timestamp for the result.")
+        case .endDate:
+            return .init(propertyType: .format(.dateTime), propertyDescription:
+                            "The end date timestamp for the result.")
+        }
     }
 }

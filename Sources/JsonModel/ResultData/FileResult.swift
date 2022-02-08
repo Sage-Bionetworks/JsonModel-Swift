@@ -129,12 +129,18 @@ extension FileResultObject : DocumentableStruct {
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
-        case .contentType, .relativePath:
-            return .init(propertyType: .primitive(.string))
+        case .relativePath:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The relative path to the file-based result.")
+        case .contentType:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The MIME content type of the result.")
         case .startUptime:
-            return .init(propertyType: .primitive(.number))
+            return .init(propertyType: .primitive(.number), propertyDescription:
+                            "The system clock uptime when the recorder was started (if applicable).")
         case .jsonSchema:
-            return .init(propertyType: .format(.uri), propertyDescription: "The URL for the json schema of the JSON for this file.")
+            return .init(propertyType: .format(.uri), propertyDescription:
+                            "The URL for the json schema of the JSON for this file.")
         }
     }
     

@@ -190,13 +190,17 @@ extension AnswerResultObject : DocumentableStruct {
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
         case .jsonAnswerType:
-            return .init(propertyType: .interface("\(AnswerType.self)"))
+            return .init(propertyType: .interface("\(AnswerType.self)"), propertyDescription:
+                            "Optional property for defining additional information about the answer expected for this result.")
         case .jsonValue:
-            return .init(propertyType: .any)
+            return .init(propertyType: .any, propertyDescription:
+                            "The answer held by this result.")
         case .questionText:
-            return .init(propertyType: .primitive(.string))
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The question text that was displayed for this answer result.")
         case .questionData:
-            return .init(propertyType: .any)
+            return .init(propertyType: .any, propertyDescription:
+                            "Additional data that researchers may wish to include with an answer result.")
         }
     }
 
