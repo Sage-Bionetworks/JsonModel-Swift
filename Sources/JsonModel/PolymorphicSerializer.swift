@@ -133,8 +133,10 @@ extension PolymorphicSerializer {
 }
 
 open class AbstractPolymorphicSerializer {
-    public enum TypeKeys: String, CodingKey, CaseIterable, Codable {
+    public enum TypeKeys: String, Codable, OpenOrderedCodingKey {
         case type
+        public var sortOrderIndex: Int { 0 }
+        public var relativeIndex: Int { 1 }
     }
     
     public init() {
@@ -159,7 +161,7 @@ open class AbstractPolymorphicSerializer {
     
     /// Default is to return the "type" key.
     open class func codingKeys() -> [CodingKey] {
-        TypeKeys.allCases
+        [TypeKeys.type]
     }
     
     /// Default is to return `true`.

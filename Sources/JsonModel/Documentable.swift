@@ -73,6 +73,10 @@ extension StringEnumSet {
     public static func allValues() -> [String] {
         return self.allCases.map { $0.rawValue }
     }
+    
+    public var indexPosition: Int {
+        type(of: self).allValues().firstIndex(of: self.stringValue)!
+    }
 }
 
 public protocol DocumentableStringLiteral : DocumentableString {

@@ -35,18 +35,16 @@ import Foundation
 
 /// Convenience implementation for a serializer that includes a required `identifier` key.
 open class IdentifiableInterfaceSerializer : AbstractPolymorphicSerializer {
-    private enum InterfaceKeys : String, CodingKey, CaseIterable {
+    private enum InterfaceKeys : String, OpenOrderedCodingKey {
         case identifier
+        var sortOrderIndex: Int { 0 }
+        var relativeIndex: Int { 0 }
     }
     
     open override class func codingKeys() -> [CodingKey] {
         var keys = super.codingKeys()
-        keys.append(contentsOf: InterfaceKeys.allCases)
+        keys.append(InterfaceKeys.identifier)
         return keys
-    }
-    
-    open override class func isRequired(_ codingKey: CodingKey) -> Bool {
-        (codingKey is InterfaceKeys) || super.isRequired(codingKey)
     }
     
     open override class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -55,7 +53,8 @@ open class IdentifiableInterfaceSerializer : AbstractPolymorphicSerializer {
         }
         switch key {
         case .identifier:
-            return .init(propertyType: .primitive(.string))
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The identifier associated with the task, step, or asynchronous action.")
         }
     }
 }

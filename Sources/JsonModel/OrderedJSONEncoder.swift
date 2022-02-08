@@ -32,17 +32,26 @@
 
 import Foundation
 
+/// Coding keys that conform to this protocol include a sort order index.
 public protocol OrderedCodingKey : CodingKey {
-    var orderIndex: Int { get }
+    /// The sort index of this key when encoding.
+    var sortOrderIndex: Int { get }
 }
 
+/// An ordered enum relies upon using an enum that is `CaseIterable` to define the index position
+/// within the set.
 public protocol OrderedEnumCodingKey : OrderedCodingKey, StringEnumSet {
 }
 
 extension OrderedEnumCodingKey {
-    public var orderIndex: Int {
-        type(of: self).allValues().firstIndex(of: self.stringValue)!
-    }
+    public var sortOrderIndex: Int { indexPosition }
+}
+
+/// Open ordered coding keys are used for classes that are open to define indexes within the
+/// encoding that are relative to the coding keys of the parent or child. This allows coding keys
+/// to be sorted where the keys are *not* all defined within the same class.
+public protocol OpenOrderedCodingKey : OrderedCodingKey {
+    var relativeIndex: Int { get }
 }
 
 /// This is a subclass of `JSONEncoder` that encodes json using the indexed order provided by
@@ -61,7 +70,9 @@ open class OrderedJSONEncoder : JSONEncoder {
     public var shouldOrderKeys: Bool = true
     
     override open var keyEncodingStrategy: JSONEncoder.KeyEncodingStrategy {
-        get { shouldOrderKeys ? _keyEncodingStrategy : super.keyEncodingStrategy }
+        get {
+            shouldOrderKeys ? _keyEncodingStrategy : super.keyEncodingStrategy
+        }
         set {
             super.keyEncodingStrategy = newValue
             shouldOrderKeys = false
@@ -70,10 +81,13 @@ open class OrderedJSONEncoder : JSONEncoder {
     private var _keyEncodingStrategy: JSONEncoder.KeyEncodingStrategy
     
     override open var outputFormatting: JSONEncoder.OutputFormatting {
-        get { _outputFormatting }
-        set { _outputFormatting.formUnion(newValue) }
+        get {
+            shouldOrderKeys ? super.outputFormatting.union([.prettyPrinted, .sortedKeys]) : super.outputFormatting
+        }
+        set {
+            super.outputFormatting = newValue
+        }
     }
-    private var _outputFormatting: JSONEncoder.OutputFormatting = [.prettyPrinted, .sortedKeys]
     
     open override func encode<T>(_ value: T) throws -> Data where T : Encodable {
         let orderedData = try super.encode(value)
@@ -123,9 +137,13 @@ open class OrderedJSONEncoder : JSONEncoder {
             else {
                 return nil
             }
-            self.intValue = orderedKey.orderIndex
+            var index = orderedKey.sortOrderIndex
+            if let relativeKey = key as? OpenOrderedCodingKey {
+                index += relativeKey.relativeIndex * 1000
+            }
+            self.intValue = index
             self.keyValue = key.stringValue
-            self.stringValue = "\(orderedKey.orderIndex)\(IndexedCodingKey.separator)\(key.stringValue)"
+            self.stringValue = "\(index)\(IndexedCodingKey.separator)\(key.stringValue)"
         }
     }
 }
