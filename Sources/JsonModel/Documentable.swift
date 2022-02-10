@@ -134,10 +134,12 @@ public protocol DocumentableStruct : DocumentableObject, Codable {
 }
 
 extension DocumentableStruct {
+    // A struct is always final.
     public static func isOpen() -> Bool {
         return false
     }
     
+    // The examples can be created by encoding self as a dictionary.
     public static func jsonExamples() throws -> [[String : JsonSerializable]] {
         return try examples().map { try $0.jsonEncodedDictionary() }
     }
@@ -145,13 +147,16 @@ extension DocumentableStruct {
 
 /// A documentable root object is an object that has a *required* initializer with no parameters
 /// that can be used for examples.
-public protocol DocumentableRootObject : DocumentableBase, DocumentableRoot {
+public protocol DocumentableRootObject : DocumentableObject, DocumentableRoot {
     init()
 }
 
 extension DocumentableRootObject {
     // A documentable root describes an object, not an array.
     public var isDocumentTypeArray: Bool { false }
+    
+    // A documentable root has a root type that is always itself.
+    public var rootDocumentType: DocumentableBase.Type { type(of: self) }
 }
 
 public protocol DocumentableInterface : DocumentableBase, DocumentableRoot {
@@ -431,10 +436,11 @@ public class JsonDocumentBuilder {
             let examples = try (docType as? DocumentableObject.Type).map {
                 try $0.jsonExamples()
             }
+            let isOpen = (docType as? DocumentableObject.Type)?.isOpen() ?? !rootPointer.isSealed
             return JsonSchema(id: URL(string: rootPointer.refId.classPath)!,
                               description: rootPointer.documentDescription ?? "",
                               isArray: rootPointer.isArray,
-                              isOpen: !rootPointer.isSealed,
+                              isOpen: isOpen,
                               codingKeys: docType.codingKeys(),
                               interfaces: interfaces.count > 0 ? interfaces : nil,
                               definitions: definitions,

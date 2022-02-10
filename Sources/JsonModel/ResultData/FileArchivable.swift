@@ -79,7 +79,7 @@ open class ArchiveMetadata: Codable, DocumentableRootObject {
     /// - parameters:
     ///     - taskResult: The task result to use to pull information included in the top-level metadata.
     ///     - files: A list of files included with this metadata.
-    public init(files: [FileInfo] = [], platformContext: PlatformContext = .init()) {
+    public init(files: [FileInfo] = [], platformContext: PlatformContextInfo = .init()) {
         self.deviceInfo = platformContext.deviceInfo
         self.deviceTypeIdentifier = platformContext.deviceTypeIdentifier
         self.appName = platformContext.appName
@@ -96,10 +96,6 @@ open class ArchiveMetadata: Codable, DocumentableRootObject {
     open var documentDescription: String? {
         "The metadata for an archive that can be zipped using the app developer's choice of third-party archival tools."
     }
-    
-    public final var isDocumentTypeArray: Bool { false }
-    
-    public final var rootDocumentType: DocumentableBase.Type { type(of: self) }
     
     open class func codingKeys() -> [CodingKey] {
         return CodingKeys.allCases
@@ -244,7 +240,7 @@ extension FileInfo : DocumentableStruct {
     }
 }
 
-public struct PlatformContext {
+public struct PlatformContextInfo {
     
     /// Information about the specific device.
     public let deviceInfo: String
