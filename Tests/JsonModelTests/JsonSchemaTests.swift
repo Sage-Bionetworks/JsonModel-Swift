@@ -479,7 +479,7 @@ final class JsonSchemaTests: XCTestCase {
                                             "baloo" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("Baloo"))),
                                             "luckyNumbers" : .array(JsonSchemaArray(items: .primitive(.integer)))],
                                         required: ["type", "identifier"],
-                                        interfaces: [JsonSchemaReferenceId("Goo")],
+                                        interfaces: [.init(ref: JsonSchemaReferenceId("Goo"))],
                                         examples: [["type":"foo","identifier":"boo"]])
         
         let decoder = SerializationFactory.defaultFactory.createJSONDecoder()
@@ -590,7 +590,8 @@ final class JsonSchemaTests: XCTestCase {
                                   isArray: false,
                                   isOpen: true,
                                   codingKeys: codingKeys,
-                                  interfaces: [JsonSchemaReferenceId("Goo"),JsonSchemaReferenceId("Moo", isExternal: true)],
+                                  interfaces: [.init(ref: JsonSchemaReferenceId("Goo")),
+                                               .init(ref: JsonSchemaReferenceId("Moo", isExternal: true))],
                                   definitions: origDefinitions,
                                   properties: [
                                         "type": .const(JsonSchemaConst(const: "foo", ref: JsonSchemaReferenceId("GooType"))),
@@ -761,8 +762,8 @@ final class JsonSchemaTests: XCTestCase {
                                   isArray: true,
                                   isOpen: true,
                                   codingKeys: codingKeys,
-                                  interfaces: [JsonSchemaReferenceId("Goo"),
-                                               JsonSchemaReferenceId("Moo", isExternal: true)],
+                                  interfaces: [.init(ref: JsonSchemaReferenceId("Goo")),
+                                               .init(ref: JsonSchemaReferenceId("Moo", isExternal: true))],
                                   definitions: origDefinitions,
                                   properties:[
                                     "type": .const(JsonSchemaConst(const: "foo", ref: JsonSchemaReferenceId("GooType"))),

@@ -94,7 +94,7 @@ public extension CollectionResult {
 /// `CollectionResultObject` is used to include multiple results associated with a single action.
 public final class CollectionResultObject : SerializableResultData, CollectionResult {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case identifier, serializableType="type", startDate, endDate, children="inputResults"
+        case serializableType="type", identifier, startDate, endDate, children="inputResults"
     }
     public private(set) var serializableType: SerializableResultType = .collection
     

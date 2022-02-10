@@ -209,7 +209,7 @@ public struct DocumentProperty {
     let defaultValue: JsonElement?
     let propertyDescription: String?
     
-    public enum PropertyType {
+    public enum PropertyType : Equatable {
         case any
         case format(JsonSchemaFormat)
         case primitive(JsonType)
@@ -221,6 +221,36 @@ public struct DocumentProperty {
         case interface(String)
         case interfaceArray(String)
         case interfaceDictionary(String)
+        
+        public static func == (lhs: DocumentProperty.PropertyType, rhs: DocumentProperty.PropertyType) -> Bool {
+            if case .any = lhs, case .any = rhs {
+                return true
+            }
+            else if case .format(let lhsValue) = lhs, case .format(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .primitive(let lhsValue) = lhs, case .primitive(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .primitiveArray(let lhsValue) = lhs, case .primitiveArray(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .primitiveDictionary(let lhsValue) = lhs, case .primitiveDictionary(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .interface(let lhsValue) = lhs, case .interface(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .interfaceArray(let lhsValue) = lhs, case .interfaceArray(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .interfaceDictionary(let lhsValue) = lhs, case .interfaceDictionary(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else {
+                return false
+            }
+        }
     }
     
     public init(propertyType: PropertyType, propertyDescription: String? = nil) {
@@ -430,8 +460,9 @@ public class JsonDocumentBuilder {
             }
             let definitions = try rootPointer.allDefinitions(using: self)
             let (properties, required) = try self.buildProperties(for: docType, in: rootPointer)
-            let interfaces = try rootPointer.interfaces.map {
-                try self.interfaceSchemaRef(for: $0.className)
+            let interfaces: [JsonSchemaObjectRef] = try rootPointer.interfaces.map {
+                let refId = try self.interfaceSchemaRef(for: $0.className, in: rootPointer)
+                return JsonSchemaObjectRef(ref: refId)
             }
             let examples = try (docType as? DocumentableObject.Type).map {
                 try $0.jsonExamples()
@@ -450,14 +481,21 @@ public class JsonDocumentBuilder {
         }
     }
     
-    fileprivate func interfaceSchemaRef(for className: String) throws -> JsonSchemaReferenceId {
+    fileprivate func interfaceSchemaRef(for className: String, in objPointer: KlassPointer) throws -> JsonSchemaReferenceId? {
         guard let interface = interface(for: className) else {
             throw DocumentableError.invalidMapping("Could not find the pointer for the interface mapping for \(className).")
         }
         let isRoot = self.objects.contains(where: {
             $0.baseUrl == interface.baseUrl && $0.className == interface.className })
         let baseUrl = (interface.baseUrl == self.baseUrl) ? nil : interface.baseUrl
-        return JsonSchemaReferenceId(interface.modelName, isExternal: isRoot, baseURL: baseUrl)
+        if objPointer.mainParent == interface, !objPointer.isRoot, baseUrl == nil, isRoot {
+            // If this object is a definition within its parent interface schema,
+            // then the ref is to the parent and the documentation should use "#"
+            return nil
+        }
+        else {
+            return JsonSchemaReferenceId(interface.modelName, isExternal: isRoot, baseURL: baseUrl)
+        }
     }
     
     fileprivate func interface(for className: String) -> KlassPointer? {
@@ -491,10 +529,25 @@ public class JsonDocumentBuilder {
     
     fileprivate func buildProperties(for dType: DocumentableBase.Type, in objPointer: KlassPointer) throws
         -> (properties: [String : JsonSchemaProperty], required: [String]) {
+            
+            let parentDocType = objPointer.mainParent?.klass.documentableType() as? DocumentableBase.Type
+            let parentKeys = parentDocType?.codingKeys() ?? []
+            
             let codingKeys = dType.codingKeys()
             let required = codingKeys.compactMap { dType.isRequired($0) ? $0.stringValue : nil }
             let properties = try codingKeys.reduce(into: [String : JsonSchemaProperty]()) { (hashtable, key) in
                 let prop = try dType.documentProperty(for: key)
+                
+                // If there is a matching key on the parent
+                if prop.constValue == nil, prop.defaultValue == nil,
+                   let parentKey = parentKeys.first(where: { $0.stringValue == key.stringValue }),
+                   let parentProp = try parentDocType?.documentProperty(for: parentKey),
+                   prop.propertyType == parentProp.propertyType
+                {
+                    
+                    return
+                }
+                
                 hashtable[key.stringValue] = try self.buildSchemaProperty(for: prop, in: objPointer)
             }
             return (properties, required)
@@ -503,7 +556,7 @@ public class JsonDocumentBuilder {
     fileprivate func buildSchemaProperty(for prop: DocumentProperty, in objPointer: KlassPointer) throws -> JsonSchemaProperty {
         switch prop.propertyType {
         case .any:
-            return .primitive(.any)
+            return .primitive(JsonSchemaPrimitive(description: prop.propertyDescription))
 
         case .format(let format):
             return .primitive(JsonSchemaPrimitive(format: format, description: prop.propertyDescription))
@@ -526,15 +579,15 @@ public class JsonDocumentBuilder {
             return .dictionary(JsonSchemaTypedDictionary(items: .reference(JsonSchemaObjectRef(ref: schemaRef)), description: prop.propertyDescription))
 
         case .interface(let className):
-            let schemaRef = try interfaceSchemaRef(for: className)
+            let schemaRef = try interfaceSchemaRef(for: className, in: objPointer)
             return .reference(JsonSchemaObjectRef(ref: schemaRef, description: prop.propertyDescription))
 
         case .interfaceArray(let className):
-            let schemaRef = try interfaceSchemaRef(for: className)
+            let schemaRef = try interfaceSchemaRef(for: className, in: objPointer)
             return .array(JsonSchemaArray(items: .reference(JsonSchemaObjectRef(ref: schemaRef)), description: prop.propertyDescription))
 
         case .interfaceDictionary(let className):
-            let schemaRef = try interfaceSchemaRef(for: className)
+            let schemaRef = try interfaceSchemaRef(for: className, in: objPointer)
             return .array(JsonSchemaArray(items: .reference(JsonSchemaObjectRef(ref: schemaRef)), description: prop.propertyDescription))
 
         case .primitive(let jsonType):
@@ -669,8 +722,9 @@ public class JsonDocumentBuilder {
             else if let docType = klass as? DocumentableObject.Type {
                 let examples = try docType.jsonExamples()
                 let (properties, required) = try builder.buildProperties(for: docType, in: self)
-                let interfaces = try self.interfaces.map {
-                    try builder.interfaceSchemaRef(for: $0.className)
+                let interfaces: [JsonSchemaObjectRef] = try self.interfaces.map {
+                    let refId = try builder.interfaceSchemaRef(for: $0.className, in: self)
+                    return JsonSchemaObjectRef(ref: refId)
                 }
                 return .object(JsonSchemaObject(id: ref,
                                                 isOpen: docType.isOpen(),

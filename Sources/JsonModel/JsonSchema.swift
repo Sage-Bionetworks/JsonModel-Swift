@@ -65,7 +65,7 @@ public struct JsonSchema : Codable, Hashable {
                 isArray: Bool,
                 isOpen: Bool,
                 codingKeys: [CodingKey],
-                interfaces: [JsonSchemaReferenceId]?,
+                interfaces: [JsonSchemaObjectRef]?,
                 definitions: [JsonSchemaDefinition],
                 properties: [String : JsonSchemaProperty]?,
                 required: [String]?,
@@ -78,7 +78,8 @@ public struct JsonSchema : Codable, Hashable {
 
         // Build the definitions
         var allDefinitions: [JsonSchemaDefinition] = interfaces?.compactMap {
-            $0.isExternal ? nil : .object(JsonSchemaObject(id: $0, isOpen: true))
+            guard let refId = $0.refId, !refId.isExternal else { return nil }
+            return .object(JsonSchemaObject(id: refId, isOpen: true))
         } ?? []
         allDefinitions.append(contentsOf: definitions)
         let defs = allDefinitions.reduce(into: [String : JsonSchemaDefinition]()) {
@@ -294,11 +295,15 @@ public struct JsonSchemaObjectRef : Codable, Hashable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
         case ref = "$ref", description
     }
-    public let ref: JsonSchemaReferenceId
+    public let ref: String
     public let description: String?
     
-    public init(ref: JsonSchemaReferenceId, description: String? = nil) {
-        self.ref = ref
+    public var refId: JsonSchemaReferenceId? {
+        .init(stringValue: ref)
+    }
+    
+    public init(ref: JsonSchemaReferenceId?, description: String? = nil) {
+        self.ref = ref?.classPath ?? "#"
         self.description = description
     }
 }
@@ -356,14 +361,13 @@ public struct JsonSchemaObject : Codable, Hashable {
                 codingKeys: [CodingKey] = [],
                 properties: [String : JsonSchemaProperty]? = nil,
                 required: [String]? = nil,
-                interfaces: [JsonSchemaReferenceId]? = nil,
+                interfaces: [JsonSchemaObjectRef]? = nil,
                 examples: [[String : JsonSerializable]]? = nil) {
         self.id = id
         self.title = id.className
         self.description = description
         self.additionalProperties = isOpen ? nil : false
-        let allOf = interfaces?.map { JsonSchemaObjectRef(ref: $0) }
-        self.allOf = (allOf?.count ?? 0) == 0 ? nil : allOf
+        self.allOf = (interfaces?.count ?? 0) == 0 ? nil : interfaces
         self.orderedProperties = (properties?.count ?? 0) == 0 ? nil : .init(properties!, orderedKeys: codingKeys)
         self.required = required
         self.examples = (examples?.count ?? 0) == 0 ? nil : examples!.map {
@@ -593,17 +597,33 @@ public struct JsonSchemaReferenceId : Codable, Hashable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let stringValue = try container.decode(String.self)
-
-        if let idx = stringValue.lastIndex(of: "#") {
-            self.className = String(stringValue[stringValue.index(after: idx)...])
-        }
-        else if stringValue.lowercased().hasSuffix(".json"), stringValue.count > 5, let url = URL(string: stringValue) {
-            self.className = url.deletingPathExtension().lastPathComponent
-        }
+        guard let className = Self.parseClassName(stringValue: stringValue)
         else {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "'\(stringValue)' is not a valid string. JsonSchemaReferenceId must either begin with '#' or end with '.json'")
         }
+        self.className = className
         self.classPath = stringValue
+    }
+    
+    public init?(stringValue: String) {
+        guard let className = Self.parseClassName(stringValue: stringValue)
+        else {
+            return nil
+        }
+        self.className = className
+        self.classPath = stringValue
+    }
+    
+    private static func parseClassName(stringValue: String) -> String? {
+        if let idx = stringValue.lastIndex(of: "#") {
+            return String(stringValue[stringValue.index(after: idx)...])
+        }
+        else if stringValue.lowercased().hasSuffix(".json"), stringValue.count > 5, let url = URL(string: stringValue) {
+            return url.deletingPathExtension().lastPathComponent
+        }
+        else {
+            return nil
+        }
     }
     
     public func encode(to encoder: Encoder) throws {

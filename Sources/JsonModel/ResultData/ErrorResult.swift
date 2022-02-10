@@ -49,7 +49,7 @@ public protocol ErrorResult : ResultData {
 /// `ErrorResultObject` is a result that holds information about an error.
 public struct ErrorResultObject : SerializableResultData, ErrorResult, Equatable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case identifier, serializableType="type", startDate, endDate, errorDescription, errorDomain, errorCode
+        case serializableType="type", identifier, startDate, endDate, errorDescription, errorDomain, errorCode
     }
     public private(set) var serializableType: SerializableResultType = .error
     
@@ -117,10 +117,15 @@ extension ErrorResultObject : DocumentableStruct {
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
-        case .errorDomain, .errorDescription:
-            return .init(propertyType: .primitive(.string))
+        case .errorDomain:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The error domain.")
+        case .errorDescription:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The description of the error.")
         case .errorCode:
-            return .init(propertyType: .primitive(.integer))
+            return .init(propertyType: .primitive(.integer), propertyDescription:
+                            "The error code.")
         }
     }
     

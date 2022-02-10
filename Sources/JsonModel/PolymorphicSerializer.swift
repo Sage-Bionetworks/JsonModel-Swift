@@ -136,7 +136,7 @@ open class AbstractPolymorphicSerializer {
     public enum TypeKeys: String, Codable, OpenOrderedCodingKey {
         case type
         public var sortOrderIndex: Int? { 0 }
-        public var relativeIndex: Int { 1 }
+        public var relativeIndex: Int { 0 }
     }
     
     public init() {

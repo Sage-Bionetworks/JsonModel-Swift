@@ -91,8 +91,8 @@ extension SerializableResultType : DocumentableStringLiteral {
 public final class ResultDataSerializer : IdentifiableInterfaceSerializer, PolymorphicSerializer {
     public var documentDescription: String? {
         """
-        `JsonResultData` is the base implementation for `ResultData` that is serialized using
-        the `Codable` protocol and the polymorphic serialization defined by this framework.
+        The interface for any `ResultData` that is serialized using the `Codable` protocol and the
+        polymorphic serialization defined by this framework.
         """.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "  ", with: "\n")
     }
     
@@ -139,11 +139,20 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
     
     private enum InterfaceKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
         case startDate, endDate
-        var relativeIndex: Int { 3 }
+        var relativeIndex: Int { 2 }
     }
     
     public override class func codingKeys() -> [CodingKey] {
-        return InterfaceKeys.allCases
+        var keys = super.codingKeys()
+        keys.append(contentsOf: InterfaceKeys.allCases)
+        return keys
+    }
+    
+    public override class func isRequired(_ codingKey: CodingKey) -> Bool {
+        guard let key = codingKey as? InterfaceKeys else {
+            return super.isRequired(codingKey)
+        }
+        return key == .startDate
     }
     
     public override class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {

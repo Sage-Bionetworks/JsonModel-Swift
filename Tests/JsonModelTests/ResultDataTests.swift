@@ -55,10 +55,128 @@ class ResultDataTests: XCTestCase {
             let schemas = try doc.buildSchemas()
 
             XCTAssertEqual(schemas.count, 2)
+            
+            guard let resultDataSchema = schemas.first(where: { $0.id.className == "ResultData" })
+            else {
+                XCTFail("Failed to build the expected JSON schema for `ResultData`.")
+                return
+            }
+            
+//            guard let answerTypeSchema = schemas.first(where: { $0.id.className == "AnswerType" })
+//            else {
+//                XCTFail("Failed to build the expected JSON schema for `AnswerType`.")
+//                return
+//            }
+            
+            let resultDataJson = try factory.createJSONEncoder().encode(resultDataSchema)
+            let resultDataJsonString = String(data: resultDataJson, encoding: .utf8)!
+            print(resultDataJsonString)
+            
+            if let properties = resultDataSchema.root.orderedProperties?.orderedDictionary {
+                XCTAssertEqual(0, properties.keys.first(where: { $0.stringValue == "type" })?.sortOrderIndex)
+                XCTAssertEqual(1000, properties.keys.first(where: { $0.stringValue == "identifier" })?.sortOrderIndex)
+                XCTAssertEqual(2000, properties.keys.first(where: { $0.stringValue == "startDate" })?.sortOrderIndex)
+                XCTAssertEqual(2001, properties.keys.first(where: { $0.stringValue == "endDate" })?.sortOrderIndex)
+            }
+            else {
+                XCTFail("Failed to build the expected properties for `ResultData`.")
+            }
+            XCTAssertEqual(["type","identifier","startDate"], resultDataSchema.root.required)
+            XCTAssertNil(resultDataSchema.root.allOf)
+            
+            let sharedKeys = ["identifier", "startDate", "endDate"]
+            let expectedSerializableType = "SerializableResultType"
+            
+            let expectedClassAndType = [
+                ("AnswerResultObject","answer"),
+                ("CollectionResultObject","collection"),
+                ("FileResultObject","file"),
+                ("ErrorResultObject","error"),
+            ]
+            expectedClassAndType.forEach {
+                guard let def = checkDefinitions(on: resultDataSchema,
+                                                 className: $0.0,
+                                                 expectedType: $0.1,
+                                                 sharedKeys: sharedKeys,
+                                                 expectedSerializableType: expectedSerializableType)
+                else {
+                    XCTFail("Unexpected nil for \($0.0)")
+                    return
+                }
+                // Check that the circle reference to the parent is set properly.
+                if def.className == "CollectionResultObject" {
+                   if let childrenProp = def.properties?["inputResults"],
+                       case .array(let arrayProp) = childrenProp,
+                       case .reference(let objRef) = arrayProp.items {
+                        XCTAssertEqual("#", objRef.ref)
+                    }
+                    else {
+                        XCTFail("Failed to find the children property: \(String(describing: def.properties)) ")
+                    }
+                }
+            }
         }
         catch let err {
             XCTFail("Failed to build the JsonSchema: \(err)")
         }
+    }
+    
+    @discardableResult
+    func checkDefinitions(on rootSchema: JsonSchema,
+                          className: String,
+                          expectedType: String,
+                          sharedKeys: [String],
+                          expectedSerializableType: String) -> JsonSchemaObject? {
+        guard let definition = rootSchema.definitions?[className],
+               case .object(let schema) = definition
+        else {
+            XCTFail("Failed to add `\(className)` to the `\(rootSchema.id.className)` definitions.")
+            return nil
+        }
+                
+        XCTAssertEqual(.init(className), schema.id)
+        // Each class that implements the parent interface should have a reference to "#" as something it conforms to.
+        XCTAssertEqual(["#"], schema.allOf?.map { $0.ref })
+        
+        if let defProperties = schema.orderedProperties?.orderedDictionary {
+
+            // identifier, startDate, endDate should use the property definitions on the interface
+            sharedKeys.forEach { sharedKey in
+                XCTAssertNil(defProperties.first(where: { $0.key.stringValue == sharedKey }), "\(className) has \(sharedKey)")
+            }
+            
+            if let serializationType = defProperties.first(where: { $0.key.stringValue == "type" }) {
+                XCTAssertEqual(0, serializationType.key.sortOrderIndex)
+                XCTAssertEqual(
+                    .const(.init(const: expectedType, ref: .init(expectedSerializableType), description: nil)),
+                    serializationType.value,
+                    "\(className) does not match expected type."
+                )
+            }
+            else {
+                XCTFail("\(className) does not have required 'type' key.")
+            }
+            
+            defProperties.values.forEach { prop in
+                switch prop {
+                case .primitive(let defProp):
+                    XCTAssertNotNil(defProp.description, "\(className) property \(prop) has a nil description")
+                case .array(let defProp):
+                    XCTAssertNotNil(defProp.description, "\(className) property \(prop) has a nil description")
+                case .dictionary(let defProp):
+                    XCTAssertNotNil(defProp.description, "\(className) property \(prop) has a nil description")
+                case .reference(let defProp):
+                    XCTAssertNotNil(defProp.description, "\(className) property \(prop) has a nil description")
+                default:
+                    break
+                }
+            }
+        }
+        else {
+            XCTFail("Failed to build the expected properties for `ResultData`.")
+        }
+        
+        return schema
     }
     
     func testCollectionResultObject_Codable() {

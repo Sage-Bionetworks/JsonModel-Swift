@@ -79,7 +79,7 @@ public extension AnswerResult {
 
 public final class AnswerResultObject : SerializableResultData, AnswerResult {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case identifier, serializableType = "type", startDate, endDate, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData
+        case serializableType = "type", identifier, startDate, endDate, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData
     }
     public private(set) var serializableType: SerializableResultType = .answer
     

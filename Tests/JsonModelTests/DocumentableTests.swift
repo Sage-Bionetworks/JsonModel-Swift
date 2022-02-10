@@ -171,7 +171,7 @@ final class DocumentableTests: XCTestCase {
         if let def = definitions[key], case .object(let obj) = def {
             XCTAssertEqual(key, obj.className)
             XCTAssertEqual(key, obj.title)
-            XCTAssertEqual(obj.allOf?.map { $0.ref }, [JsonSchemaReferenceId("Sample", isExternal: true)])
+            XCTAssertEqual(obj.allOf?.map { $0.ref }, ["#"])
             XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
             XCTAssertFalse(obj.isOpen)
             let expectedExamples = [
@@ -195,7 +195,7 @@ final class DocumentableTests: XCTestCase {
         if let def = definitions[key], case .object(let obj) = def {
             XCTAssertEqual(key, obj.className)
             XCTAssertEqual(key, obj.title)
-            XCTAssertEqual(obj.allOf?.map { $0.ref.className }, ["Sample"])
+            XCTAssertEqual(obj.allOf?.map { $0.ref }, ["#"])
             XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
             XCTAssertFalse(obj.isOpen)
             
