@@ -171,8 +171,8 @@ open class SerializationFactory : FactoryRegistration {
     }
     
     /// A list of root objects included in this factory that are *not* included as definition on an existing `DocumentableInterface`.
-    /// This are the objects that should be pulled out of a root interface (if referenced by any) or json schemas for object serialization
-    /// that does not adher to any polymorphic interface types.
+    /// These are the objects that should be pulled out of a root interface (if referenced by any) or json schemas for object serialization
+    /// that does not adhere to any polymorphic interface types.
     public private(set) var documentableRootObjects: [DocumentableRoot] = []
     
     /// Return the baseUrl for building documentation for the given `Documentable` object, or `nil`

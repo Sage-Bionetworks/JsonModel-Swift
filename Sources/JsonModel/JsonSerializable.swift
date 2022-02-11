@@ -34,7 +34,7 @@ import Foundation
 
 /// Casting for any a JSON type object. Elements may be any one of the JSON types
 /// (NSNull, NSNumber, String, Array<JsonSerializable>, Dictionary<String : JsonSerializable>).
-/// This is a subset of ``JsonValue`` so all these objects comform to the `Encodable` protocol.
+/// This is a subset of ``JsonValue`` so all these objects conform to the `Encodable` protocol.
 ///
 /// - note: `NSArray` and `NSDictionary` do not implement this protocol b/c they cannot be extended
 /// using a generic `where` clause. 
