@@ -310,6 +310,14 @@ public enum DocumentableError : Error {
     }
 }
 
+fileprivate struct RootObjectHolder : DocumentableRoot {
+    let jsonSchema: URL
+    let rootDocumentType: DocumentableBase.Type
+    
+    var documentDescription: String? { nil }
+    var isDocumentTypeArray: Bool { false }
+}
+
 public class JsonDocumentBuilder {
     public let baseUrl: URL
     public let factory: SerializationFactory?
@@ -323,14 +331,27 @@ public class JsonDocumentBuilder {
         commonInit(factory.documentableInterfaces(), factory.documentableRootObjects)
     }
     
-    @available(*, unavailable, message: "Base URL and root documents are defined on the factory.")
+    @available(*, deprecated, message: "Base URL and root documents are defined on the factory.")
     public init(baseUrl: URL, factory: SerializationFactory, rootDocuments: [DocumentableObject.Type] = []) {
-        fatalError("Not available")
+        self.baseUrl = baseUrl
+        self.factory = factory
+        var roots = factory.documentableRootObjects
+        roots.append(contentsOf: rootDocuments.map {
+            RootObjectHolder(jsonSchema: .init(string: "\(factory.modelName(for: "\($0)")).json", relativeTo: baseUrl)!,
+                             rootDocumentType: $0)
+        })
+        commonInit(factory.documentableInterfaces(), roots)
     }
     
-    @available(*, unavailable, message: "Base URL and root documents are defined on the factory.")
+    @available(*, deprecated, message: "Base URL and root documents are defined on the factory.")
     init(baseUrl: URL, interfaces: [DocumentableInterface], rootDocuments: [DocumentableObject.Type] = []) {
-        fatalError("Not available")
+        self.baseUrl = baseUrl
+        self.factory = nil
+        let roots = rootDocuments.map {
+            RootObjectHolder(jsonSchema: .init(string: "\($0).json", relativeTo: baseUrl)!,
+                             rootDocumentType: $0)
+        }
+        commonInit(interfaces, roots)
     }
     
     @available(*, unavailable, message: "Root replaced with a root document that is optional.")
