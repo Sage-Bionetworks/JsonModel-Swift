@@ -144,6 +144,15 @@ open class BaseArchiveMetadata: ArchiveMetadata {
         self.files = try container.decode([FileInfo].self, forKey: .files)
     }
     
+    public func encode(to encoder: Encoder) throws {
+        var container = try encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.deviceInfo, forKey: .deviceInfo)
+        try container.encode(self.deviceTypeIdentifier, forKey: .deviceTypeIdentifier)
+        try container.encode(self.appName, forKey: .appName)
+        try container.encode(self.appVersion, forKey: .appVersion)
+        try container.encode(self.files, forKey: .files)
+    }
+    
     // DocumentableObject implementation
     
     open var jsonSchema: URL {
