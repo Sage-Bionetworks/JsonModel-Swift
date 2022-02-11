@@ -111,7 +111,7 @@ public struct FileResultObject : SerializableResultData, FileResult, Equatable {
 extension FileResultObject : FileArchivable {
     
     /// Build the archiveable or uploadable data for this result.
-    public func buildArchivableData(at stepPath: String?) throws -> (fileInfo: FileInfo, data: Data)? {
+    public func buildArchivableFileData(at stepPath: String?) throws -> (fileInfo: FileInfo, data: Data)? {
         let filename = self.relativePath
         guard let url = self.url else { return nil }
         let manifest = FileInfo(filename: filename, timestamp: self.startDate, contentType: self.contentType, identifier: self.identifier, stepPath: stepPath, jsonSchema: self.jsonSchema)
