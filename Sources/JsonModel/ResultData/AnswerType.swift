@@ -726,7 +726,8 @@ extension AnswerTypeNumber : AnswerTypeDocumentable, DocumentableStruct {
         case .serializableType:
             return .init(constValue: defaultType)
         case .significantDigits:
-            return .init(propertyType: .primitive(.number))
+            return .init(propertyType: .primitive(.number), propertyDescription:
+                            "The number of significant digits to use in encoding the answer.")
         }
     }
 
@@ -755,9 +756,11 @@ extension AnswerTypeArray : AnswerTypeDocumentable, DocumentableStruct {
         case .serializableType:
             return .init(constValue: defaultType)
         case .baseType:
-            return .init(propertyType: .reference(JsonType.documentableType()))
+            return .init(propertyType: .reference(JsonType.documentableType()), propertyDescription:
+                            "The base type of the array.")
         case .sequenceSeparator:
-            return .init(propertyType: .primitive(.string))
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The sequence separator to use for arrays that should be encoded as strings.")
         }
     }
 
@@ -790,7 +793,8 @@ extension AnswerTypeDateTime : AnswerTypeDocumentable, DocumentableStruct {
         case .serializableType:
             return .init(constValue: defaultType)
         case ._codingFormat:
-            return .init(propertyType: .primitive(.string), propertyDescription: "The iso8601 format for the date-time components used by this answer type.")
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The iso8601 format for the date-time components used by this answer type.")
         }
     }
 
@@ -823,7 +827,8 @@ extension AnswerTypeMeasurement : AnswerTypeDocumentable, DocumentableStruct {
         case .serializableType:
             return .init(constValue: defaultType)
         case .unit:
-            return .init(propertyType: .primitive(.string), propertyDescription: "The unit of measurement into which the value is converted for storage.")
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The unit of measurement into which the value is converted for storage.")
         }
     }
 

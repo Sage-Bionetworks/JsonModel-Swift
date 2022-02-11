@@ -62,12 +62,6 @@ class ResultDataTests: XCTestCase {
                 return
             }
             
-//            guard let answerTypeSchema = schemas.first(where: { $0.id.className == "AnswerType" })
-//            else {
-//                XCTFail("Failed to build the expected JSON schema for `AnswerType`.")
-//                return
-//            }
-            
             let resultDataJson = try factory.createJSONEncoder().encode(resultDataSchema)
             let resultDataJsonString = String(data: resultDataJson, encoding: .utf8)!
             print(resultDataJsonString)
@@ -115,6 +109,35 @@ class ResultDataTests: XCTestCase {
                     }
                 }
             }
+            
+            guard let answerTypeSchema = schemas.first(where: { $0.id.className == "AnswerType" })
+            else {
+                XCTFail("Failed to build the expected JSON schema for `AnswerType`.")
+                return
+            }
+            
+            let expectedAnswerTypeClassAndType = [
+                ("AnswerTypeMeasurement","measurement"),
+                ("AnswerTypeDateTime","date-time"),
+                ("AnswerTypeArray","array"),
+                ("AnswerTypeBoolean","boolean"),
+                ("AnswerTypeInteger","integer"),
+                ("AnswerTypeNumber","number"),
+                ("AnswerTypeObject","object"),
+                ("AnswerTypeString","string"),
+            ]
+            expectedAnswerTypeClassAndType.forEach {
+                guard let _ = checkDefinitions(on: answerTypeSchema,
+                                               className: $0.0,
+                                               expectedType: $0.1,
+                                               sharedKeys: [],
+                                               expectedSerializableType: "AnswerTypeType",
+                                               expectedSerializableTypeSortIndex: nil)
+                else {
+                    XCTFail("Unexpected nil for \($0.0)")
+                    return
+                }
+            }
         }
         catch let err {
             XCTFail("Failed to build the JsonSchema: \(err)")
@@ -126,7 +149,8 @@ class ResultDataTests: XCTestCase {
                           className: String,
                           expectedType: String,
                           sharedKeys: [String],
-                          expectedSerializableType: String) -> JsonSchemaObject? {
+                          expectedSerializableType: String,
+                          expectedSerializableTypeSortIndex: Int? = 0) -> JsonSchemaObject? {
         guard let definition = rootSchema.definitions?[className],
                case .object(let schema) = definition
         else {
@@ -146,7 +170,9 @@ class ResultDataTests: XCTestCase {
             }
             
             if let serializationType = defProperties.first(where: { $0.key.stringValue == "type" }) {
-                XCTAssertEqual(0, serializationType.key.sortOrderIndex)
+                if let expectedIndex = expectedSerializableTypeSortIndex {
+                    XCTAssertEqual(expectedIndex, serializationType.key.sortOrderIndex)
+                }
                 XCTAssertEqual(
                     .const(.init(const: expectedType, ref: .init(expectedSerializableType), description: nil)),
                     serializationType.value,
