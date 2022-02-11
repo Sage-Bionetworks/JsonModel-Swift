@@ -1,7 +1,7 @@
 //
 //  JsonSerializable.swift
 //
-//  Copyright © 2019-2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2019-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -34,10 +34,12 @@ import Foundation
 
 /// Casting for any a JSON type object. Elements may be any one of the JSON types
 /// (NSNull, NSNumber, String, Array<JsonSerializable>, Dictionary<String : JsonSerializable>).
+/// This is a subset of ``JsonValue`` so all these objects conform to the `Encodable` protocol.
 ///
 /// - note: `NSArray` and `NSDictionary` do not implement this protocol b/c they cannot be extended
 /// using a generic `where` clause. 
 public protocol JsonSerializable {
+    func encode(to encoder: Encoder) throws
 }
 
 extension NSNull : JsonSerializable {

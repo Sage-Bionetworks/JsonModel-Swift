@@ -2,7 +2,7 @@
 //  AnswerResult.swift
 //  
 //
-//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -78,8 +78,8 @@ public extension AnswerResult {
 }
 
 public final class AnswerResultObject : SerializableResultData, AnswerResult {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType = "type", identifier, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData, startDate, endDate
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case serializableType = "type", identifier, startDate, endDate, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData
     }
     public private(set) var serializableType: SerializableResultType = .answer
     
@@ -190,13 +190,17 @@ extension AnswerResultObject : DocumentableStruct {
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
         case .jsonAnswerType:
-            return .init(propertyType: .interface("\(AnswerType.self)"))
+            return .init(propertyType: .interface("\(AnswerType.self)"), propertyDescription:
+                            "Optional property for defining additional information about the answer expected for this result.")
         case .jsonValue:
-            return .init(propertyType: .any)
+            return .init(propertyType: .any, propertyDescription:
+                            "The answer held by this result.")
         case .questionText:
-            return .init(propertyType: .primitive(.string))
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The question text that was displayed for this answer result.")
         case .questionData:
-            return .init(propertyType: .any)
+            return .init(propertyType: .any, propertyDescription:
+                            "Additional data that researchers may wish to include with an answer result.")
         }
     }
 

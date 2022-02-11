@@ -2,7 +2,7 @@
 //  CollectionResultObject.swift
 //  
 //
-//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -93,7 +93,7 @@ public extension CollectionResult {
 
 /// `CollectionResultObject` is used to include multiple results associated with a single action.
 public final class CollectionResultObject : SerializableResultData, CollectionResult {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType="type", identifier, startDate, endDate, children="inputResults"
     }
     public private(set) var serializableType: SerializableResultType = .collection
@@ -171,7 +171,8 @@ extension CollectionResultObject : DocumentableStruct {
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
         case .children:
-            return .init(propertyType: .interfaceArray("\(ResultData.self)"))
+            return .init(propertyType: .interfaceArray("\(ResultData.self)"), propertyDescription:
+                            "The list of input results associated with this step or recorder.")
         }
     }
     

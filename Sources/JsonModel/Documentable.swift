@@ -2,7 +2,7 @@
 //  Documentable.swift
 //  
 //
-//  Copyright © 2017-2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -32,6 +32,9 @@
 //
 
 import Foundation
+
+/// Hardcoded URL to the repo that hosts the json schemas for the mobile client shared libraries.
+public let kSageJsonSchemaBaseURL = URL(string: "https://sage-bionetworks.github.io/mobile-client-json/schemas/v1/")!
 
 public protocol TypeRepresentable : Hashable, RawRepresentable, ExpressibleByStringLiteral {
     var stringValue: String { get }
@@ -71,6 +74,10 @@ extension StringEnumSet {
     public static func allValues() -> [String] {
         return self.allCases.map { $0.rawValue }
     }
+    
+    public var indexPosition: Int {
+        type(of: self).allValues().firstIndex(of: self.stringValue)!
+    }
 }
 
 public protocol DocumentableStringLiteral : DocumentableString {
@@ -82,6 +89,21 @@ public protocol DocumentableStringOptionSet : Documentable, Codable {
     
     /// An array of encodable objects to use as the set of examples for decoding this object.
     static func examples() -> [String]
+}
+
+public protocol DocumentableRoot {
+    
+    /// The schema for json serialization strategy that this document describes.
+    var jsonSchema: URL { get }
+    
+    /// The description to use in documentation.
+    var documentDescription: String? { get }
+
+    /// Does the root document define an array of `rootType` objects or is this the root object itself?
+    var isDocumentTypeArray: Bool { get }
+    
+    /// The root object that includes the properties and definitions for object this document is describing.
+    var rootDocumentType: DocumentableBase.Type { get }
 }
 
 public protocol DocumentableBase : Documentable {
@@ -112,28 +134,71 @@ public protocol DocumentableStruct : DocumentableObject, Codable {
 }
 
 extension DocumentableStruct {
+    // A struct is always final.
     public static func isOpen() -> Bool {
         return false
     }
     
+    // The examples can be created by encoding self as a dictionary.
     public static func jsonExamples() throws -> [[String : JsonSerializable]] {
         return try examples().map { try $0.jsonEncodedDictionary() }
     }
 }
 
-public protocol DocumentableInterface : DocumentableBase {
+/// A documentable root object is an object that has a *required* initializer with no parameters
+/// that can be used for examples.
+public protocol DocumentableRootObject : DocumentableObject, DocumentableRoot {
+    init()
+}
+
+extension DocumentableRootObject {
+    // A documentable root describes an object, not an array.
+    public var isDocumentTypeArray: Bool { false }
+    
+    // A documentable root has a root type that is always itself.
+    public var rootDocumentType: DocumentableBase.Type { type(of: self) }
+}
+
+public protocol DocumentableInterface : DocumentableBase, DocumentableRoot {
     
     /// The name of the interface that is described by this documentable.
-    var interfaceName : String { get }
+    var interfaceName: String { get }
     
-    /// The description to use in documentation.
-    var documentDescription : String? { get }
+    /// The base url for this interface.
+    var baseURL: URL { get }
     
     /// A list of `DocumentableObject` classes that implement this interface.
     func documentableExamples() -> [DocumentableObject]
     
     /// Is the interface sealed or can it be extended?
     func isSealed() -> Bool
+}
+
+extension DocumentableInterface {
+    // An interface describes an object, not an array.
+    public var isDocumentTypeArray: Bool { false }
+
+    // The root document type is itself.
+    public var rootDocumentType: DocumentableBase.Type { type(of: self) }
+    
+    // For an interface, the json schema uses the interface name and base url.
+    public var jsonSchema: URL {
+        URL(string: "\(self.interfaceName).json", relativeTo: self.baseURL)!
+    }
+}
+
+public struct DocumentableRootArray : DocumentableRoot {
+    public let rootDocumentType: DocumentableBase.Type
+    public let jsonSchema: URL
+    public let documentDescription: String?
+    
+    public init(rootDocumentType: DocumentableBase.Type, jsonSchema: URL, documentDescription: String? = nil) {
+        self.jsonSchema = jsonSchema
+        self.rootDocumentType = rootDocumentType
+        self.documentDescription = documentDescription
+    }
+    
+    public var isDocumentTypeArray: Bool { true }
 }
 
 /// A light-weight wrapper
@@ -144,7 +209,7 @@ public struct DocumentProperty {
     let defaultValue: JsonElement?
     let propertyDescription: String?
     
-    public enum PropertyType {
+    public enum PropertyType : Equatable {
         case any
         case format(JsonSchemaFormat)
         case primitive(JsonType)
@@ -156,6 +221,36 @@ public struct DocumentProperty {
         case interface(String)
         case interfaceArray(String)
         case interfaceDictionary(String)
+        
+        public static func == (lhs: DocumentProperty.PropertyType, rhs: DocumentProperty.PropertyType) -> Bool {
+            if case .any = lhs, case .any = rhs {
+                return true
+            }
+            else if case .format(let lhsValue) = lhs, case .format(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .primitive(let lhsValue) = lhs, case .primitive(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .primitiveArray(let lhsValue) = lhs, case .primitiveArray(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .primitiveDictionary(let lhsValue) = lhs, case .primitiveDictionary(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .interface(let lhsValue) = lhs, case .interface(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .interfaceArray(let lhsValue) = lhs, case .interfaceArray(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else if case .interfaceDictionary(let lhsValue) = lhs, case .interfaceDictionary(let rhsValue) = rhs {
+                return lhsValue == rhsValue
+            }
+            else {
+                return false
+            }
+        }
     }
     
     public init(propertyType: PropertyType, propertyDescription: String? = nil) {
@@ -179,7 +274,6 @@ public struct DocumentProperty {
         self.propertyDescription = propertyDescription
     }
 }
-
 
 /// Errors that can be thrown while building documentation.
 public enum DocumentableError : Error {
@@ -223,16 +317,20 @@ public class JsonDocumentBuilder {
     private(set) var interfaces: [KlassPointer] = []
     private(set) var objects: [KlassPointer] = []
     
-    public init(baseUrl: URL, factory: SerializationFactory, rootDocuments: [DocumentableObject.Type] = []) {
-        self.baseUrl = baseUrl
+    public init(factory: SerializationFactory) {
+        self.baseUrl = factory.jsonSchemaBaseURL
         self.factory = factory
-        commonInit(factory.documentableInterfaces(), rootDocuments)
+        commonInit(factory.documentableInterfaces(), factory.documentableRootObjects)
     }
     
+    @available(*, unavailable, message: "Base URL and root documents are defined on the factory.")
+    public init(baseUrl: URL, factory: SerializationFactory, rootDocuments: [DocumentableObject.Type] = []) {
+        fatalError("Not available")
+    }
+    
+    @available(*, unavailable, message: "Base URL and root documents are defined on the factory.")
     init(baseUrl: URL, interfaces: [DocumentableInterface], rootDocuments: [DocumentableObject.Type] = []) {
-        self.baseUrl = baseUrl
-        self.factory = nil
-        commonInit(interfaces, rootDocuments)
+        fatalError("Not available")
     }
     
     @available(*, unavailable, message: "Root replaced with a root document that is optional.")
@@ -245,23 +343,22 @@ public class JsonDocumentBuilder {
         fatalError("Not available")
     }
     
-    private func commonInit(_ interfaces: [DocumentableInterface], _ rootDocuments: [DocumentableObject.Type]) {
+    private func commonInit(_ interfaces: [DocumentableInterface], _ rootDocuments: [DocumentableRoot]) {
         
         // First create all the top-level pointers
-        let rootDocPointers: [(DocumentableObject.Type, KlassPointer)] = rootDocuments.map { docType in
-            let baseUrl = factory?.baseUrl(for: docType) ?? self.baseUrl
-            let pointer = KlassPointer(klass: docType, baseUrl: baseUrl, className: nil)
+        let rootDocPointers: [(DocumentableBase.Type, KlassPointer)] = rootDocuments.map { root in
+            let baseUrl = factory?.baseUrl(for: root.rootDocumentType) ?? self.baseUrl
+            let pointer = KlassPointer(root: root, baseUrl: baseUrl)
             pointer.modelName = factory?.modelName(for: pointer.className) ?? pointer.className
             self.objects.append(pointer)
-            return (docType, pointer)
+            return (root.rootDocumentType, pointer)
         }
         let interfacePointers = interfaces.map { (serializer) -> (DocumentableInterface, KlassPointer) in
             let docType = type(of: serializer)
             let baseUrl = factory?.baseUrl(for: docType) ?? self.baseUrl
-            let pointer = KlassPointer(klass: docType, baseUrl: baseUrl, className: serializer.interfaceName)
+            let pointer = KlassPointer(root: serializer, baseUrl: baseUrl)
             pointer.modelName = factory?.modelName(for: pointer.className) ?? pointer.className
             pointer.isSealed = serializer.isSealed()
-            pointer.documentDescription = serializer.documentDescription
             self.objects.append(pointer)
             self.interfaces.append(pointer)
             return (serializer, pointer)
@@ -278,7 +375,7 @@ public class JsonDocumentBuilder {
         rootDocPointers.forEach { root in
             recursiveAddProps(docType: root.0, pointer: root.1)
         }
-        
+
         // Finally update the roots.
         recursiveUpdateRoots()
     }
@@ -363,28 +460,42 @@ public class JsonDocumentBuilder {
             }
             let definitions = try rootPointer.allDefinitions(using: self)
             let (properties, required) = try self.buildProperties(for: docType, in: rootPointer)
-            let interfaces = try rootPointer.interfaces.map {
-                try self.interfaceSchemaRef(for: $0.className)
+            let interfaces: [JsonSchemaObjectRef] = try rootPointer.interfaces.map {
+                let refId = try self.interfaceSchemaRef(for: $0.className, in: rootPointer)
+                return JsonSchemaObjectRef(ref: refId)
             }
+            let examples = try (docType as? DocumentableObject.Type).map {
+                try $0.jsonExamples()
+            }
+            let isOpen = (docType as? DocumentableObject.Type)?.isOpen() ?? !rootPointer.isSealed
             return JsonSchema(id: URL(string: rootPointer.refId.classPath)!,
                               description: rootPointer.documentDescription ?? "",
-                              isOpen: !rootPointer.isSealed,
+                              isArray: rootPointer.isArray,
+                              isOpen: isOpen,
+                              codingKeys: docType.codingKeys(),
                               interfaces: interfaces.count > 0 ? interfaces : nil,
                               definitions: definitions,
                               properties: properties,
                               required: required,
-                              examples: nil)
+                              examples: examples)
         }
     }
     
-    fileprivate func interfaceSchemaRef(for className: String) throws -> JsonSchemaReferenceId {
+    fileprivate func interfaceSchemaRef(for className: String, in objPointer: KlassPointer) throws -> JsonSchemaReferenceId? {
         guard let interface = interface(for: className) else {
             throw DocumentableError.invalidMapping("Could not find the pointer for the interface mapping for \(className).")
         }
         let isRoot = self.objects.contains(where: {
             $0.baseUrl == interface.baseUrl && $0.className == interface.className })
         let baseUrl = (interface.baseUrl == self.baseUrl) ? nil : interface.baseUrl
-        return JsonSchemaReferenceId(interface.modelName, isExternal: isRoot, baseURL: baseUrl)
+        if objPointer.mainParent == interface, !objPointer.isRoot, baseUrl == nil, isRoot {
+            // If this object is a definition within its parent interface schema,
+            // then the ref is to the parent and the documentation should use "#"
+            return nil
+        }
+        else {
+            return JsonSchemaReferenceId(interface.modelName, isExternal: isRoot, baseURL: baseUrl)
+        }
     }
     
     fileprivate func interface(for className: String) -> KlassPointer? {
@@ -418,10 +529,25 @@ public class JsonDocumentBuilder {
     
     fileprivate func buildProperties(for dType: DocumentableBase.Type, in objPointer: KlassPointer) throws
         -> (properties: [String : JsonSchemaProperty], required: [String]) {
+            
+            let parentDocType = objPointer.mainParent?.klass.documentableType() as? DocumentableBase.Type
+            let parentKeys = parentDocType?.codingKeys() ?? []
+            
             let codingKeys = dType.codingKeys()
             let required = codingKeys.compactMap { dType.isRequired($0) ? $0.stringValue : nil }
             let properties = try codingKeys.reduce(into: [String : JsonSchemaProperty]()) { (hashtable, key) in
                 let prop = try dType.documentProperty(for: key)
+                
+                // If there is a matching key on the parent
+                if prop.constValue == nil, prop.defaultValue == nil,
+                   let parentKey = parentKeys.first(where: { $0.stringValue == key.stringValue }),
+                   let parentProp = try parentDocType?.documentProperty(for: parentKey),
+                   prop.propertyType == parentProp.propertyType
+                {
+                    
+                    return
+                }
+                
                 hashtable[key.stringValue] = try self.buildSchemaProperty(for: prop, in: objPointer)
             }
             return (properties, required)
@@ -430,7 +556,7 @@ public class JsonDocumentBuilder {
     fileprivate func buildSchemaProperty(for prop: DocumentProperty, in objPointer: KlassPointer) throws -> JsonSchemaProperty {
         switch prop.propertyType {
         case .any:
-            return .primitive(.any)
+            return .primitive(JsonSchemaPrimitive(description: prop.propertyDescription))
 
         case .format(let format):
             return .primitive(JsonSchemaPrimitive(format: format, description: prop.propertyDescription))
@@ -453,15 +579,15 @@ public class JsonDocumentBuilder {
             return .dictionary(JsonSchemaTypedDictionary(items: .reference(JsonSchemaObjectRef(ref: schemaRef)), description: prop.propertyDescription))
 
         case .interface(let className):
-            let schemaRef = try interfaceSchemaRef(for: className)
+            let schemaRef = try interfaceSchemaRef(for: className, in: objPointer)
             return .reference(JsonSchemaObjectRef(ref: schemaRef, description: prop.propertyDescription))
 
         case .interfaceArray(let className):
-            let schemaRef = try interfaceSchemaRef(for: className)
+            let schemaRef = try interfaceSchemaRef(for: className, in: objPointer)
             return .array(JsonSchemaArray(items: .reference(JsonSchemaObjectRef(ref: schemaRef)), description: prop.propertyDescription))
 
         case .interfaceDictionary(let className):
-            let schemaRef = try interfaceSchemaRef(for: className)
+            let schemaRef = try interfaceSchemaRef(for: className, in: objPointer)
             return .array(JsonSchemaArray(items: .reference(JsonSchemaObjectRef(ref: schemaRef)), description: prop.propertyDescription))
 
         case .primitive(let jsonType):
@@ -484,6 +610,8 @@ public class JsonDocumentBuilder {
         let klass: Documentable.Type
         let className: String
         let baseUrl: URL
+        let isArray: Bool
+        private let _refId: JsonSchemaReferenceId?
         
         var isRoot: Bool
         var isInterface: Bool
@@ -503,22 +631,38 @@ public class JsonDocumentBuilder {
         
         init(klass: Documentable.Type, baseUrl: URL, parent: KlassPointer) {
             self.klass = klass
-            self.baseUrl = baseUrl
-            self.className = "\(klass)"
-            self.isRoot = (parent.baseUrl != baseUrl)
+            self.isArray = false
             self.parentPointers = [parent]
             self.isInterface = false
             self.mainParent = parent.mainParent ?? parent
+            if let rootKlass = klass as? DocumentableRootObject.Type {
+                let example = rootKlass.init()
+                let refId = JsonSchemaReferenceId(url: example.jsonSchema)
+                self.baseUrl = refId.baseURL ?? baseUrl
+                self.className = refId.className
+                self.isRoot = true
+                self._refId = refId
+            }
+            else {
+                self.baseUrl = baseUrl
+                self.className = "\(klass)"
+                self.isRoot = (parent.baseUrl != baseUrl)
+                self._refId = nil
+            }
         }
         
-        init(klass: Documentable.Type, baseUrl: URL, className: String? = nil) {
-            self.klass = klass
-            self.baseUrl = baseUrl
-            self.className = className ?? "\(klass)"
-            self.isInterface = (className != nil)
-            self.isRoot = true
+        init(root: DocumentableRoot, baseUrl: URL) {
+            self.klass = root.rootDocumentType
+            self.isArray = root.isDocumentTypeArray
             self.parentPointers = []
             self.mainParent = nil
+            let refId = JsonSchemaReferenceId(url: root.jsonSchema)
+            self.baseUrl = refId.baseURL ?? baseUrl
+            self.isRoot = true
+            self.isInterface = root is DocumentableInterface
+            self.className = refId.className
+            self._refId = refId
+            self.documentDescription = root.documentDescription
         }
         
         deinit {
@@ -526,7 +670,7 @@ public class JsonDocumentBuilder {
         }
         
         var refId: JsonSchemaReferenceId {
-            JsonSchemaReferenceId(modelName, isExternal: isRoot, baseURL: isRoot ? baseUrl : nil)
+            _refId ?? JsonSchemaReferenceId(modelName, isExternal: isRoot, baseURL: isRoot ? baseUrl : nil)
         }
         
         fileprivate func updateIsRootIfNeeded() -> Bool {
@@ -578,14 +722,16 @@ public class JsonDocumentBuilder {
             else if let docType = klass as? DocumentableObject.Type {
                 let examples = try docType.jsonExamples()
                 let (properties, required) = try builder.buildProperties(for: docType, in: self)
-                let interfaces = try self.interfaces.map {
-                    try builder.interfaceSchemaRef(for: $0.className)
+                let interfaces: [JsonSchemaObjectRef] = try self.interfaces.map {
+                    let refId = try builder.interfaceSchemaRef(for: $0.className, in: self)
+                    return JsonSchemaObjectRef(ref: refId)
                 }
                 return .object(JsonSchemaObject(id: ref,
-                                                properties: properties,
-                                                required: required,
                                                 isOpen: docType.isOpen(),
                                                 description: "",
+                                                codingKeys: docType.codingKeys(),
+                                                properties: properties,
+                                                required: required,
                                                 interfaces: interfaces,
                                                 examples: examples))
             }

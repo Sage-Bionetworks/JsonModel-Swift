@@ -2,7 +2,7 @@
 //  ErrorResultObject.swift
 //  
 //
-//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -48,7 +48,7 @@ public protocol ErrorResult : ResultData {
 
 /// `ErrorResultObject` is a result that holds information about an error.
 public struct ErrorResultObject : SerializableResultData, ErrorResult, Equatable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType="type", identifier, startDate, endDate, errorDescription, errorDomain, errorCode
     }
     public private(set) var serializableType: SerializableResultType = .error
@@ -117,10 +117,15 @@ extension ErrorResultObject : DocumentableStruct {
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
-        case .errorDomain, .errorDescription:
-            return .init(propertyType: .primitive(.string))
+        case .errorDomain:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The error domain.")
+        case .errorDescription:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The description of the error.")
         case .errorCode:
-            return .init(propertyType: .primitive(.integer))
+            return .init(propertyType: .primitive(.integer), propertyDescription:
+                            "The error code.")
         }
     }
     

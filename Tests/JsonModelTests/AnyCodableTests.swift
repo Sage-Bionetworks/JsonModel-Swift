@@ -2,7 +2,7 @@
 //  AnyCodableTests.swift
 //
 //
-//  Copyright © 2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2020-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -36,6 +36,55 @@ import XCTest
 
 final class AnyCodableTests: XCTestCase {
     
+    func testAnyCodableDictionary() {
+        let input: [String : JsonSerializable] = [
+            "array" : ["cat", "dog", "duck"],
+            "dictionary" : ["a" : 1, "b" : "bat", "c" : true],
+            "bool" : true,
+            "double" : Double(1.234),
+            "integer" : Int(34),
+            "number" : NSNumber(value: 23),
+            "string" : "String",
+            ]
+        let orderedKeys = ["string",
+                           "number",
+                           "integer",
+                           "double",
+                           "bool",
+                           "array",
+                           "dictionary"]
+        
+        let anyDictionary = AnyCodableDictionary(input, orderedKeys: orderedKeys)
+        
+        let factory = SerializationFactory.defaultFactory
+        let encoder = factory.createJSONEncoder()
+        let decoder = factory.createJSONDecoder()
+        
+        do {
+            let jsonData = try encoder.encode(anyDictionary)
+            let jsonString = String(data: jsonData, encoding: .utf8)!
+            
+            // The order of the keys should be the same as the `orderedKeys` and *not*
+            // in the order defined either using alphabetical sort or the `input` declaration.
+            let actualOrder: [String.Index] = orderedKeys.map {
+                guard let range = jsonString.range(of: $0) else {
+                    XCTFail("Could not find \($0) in the json string")
+                    return jsonString.endIndex
+                }
+                return range.lowerBound
+            }
+            let sortedOrder = actualOrder.sorted()
+            XCTAssertEqual(actualOrder, sortedOrder)
+            
+            // Decode from the data and the dictionaries should match.
+            let object = try decoder.decode(AnyCodableDictionary.self, from: jsonData)
+            XCTAssertEqual(anyDictionary, object)
+            
+        } catch {
+            XCTFail("Failed to decode/encode dictionary: \(error)")
+        }
+    }
+    
     func testDictionary_Encodable() {
         
         let factory = SerializationFactory.defaultFactory
@@ -50,21 +99,23 @@ final class AnyCodableTests: XCTestCase {
         let uuid = UUID()
         let url = URL(string: "http://test.example.org")!
         
-        let input: [String : Any] = ["string" : "String",
-                                                  "number" : NSNumber(value: 23),
-                                                  "infinity" : Double.infinity,
-                                                  "integer" : Int(34),
-                                                  "double" : Double(1.234),
-                                                  "bool" : true,
-                                                  "null" : NSNull(),
-                                                  "date" : now,
-                                                  "dateComponents" : dateComponents,
-                                                  "data" : data,
-                                                  "uuid" : uuid,
-                                                  "url" : url,
-                                                  "array" : ["cat", "dog", "duck"],
-                                                  "dictionary" : ["a" : 1, "b" : "bat", "c" : true]
-                                                  ]
+        let input: [String : Any] = [
+            "string" : "String",
+            "number" : NSNumber(value: 23),
+            "infinity" : Double.infinity,
+            "integer" : Int(34),
+            "double" : Double(1.234),
+            "bool" : true,
+            "null" : NSNull(),
+            "date" : now,
+            "dateComponents" : dateComponents,
+            "data" : data,
+            "uuid" : uuid,
+            "url" : url,
+            "array" : ["cat", "dog", "duck"],
+            "dictionary" : ["a" : 1, "b" : "bat", "c" : true]
+            ]
+
         do {
             
             encoder.dataEncodingStrategy = .base64

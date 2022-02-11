@@ -2,7 +2,7 @@
 //  ResultDataSerializer.swift
 //  
 //
-//  Copyright © 2020-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2020-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -57,6 +57,9 @@ public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
     
     /// Defaults to creating a `JsonElementResultObject`.
     static let jsonValue: SerializableResultType = "jsonValue"
+    
+    /// Defaults to creating a `AnswerResultObject`.
+    public static let answer: SerializableResultType = "answer"
 
     /// Defaults to creating a `CollectionResultObject`.
     public static let collection: SerializableResultType = "collection"
@@ -67,12 +70,9 @@ public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
     /// Defaults to creating a `ErrorResultObject`.
     public static let error: SerializableResultType = "error"
     
-    /// Defaults to creating a `AnswerResultObject`.
-    public static let answer: SerializableResultType = "answer"
-    
     /// List of all the standard types.
     public static func allStandardTypes() -> [SerializableResultType] {
-        [.jsonValue, .collection, .file, .error]
+        [.answer, .collection, .file, .error]
     }
 }
 
@@ -91,8 +91,8 @@ extension SerializableResultType : DocumentableStringLiteral {
 public final class ResultDataSerializer : IdentifiableInterfaceSerializer, PolymorphicSerializer {
     public var documentDescription: String? {
         """
-        `JsonResultData` is the base implementation for `ResultData` that is serialized using
-        the `Codable` protocol and the polymorphic serialization defined by this framework.
+        The interface for any `ResultData` that is serialized using the `Codable` protocol and the
+        polymorphic serialization defined by this framework.
         """.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "  ", with: "\n")
     }
     
@@ -135,5 +135,37 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
         let newNames = newExamples.map { $0.typeName }
         self.examples.removeAll(where: { newNames.contains($0.typeName) })
         self.examples.append(contentsOf: newExamples)
+    }
+    
+    private enum InterfaceKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
+        case startDate, endDate
+        var relativeIndex: Int { 2 }
+    }
+    
+    public override class func codingKeys() -> [CodingKey] {
+        var keys = super.codingKeys()
+        keys.append(contentsOf: InterfaceKeys.allCases)
+        return keys
+    }
+    
+    public override class func isRequired(_ codingKey: CodingKey) -> Bool {
+        guard let key = codingKey as? InterfaceKeys else {
+            return super.isRequired(codingKey)
+        }
+        return key == .startDate
+    }
+    
+    public override class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let key = codingKey as? InterfaceKeys else {
+            return try super.documentProperty(for: codingKey)
+        }
+        switch key {
+        case .startDate:
+            return .init(propertyType: .format(.dateTime), propertyDescription:
+                            "The start date timestamp for the result.")
+        case .endDate:
+            return .init(propertyType: .format(.dateTime), propertyDescription:
+                            "The end date timestamp for the result.")
+        }
     }
 }

@@ -1,7 +1,7 @@
 //
 //  PolymorphicSerializerTests.swift
 //
-//  Copyright © 2020 Sage Bionetworks. All rights reserved.
+//  Copyright © 2020-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -186,7 +186,7 @@ extension SampleType : DocumentableStringLiteral {
 }
 
 struct SampleItem : Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case name, color
     }
     let name: String
@@ -251,7 +251,7 @@ enum SampleColor : String, Codable, DocumentableStringEnum, StringEnumSet {
 
 struct SampleA : SerializableSample, Codable, Equatable {
     static let defaultType: SampleType = .a
-    private enum CodingKeys : String, CodingKey, CaseIterable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
         case exampleType = "type", value, color, animalMap
     }
     

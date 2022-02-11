@@ -2,7 +2,7 @@
 //  FileResultObject.swift
 //  
 //
-//  Copyright © 2017-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2017-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -58,8 +58,8 @@ public protocol FileResult : ResultData {
 
 /// `FileResultObject` is a concrete implementation of a result that holds a pointer to a file url.
 public struct FileResultObject : SerializableResultData, FileResult, Equatable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType="type", identifier, startDate, endDate, relativePath, contentType, startUptime
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case serializableType="type", identifier, startDate, endDate, relativePath, contentType, startUptime, jsonSchema
     }
     public private(set) var serializableType: SerializableResultType = .file
     
@@ -80,7 +80,10 @@ public struct FileResultObject : SerializableResultData, FileResult, Equatable {
     /// The MIME content type of the result.
     public var contentType: String?
     
-    public init(identifier: String, url: URL, contentType: String? = nil, startUptime: TimeInterval? = nil) {
+    /// The url for the json schema that defined the content if this file has a content type of "application/json".
+    public var jsonSchema: URL?
+    
+    public init(identifier: String, url: URL, contentType: String? = nil, startUptime: TimeInterval? = nil, jsonSchema: URL? = nil) {
         self.identifier = identifier
         self.url = url
         self.relativePath = url.relativePath
@@ -91,6 +94,18 @@ public struct FileResultObject : SerializableResultData, FileResult, Equatable {
     }
     
     public func deepCopy() -> FileResultObject { self }
+}
+
+extension FileResultObject : FileArchivable {
+    
+    /// Build the archiveable or uploadable data for this result.
+    public func buildArchivableData(at stepPath: String?) throws -> (fileInfo: FileInfo, data: Data)? {
+        let filename = self.relativePath
+        guard let url = self.url else { return nil }
+        let manifest = FileInfo(filename: filename, timestamp: self.startDate, contentType: self.contentType, identifier: self.identifier, stepPath: stepPath, jsonSchema: self.jsonSchema)
+        let data = try Data(contentsOf: url)
+        return (manifest, data)
+    }
 }
 
 extension FileResultObject : DocumentableStruct {
@@ -114,15 +129,23 @@ extension FileResultObject : DocumentableStruct {
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:
             return .init(propertyType: .format(.dateTime))
-        case .contentType, .relativePath:
-            return .init(propertyType: .primitive(.string))
+        case .relativePath:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The relative path to the file-based result.")
+        case .contentType:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The MIME content type of the result.")
         case .startUptime:
-            return .init(propertyType: .primitive(.number))
+            return .init(propertyType: .primitive(.number), propertyDescription:
+                            "The system clock uptime when the recorder was started (if applicable).")
+        case .jsonSchema:
+            return .init(propertyType: .format(.uri), propertyDescription:
+                            "The URL for the json schema of the JSON for this file.")
         }
     }
     
     public static func examples() -> [FileResultObject] {
-        var fileResult = FileResultObject(identifier: "fileResult", url: URL(string: "file://temp/foo.json")!, contentType: "application/json", startUptime: 1234.567)
+        var fileResult = FileResultObject(identifier: "fileResult", url: URL(string: "file://temp/foo.json")!, contentType: "application/json", startUptime: 1234.567, jsonSchema: URL(string: "file://temp/foo.schema.json")!)
         fileResult.startDate = ISO8601TimestampFormatter.date(from: "2017-10-16T22:28:09.000-07:00")!
         fileResult.endDate = fileResult.startDate.addingTimeInterval(5 * 60)
         return [fileResult]
