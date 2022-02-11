@@ -88,6 +88,18 @@ public struct FileResultObject : SerializableResultData, FileResult, Equatable {
         self.url = url
         self.relativePath = url.relativePath
         self.contentType = contentType
+        self.jsonSchema = jsonSchema
+        self.startUptime = startUptime
+        self.startDate = Date()
+        self.endDate = Date()
+    }
+    
+    public init(identifier: String, url: URL, rootSchema: DocumentableRootArray, startUptime: TimeInterval? = nil) {
+        self.identifier = identifier
+        self.url = url
+        self.relativePath = url.relativePath
+        self.contentType = "application/json"
+        self.jsonSchema = rootSchema.jsonSchema
         self.startUptime = startUptime
         self.startDate = Date()
         self.endDate = Date()
