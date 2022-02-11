@@ -37,7 +37,7 @@ import Foundation
 public protocol FileArchivable {
     
     /// Build the archiveable or uploadable data for this result.
-    func buildArchivableData(at stepPath: String?) throws -> (fileInfo: FileInfo, data: Data)?
+    func buildArchivableFileData(at stepPath: String?) throws -> (fileInfo: FileInfo, data: Data)?
 }
 
 /// The metadata for an archive that can be zipped using the app developer's choice of third-party archival tools.
