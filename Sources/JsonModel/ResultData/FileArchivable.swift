@@ -166,7 +166,7 @@ open class ArchiveMetadata: Codable, DocumentableRootObject {
     }
     
     open class func jsonExamples() throws -> [[String : JsonSerializable]] {
-        let example = BaseArchiveMetadata()
+        let example = ArchiveMetadata()
         let json = try example.jsonEncodedDictionary()
         return [json]
     }
