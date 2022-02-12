@@ -39,9 +39,6 @@ import Foundation
 /// encrypted results.
 public protocol FileDataArchive : AnyObject {
     
-    /// A unique identifier for this archive.
-    var identifier: String { get }
-    
     /// Method for adding data to an archive.
     /// - parameters:
     ///     - data: The data to insert.
@@ -51,15 +48,6 @@ public protocol FileDataArchive : AnyObject {
     /// Mark the archive as completed by closing the handle.
     /// - parameter metadata: The metadata for this archive.
     func closeHandle(with metadata: ArchiveMetadata) throws
-    
-    /// Returns an archivable object for the given result.
-    ///
-    /// - parameters:
-    ///     - result: The result to archive.
-    ///     - sectionIdentifier: The section identifier for the task.
-    ///     - stepPath: The full step path to the given result.
-    /// - returns: An archivable object or `nil` if the result should be skipped.
-    func fileArchivable(for result: ResultData, sectionIdentifier: String?, stepPath: String?) -> FileArchivable?
 }
 
 /// An archivable result is an object wrapper for results that allows them to be transformed into
@@ -70,26 +58,8 @@ public protocol FileArchivable {
     func buildArchivableFileData(at stepPath: String?) throws -> (fileInfo: FileInfo, data: Data)?
 }
 
-public protocol ArchiveMetadata: Codable, DocumentableRootObject {
-    /// The name of the application.
-    var appName: String { get }
-    
-    /// The application version.
-    var appVersion: String { get }
-    
-    /// Information about the specific device.
-    var deviceInfo: String { get }
-    
-    /// Specific model identifier of the device.
-    /// - example: "Apple Watch Series 1"
-    var deviceTypeIdentifier: String  { get }
-    
-    /// A list of the files included in this archive.
-    var files: [FileInfo]  { get }
-}
-
 /// The metadata for an archive that can be zipped using the app developer's choice of third-party archival tools.
-open class BaseArchiveMetadata: ArchiveMetadata {
+open class ArchiveMetadata: Codable, DocumentableRootObject {
     private enum CodingKeys : String, OrderedEnumCodingKey {
         case appName, appVersion, deviceInfo, deviceTypeIdentifier, files
     }
@@ -144,7 +114,7 @@ open class BaseArchiveMetadata: ArchiveMetadata {
         self.files = try container.decode([FileInfo].self, forKey: .files)
     }
     
-    public func encode(to encoder: Encoder) throws {
+    open func encode(to encoder: Encoder) throws {
         var container = try encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.deviceInfo, forKey: .deviceInfo)
         try container.encode(self.deviceTypeIdentifier, forKey: .deviceTypeIdentifier)
