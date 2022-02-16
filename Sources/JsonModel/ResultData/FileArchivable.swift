@@ -115,7 +115,7 @@ open class ArchiveMetadata: Codable, DocumentableRootObject {
     }
     
     open func encode(to encoder: Encoder) throws {
-        var container = try encoder.container(keyedBy: CodingKeys.self)
+        var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.deviceInfo, forKey: .deviceInfo)
         try container.encode(self.deviceTypeIdentifier, forKey: .deviceTypeIdentifier)
         try container.encode(self.appName, forKey: .appName)
@@ -480,7 +480,7 @@ extension UIDevice {
             
         case "AudioAccessory1,1":                           return "HomePod"
             
-        case "i386", "x86_64":                              return "Simulator"
+        case "i386", "x86_64", "arm64":                     return "Simulator"
             
         default:                                            return identifier
         }
