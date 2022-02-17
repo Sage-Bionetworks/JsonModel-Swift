@@ -142,11 +142,6 @@ open class AbstractPolymorphicSerializer {
     public init() {
     }
     
-    // Default is the sage json schema base url.
-    open var baseURL: URL {
-        kSageJsonSchemaBaseURL
-    }
-    
     open func typeName(from decoder: Decoder) throws -> String {
         let container = try decoder.container(keyedBy: TypeKeys.self)
         guard let type = try container.decodeIfPresent(String.self, forKey: .type) else {

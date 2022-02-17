@@ -559,18 +559,22 @@ public struct JsonSchemaConst : Codable, Hashable {
 public struct JsonSchemaReferenceId : Codable, Hashable {
     public let className: String
     public let classPath: String
+    public let url: URL?
     
     public var isExternal: Bool {
-        return classPath.lowercased().hasSuffix(".json")
+        classPath.lowercased().hasSuffix(".json")
     }
     
     public var baseURL: URL? {
-        return classPath.hasPrefix("http") ? URL(string: classPath)?.deletingLastPathComponent() : nil
+        url?.baseURL
     }
     
     init(_ className: String, root: JsonSchemaReferenceId) {
         self.className = className
         self.classPath = "\(root.classPath)#\(className)"
+        self.url = root.url.map {
+            .init(string: "\($0.relativePath)#\(className)", relativeTo: $0.baseURL)!
+        }
     }
     
     init(_ className: String, isExternal: Bool = false, baseURL: URL? = nil) {
@@ -579,47 +583,53 @@ public struct JsonSchemaReferenceId : Codable, Hashable {
             let filename = "\(className).json"
             if let base = baseURL {
                 self.classPath = base.appendingPathComponent(filename).absoluteString
+                self.url = URL(string: filename, relativeTo: baseURL)
             }
             else {
                 self.classPath = filename
+                self.url = nil
             }
         }
         else {
             self.classPath = "#\(className)"
+            self.url = nil
         }
     }
     
     init(url: URL) {
         self.classPath = url.absoluteString
         self.className = url.deletingPathExtension().lastPathComponent
+        self.url = url
     }
     
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let stringValue = try container.decode(String.self)
-        guard let className = Self.parseClassName(stringValue: stringValue)
+        guard let (className, url) = Self.parseClassName(stringValue: stringValue)
         else {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "'\(stringValue)' is not a valid string. JsonSchemaReferenceId must either begin with '#' or end with '.json'")
         }
         self.className = className
         self.classPath = stringValue
+        self.url = url
     }
     
     public init?(stringValue: String) {
-        guard let className = Self.parseClassName(stringValue: stringValue)
+        guard let (className, url) = Self.parseClassName(stringValue: stringValue)
         else {
             return nil
         }
         self.className = className
         self.classPath = stringValue
+        self.url = url
     }
     
-    private static func parseClassName(stringValue: String) -> String? {
+    private static func parseClassName(stringValue: String) -> (String, URL?)? {
         if let idx = stringValue.lastIndex(of: "#") {
-            return String(stringValue[stringValue.index(after: idx)...])
+            return (String(stringValue[stringValue.index(after: idx)...]), nil)
         }
         else if stringValue.lowercased().hasSuffix(".json"), stringValue.count > 5, let url = URL(string: stringValue) {
-            return url.deletingPathExtension().lastPathComponent
+            return (url.deletingPathExtension().lastPathComponent, url)
         }
         else {
             return nil
