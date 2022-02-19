@@ -74,10 +74,10 @@ final class DocumentableTests: XCTestCase {
         do {
             let schemas = try doc.buildSchemas()
             
-            XCTAssertEqual(schemas.count, 3)
+            XCTAssertEqual(schemas.count, 2)
             
             if let sampleSchema = schemas.first(where: { $0.id.className == "Sample"}) {
-                checkSampleSchema(sampleSchema, true)
+                checkSampleSchema(sampleSchema, false)
             }
             else {
                 XCTFail("Did not create schema for `Sample`")
@@ -87,24 +87,6 @@ final class DocumentableTests: XCTestCase {
             }
             else {
                 XCTFail("Did not create schema for `Sample`")
-            }
-            
-            if let obj = schemas.first(where: { $0.id.className == "SampleItem"}) {
-                XCTAssertEqual("\(kSageJsonSchemaBaseURL)SampleItem.json", obj.id.classPath)
-                XCTAssertEqual("SampleItem", obj.root.title)
-                
-                let colorRootId = JsonSchemaReferenceId("Sample", isExternal: true, baseURL: nil)
-                let colorRef = JsonSchemaReferenceId("SampleColor", root: colorRootId)
-                let expectedProperties: [String : JsonSchemaProperty] = [
-                    "name" : .primitive(.string),
-                    "color" : .reference(JsonSchemaObjectRef(ref: colorRef))
-                ]
-                XCTAssertEqual(expectedProperties, obj.root.properties)
-                
-                XCTAssertTrue(obj.definitions?.isEmpty ?? true)
-            }
-            else {
-                XCTFail("Did not create schema for `SampleItem`")
             }
         }
         catch let err {
@@ -241,6 +223,9 @@ class AnotherTestFactory : SerializationFactory {
 }
 
 class AnotherSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
+    var jsonSchema: URL {
+        URL(string: "Another.json", relativeTo: kSageJsonSchemaBaseURL)!
+    }
 
     var documentDescription: String? {
         "Another example interface used for unit testing."
