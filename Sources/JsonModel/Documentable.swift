@@ -391,11 +391,16 @@ public class JsonDocumentBuilder {
             pointer.isSealed = serializer.isSealed()
             self.objects.append(pointer)
             self.interfaces.append(pointer)
+            // Root objects should include the definitions for objects that they reference *except*
+            // for the "type" key which should be defined on the interface.
             self.addTypeKey(for: serializer, pointer)
             return (serializer, pointer)
         }
 
-        // Then add the properties and documentables from each pointer.
+        // Then add the properties and documentables from each pointer. Add definitions from the root
+        // documents *first* and then for the interfaces. This is b/c properties that do not reference
+        // an interface and and are only used by the root object, should be defined on the root object
+        // rather than the interface.
         rootDocPointers.forEach { root in
             recursiveAddProps(docType: root.0, pointer: root.1)
         }
@@ -442,7 +447,7 @@ public class JsonDocumentBuilder {
         let pointer = KlassPointer(klass: documentableType, baseUrl: baseUrl, parent: parent)
         pointer.modelName = factory?.modelName(for: pointer.className) ?? pointer.className
         
-        // First add the object in case there is recursive mapping.
+        // Then add the object in case there is recursive mapping.
         self.objects.append(pointer)
         return pointer
     }
