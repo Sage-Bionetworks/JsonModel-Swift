@@ -75,9 +75,13 @@ open class SerializationFactory : FactoryRegistration {
 
     // MARK: Polymorphic Decodable
     
+    fileprivate var interfaceNames: [String] = []
     public private(set) var serializerMap: [String : GenericSerializer] = [:]
         
     public final func registerSerializer(_ serializer: GenericSerializer) {
+        if !interfaceNames.contains(serializer.interfaceName) {
+            interfaceNames.append(serializer.interfaceName)
+        }
         serializerMap[serializer.interfaceName] = serializer
     }
     
@@ -188,7 +192,7 @@ open class SerializationFactory : FactoryRegistration {
     
     /// An ordered array of the documentable interfaces included in this factory.
     open func documentableInterfaces() -> [DocumentableInterface] {
-        serializerMap.map { $0.value as DocumentableInterface }.sorted(by: { $0.interfaceName < $1.interfaceName })
+        interfaceNames.compactMap { self.serializerMap[$0] }
     }
 
     /// Register a root object with this factory.

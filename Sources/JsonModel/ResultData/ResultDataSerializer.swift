@@ -96,6 +96,10 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
         """.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "  ", with: "\n")
     }
     
+    public var jsonSchema: URL {
+        URL(string: "\(self.interfaceName).json", relativeTo: kSageJsonSchemaBaseURL)!
+    }
+    
     override init() {
         self.examples = [
             AnswerResultObject.examples().first!,

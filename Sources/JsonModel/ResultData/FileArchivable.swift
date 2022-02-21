@@ -159,7 +159,7 @@ open class ArchiveMetadata: Codable, DocumentableRootObject {
             return .init(propertyType: .primitive(.string),
                          propertyDescription: "Specific model identifier of the device.")
         case .files:
-            return .init(propertyType: .reference(FileInfo.documentableType()),
+            return .init(propertyType: .referenceArray(FileInfo.documentableType()),
                          propertyDescription: "A list of the files included in this archive.")
 
         }

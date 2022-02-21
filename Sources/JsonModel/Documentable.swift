@@ -93,6 +93,9 @@ public protocol DocumentableStringOptionSet : Documentable, Codable {
 
 public protocol DocumentableRoot {
     
+    /// The class name for the root object.
+    var className: String { get }
+    
     /// The schema for json serialization strategy that this document describes.
     var jsonSchema: URL { get }
     
@@ -157,6 +160,9 @@ extension DocumentableRootObject {
     
     // A documentable root has a root type that is always itself.
     public var rootDocumentType: DocumentableBase.Type { type(of: self) }
+    
+    // The class name is the class name of *this* object.
+    public var className: String { "\(rootDocumentType)" }
 }
 
 public protocol DocumentableInterface : DocumentableBase, DocumentableRoot {
@@ -164,27 +170,27 @@ public protocol DocumentableInterface : DocumentableBase, DocumentableRoot {
     /// The name of the interface that is described by this documentable.
     var interfaceName: String { get }
     
-    /// The base url for this interface.
-    var baseURL: URL { get }
-    
     /// A list of `DocumentableObject` classes that implement this interface.
     func documentableExamples() -> [DocumentableObject]
     
     /// Is the interface sealed or can it be extended?
     func isSealed() -> Bool
+    
+    // The "type" key for this interface.
+    static func typeDocumentProperty() -> DocumentProperty
 }
 
 extension DocumentableInterface {
+    
+    // The class name is the interface name.
+    public var className: String { interfaceName }
+    
     // An interface describes an object, not an array.
     public var isDocumentTypeArray: Bool { false }
 
     // The root document type is itself.
     public var rootDocumentType: DocumentableBase.Type { type(of: self) }
     
-    // For an interface, the json schema uses the interface name and base url.
-    public var jsonSchema: URL {
-        URL(string: "\(self.interfaceName).json", relativeTo: self.baseURL)!
-    }
 }
 
 public struct DocumentableRootArray : DocumentableRoot {
@@ -199,6 +205,8 @@ public struct DocumentableRootArray : DocumentableRoot {
     }
     
     public var isDocumentTypeArray: Bool { true }
+    
+    public var className: String { "\(rootDocumentType)" }
 }
 
 /// A light-weight wrapper
@@ -316,6 +324,7 @@ fileprivate struct RootObjectHolder : DocumentableRoot {
     
     var documentDescription: String? { nil }
     var isDocumentTypeArray: Bool { false }
+    var className: String { "\(rootDocumentType)" }
 }
 
 public class JsonDocumentBuilder {
@@ -382,10 +391,19 @@ public class JsonDocumentBuilder {
             pointer.isSealed = serializer.isSealed()
             self.objects.append(pointer)
             self.interfaces.append(pointer)
+            // Root objects should include the definitions for objects that they reference *except*
+            // for the "type" key which should be defined on the interface.
+            self.addTypeKey(for: serializer, pointer)
             return (serializer, pointer)
         }
 
-        // Then add the properties and documentables from each pointer.
+        // Then add the properties and documentables from each pointer. Add definitions from the root
+        // documents *first* and then for the interfaces. This is b/c properties that do not reference
+        // an interface and and are only used by the root object, should be defined on the root object
+        // rather than the interface.
+        rootDocPointers.forEach { root in
+            recursiveAddProps(docType: root.0, pointer: root.1)
+        }
         interfacePointers.forEach { (serializer, pointer) in
             let docType = type(of: serializer)
             recursiveAddProps(docType: docType, pointer: pointer)
@@ -393,12 +411,6 @@ public class JsonDocumentBuilder {
                 recursiveAddObject(documentableType: type(of: $0), parent: pointer, isSubclass: true)
             }
         }
-        rootDocPointers.forEach { root in
-            recursiveAddProps(docType: root.0, pointer: root.1)
-        }
-
-        // Finally update the roots.
-        recursiveUpdateRoots()
     }
     
     private func recursiveAddObject(documentableType: Documentable.Type, parent: KlassPointer, isSubclass: Bool) {
@@ -410,11 +422,7 @@ public class JsonDocumentBuilder {
         }
         else {
             // Create a new pointer.
-            let pointer = KlassPointer(klass: documentableType, baseUrl: baseUrl, parent: parent)
-            pointer.modelName = factory?.modelName(for: pointer.className) ?? pointer.className
-            
-            // First add the object in case there is recursive mapping.
-            self.objects.append(pointer)
+            let pointer = createPointer(documentableType: documentableType, parent: parent, baseUrl: baseUrl)
             addMappings(to: pointer, parent: parent, isSubclass: isSubclass)
             
             // Then look at the property mappings.
@@ -422,6 +430,26 @@ public class JsonDocumentBuilder {
                 recursiveAddProps(docType: docType, pointer: pointer)
             }
         }
+    }
+    
+    private func addTypeKey(for serializer: DocumentableInterface, _ pointer: KlassPointer) {
+        let typeProperty = type(of: serializer).typeDocumentProperty()
+        guard case .reference(let docType) = typeProperty.propertyType
+        else {
+            return
+        }
+        createPointer(documentableType: docType, parent: pointer, baseUrl: pointer.baseUrl)
+    }
+    
+    @discardableResult
+    private func createPointer(documentableType: Documentable.Type, parent: KlassPointer, baseUrl: URL) -> KlassPointer {
+        // Create a new pointer.
+        let pointer = KlassPointer(klass: documentableType, baseUrl: baseUrl, parent: parent)
+        pointer.modelName = factory?.modelName(for: pointer.className) ?? pointer.className
+        
+        // Then add the object in case there is recursive mapping.
+        self.objects.append(pointer)
+        return pointer
     }
     
     private func addMappings(to pointer: KlassPointer, parent: KlassPointer, isSubclass: Bool) {
@@ -555,7 +583,7 @@ public class JsonDocumentBuilder {
             let parentKeys = parentDocType?.codingKeys() ?? []
             
             let codingKeys = dType.codingKeys()
-            let required = codingKeys.compactMap { dType.isRequired($0) ? $0.stringValue : nil }
+            var required = codingKeys.compactMap { dType.isRequired($0) ? $0.stringValue : nil }
             let properties = try codingKeys.reduce(into: [String : JsonSchemaProperty]()) { (hashtable, key) in
                 let prop = try dType.documentProperty(for: key)
                 
@@ -565,7 +593,7 @@ public class JsonDocumentBuilder {
                    let parentProp = try parentDocType?.documentProperty(for: parentKey),
                    prop.propertyType == parentProp.propertyType
                 {
-                    
+                    required.removeAll(where: { $0 == key.stringValue })
                     return
                 }
                 
@@ -655,12 +683,18 @@ public class JsonDocumentBuilder {
             self.isArray = false
             self.parentPointers = [parent]
             self.isInterface = false
-            self.mainParent = parent.mainParent ?? parent
+            if parent.klass is DocumentableRootObject.Type {
+                self.mainParent = parent
+            }
+            else {
+                self.mainParent = parent.mainParent ?? parent
+            }
             if let rootKlass = klass as? DocumentableRootObject.Type {
                 let example = rootKlass.init()
                 let refId = JsonSchemaReferenceId(url: example.jsonSchema)
+                self.mainParent = parent
                 self.baseUrl = refId.baseURL ?? baseUrl
-                self.className = refId.className
+                self.className = example.className
                 self.isRoot = true
                 self._refId = refId
             }
@@ -681,9 +715,10 @@ public class JsonDocumentBuilder {
             self.baseUrl = refId.baseURL ?? baseUrl
             self.isRoot = true
             self.isInterface = root is DocumentableInterface
-            self.className = refId.className
+            self.className = root.className
             self._refId = refId
             self.documentDescription = root.documentDescription
+            self.modelName = refId.className
         }
         
         deinit {

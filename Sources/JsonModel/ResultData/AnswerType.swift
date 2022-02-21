@@ -70,6 +70,10 @@ public final class AnswerTypeSerializer : AbstractPolymorphicSerializer, Polymor
         """.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "  ", with: "\n")
     }
     
+    public var jsonSchema: URL {
+        URL(string: "\(self.interfaceName).json", relativeTo: kSageJsonSchemaBaseURL)!
+    }
+    
     override init() {
         examples = [
             AnswerTypeArray.examples().first!,
