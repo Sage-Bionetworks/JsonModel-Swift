@@ -637,7 +637,7 @@ public class JsonDocumentBuilder {
 
         case .interfaceDictionary(let className):
             let schemaRef = try interfaceSchemaRef(for: className, in: objPointer)
-            return .array(JsonSchemaArray(items: .reference(JsonSchemaObjectRef(ref: schemaRef)), description: prop.propertyDescription))
+            return .dictionary(JsonSchemaTypedDictionary(items: .reference(JsonSchemaObjectRef(ref: schemaRef)), description: prop.propertyDescription))
 
         case .primitive(let jsonType):
             if let defaultValue = prop.defaultValue {
