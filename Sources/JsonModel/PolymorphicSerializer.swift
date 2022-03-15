@@ -58,7 +58,7 @@ public protocol PolymorphicTyped {
 /// The generic method for a decodable. This is a work-around for the limitations of Swift generics
 /// where an instance of a class that has an associated type cannot be stored in a dictionary or
 /// array.
-public protocol GenericSerializer : AnyObject, DocumentableInterface {
+public protocol GenericSerializer : AnyObject {
     var interfaceName : String { get }
     func decode(from decoder: Decoder) throws -> Any
     func documentableExamples() -> [DocumentableObject]
@@ -74,7 +74,7 @@ public protocol GenericSerializer : AnyObject, DocumentableInterface {
 /// key in the JSON dictionary, this is not recommended because it would require all of your
 /// Swift Codable implementations to also use the new coding key.
 ///
-public protocol PolymorphicSerializer : GenericSerializer {
+public protocol PolymorphicSerializer : GenericSerializer, DocumentableInterface {
     /// The `ProtocolValue` is the protocol or base class to which all the codable objects for this
     /// serializer should conform.
     associatedtype ProtocolValue

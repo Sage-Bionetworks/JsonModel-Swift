@@ -192,7 +192,7 @@ open class SerializationFactory : FactoryRegistration {
     
     /// An ordered array of the documentable interfaces included in this factory.
     open func documentableInterfaces() -> [DocumentableInterface] {
-        interfaceNames.compactMap { self.serializerMap[$0] }
+        interfaceNames.compactMap { self.serializerMap[$0] as? DocumentableInterface }
     }
 
     /// Register a root object with this factory.
