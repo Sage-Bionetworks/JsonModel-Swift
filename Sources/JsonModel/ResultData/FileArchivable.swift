@@ -31,7 +31,6 @@
 //
 
 import Foundation
-import JsonModel
 
 /// A data archive is a class object that can be used to add multiple files to a zipped archive for upload as
 /// a package. The data archive could also be a service that implements the logic for uploading results where
