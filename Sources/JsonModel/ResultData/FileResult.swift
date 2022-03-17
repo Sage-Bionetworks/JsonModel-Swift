@@ -57,7 +57,7 @@ public protocol FileResult : ResultData {
 }
 
 /// `FileResultObject` is a concrete implementation of a result that holds a pointer to a file url.
-public struct FileResultObject : SerializableResultData, FileResult, MultiplatformResultData, Equatable {
+public struct FileResultObject : SerializableResultData, FileResult, MultiplatformTimestamp, Equatable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType="type", identifier, startDateTime = "startDate", endDateTime = "endDate", relativePath, contentType, startUptime, jsonSchema
     }

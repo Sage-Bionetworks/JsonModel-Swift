@@ -134,22 +134,11 @@ public struct PathMarker: Hashable, Codable {
 }
 
 /// Abstract implementation to allow extending an assessment result while retaining the serializable type.
-open class AbstractBranchNodeResultObject : Codable {
+open class AbstractBranchNodeResultObject : AbstractResultObject {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", identifier, startDate, endDate, stepHistory, asyncResults, path
-    }
-    public private(set) var serializableType: SerializableResultType = "null"
-    
-    open class func defaultType() -> SerializableResultType {
-        fatalError("Default serializable type not defined for abstract.")
+        case stepHistory, asyncResults, path
     }
 
-    /// The identifier associated with the task, step, or asynchronous action.
-    public let identifier: String
-    
-    public var startDateTime: Date
-    public var endDateTime: Date?
-    
     public var stepHistory: [ResultData]
     public var asyncResults: [ResultData]?
     public var path: [PathMarker]
@@ -161,13 +150,10 @@ open class AbstractBranchNodeResultObject : Codable {
                 stepHistory: [ResultData] = [],
                 asyncResults: [ResultData]? = nil,
                 path: [PathMarker] = []) {
-        self.identifier = identifier
-        self.startDateTime = startDate
-        self.endDateTime = endDate
         self.stepHistory = stepHistory
         self.asyncResults = asyncResults
         self.path = path
-        self.serializableType = type(of: self).defaultType()
+        super.init(identifier: identifier, startDate: startDate, endDate: endDate)
     }
 
     /// Initialize from a `Decoder`. This decoding method will use the ``SerializationFactory`` instance associated
@@ -177,9 +163,6 @@ open class AbstractBranchNodeResultObject : Codable {
     /// - throws: `DecodingError`
     public required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.identifier = try container.decode(String.self, forKey: .identifier)
-        self.startDateTime = try container.decode(Date.self, forKey: .startDate)
-        self.endDateTime = try container.decodeIfPresent(Date.self, forKey: .endDate)
         self.path = try container.decodeIfPresent([PathMarker].self, forKey: .path) ?? []
 
         let resultsContainer = try container.nestedUnkeyedContainer(forKey: .stepHistory)
@@ -190,18 +173,15 @@ open class AbstractBranchNodeResultObject : Codable {
             self.asyncResults = try decoder.serializationFactory.decodePolymorphicArray(ResultData.self, from: asyncResultsContainer)
         }
         
-        self.serializableType = type(of: self).defaultType()
+        try super.init(from: decoder)
     }
 
     /// Encode the result to the given encoder.
     /// - parameter encoder: The encoder to use to encode this instance.
     /// - throws: `EncodingError`
-    open func encode(to encoder: Encoder) throws {
+    override open func encode(to encoder: Encoder) throws {
+        try super.encode(to: encoder)
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(identifier, forKey: .identifier)
-        try container.encode(serializableType, forKey: .serializableType)
-        try container.encode(startDateTime, forKey: .startDate)
-        try container.encodeIfPresent(endDateTime, forKey: .endDate)
         try container.encode(path, forKey: .path)
 
         var nestedContainer = container.nestedUnkeyedContainer(forKey: .stepHistory)
@@ -219,31 +199,24 @@ open class AbstractBranchNodeResultObject : Codable {
         }
     }
     
-    open class func codingKeys() -> [CodingKey] {
-        CodingKeys.allCases
+    override open class func codingKeys() -> [CodingKey] {
+        var keys = super.codingKeys()
+        keys.append(contentsOf: CodingKeys.allCases)
+        return keys
     }
 
-    open class func isRequired(_ codingKey: CodingKey) -> Bool {
-        guard let key = codingKey as? CodingKeys else { return false }
-        switch key {
-        case .serializableType, .identifier, .startDate, .stepHistory:
-            return true
-        default:
-            return false
-        }
-    }
-
-    open class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+    override open class func isRequired(_ codingKey: CodingKey) -> Bool {
         guard let key = codingKey as? CodingKeys else {
-            throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
+            return super.isRequired(codingKey)
+        }
+        return key == .stepHistory
+    }
+
+    override open class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let key = codingKey as? CodingKeys else {
+            return try super.documentProperty(for: codingKey)
         }
         switch key {
-        case .serializableType:
-            return .init(constValue: SerializableResultType.StandardTypes.assessment.resultType)
-        case .identifier:
-            return .init(propertyType: .primitive(.string))
-        case .startDate, .endDate:
-            return .init(propertyType: .format(.dateTime))
         case .stepHistory:
             return .init(propertyType: .interfaceArray("\(ResultData.self)"), propertyDescription:
             """
@@ -260,7 +233,7 @@ open class AbstractBranchNodeResultObject : Codable {
     }
 }
 
-public final class BranchNodeResultObject : AbstractBranchNodeResultObject, SerializableResultData, BranchNodeResult, MultiplatformResultData {
+public final class BranchNodeResultObject : AbstractBranchNodeResultObject, SerializableResultData, BranchNodeResult {
     
     public override class func defaultType() -> SerializableResultType {
         .StandardTypes.section.resultType

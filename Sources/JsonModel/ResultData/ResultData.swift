@@ -66,12 +66,12 @@ public protocol ResultData : PolymorphicTyped, Encodable, DictionaryRepresentabl
 
 /// Implementation of the interface used by Sage for cross-platform support where the serialized
 /// ``endDate`` may be nil.
-public protocol MultiplatformResultData : ResultData {
+public protocol MultiplatformTimestamp {
     var startDateTime: Date { get set }
     var endDateTime: Date? { get set }
 }
  
-extension MultiplatformResultData {
+extension MultiplatformTimestamp {
     
     public var startDate: Date {
         get { self.startDateTime }
@@ -84,6 +84,9 @@ extension MultiplatformResultData {
     }
 }
 
+public protocol MultiplatformResultData : ResultData, MultiplatformTimestamp {
+}
+
 extension ResultData {
     public func jsonDictionary() throws -> [String : JsonSerializable] {
         try jsonEncodedDictionary()
@@ -91,7 +94,7 @@ extension ResultData {
 }
 
 /// `ResultObject` is a concrete implementation of the base result associated with a task, step, or asynchronous action.
-public struct ResultObject : SerializableResultData, MultiplatformResultData, Codable {
+public struct ResultObject : SerializableResultData, MultiplatformTimestamp, Codable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType = "type", identifier, startDateTime = "startDate", endDateTime = "endDate"
     }

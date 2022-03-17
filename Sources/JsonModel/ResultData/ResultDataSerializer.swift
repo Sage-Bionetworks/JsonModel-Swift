@@ -158,3 +158,81 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
         }
     }
 }
+
+/// Abstract implementation to allow extending a result while retaining the serializable type.
+open class AbstractResultObject : Codable, MultiplatformTimestamp {
+    private enum CodingKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
+        case serializableType = "type", identifier, startDate, endDate
+        var relativeIndex: Int { 0 }
+    }
+    public private(set) var serializableType: SerializableResultType = "null"
+    
+    open class func defaultType() -> SerializableResultType {
+        fatalError("Default serializable type not defined for abstract.")
+    }
+
+    public let identifier: String
+    public var startDateTime: Date
+    public var endDateTime: Date?
+
+    /// Default initializer for this object.
+    public init(identifier: String,
+                startDate: Date = Date(),
+                endDate: Date? = nil) {
+        self.identifier = identifier
+        self.startDateTime = startDate
+        self.endDateTime = endDate
+        self.serializableType = type(of: self).defaultType()
+    }
+
+    /// Initialize from a `Decoder`. This decoding method will use the ``SerializationFactory`` instance associated
+    /// with the decoder to decode the `stepHistory` and `asyncResults`.
+    ///
+    /// - parameter decoder: The decoder to use to decode this instance.
+    /// - throws: `DecodingError`
+    public required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.identifier = try container.decode(String.self, forKey: .identifier)
+        self.startDateTime = try container.decode(Date.self, forKey: .startDate)
+        self.endDateTime = try container.decodeIfPresent(Date.self, forKey: .endDate)
+        self.serializableType = type(of: self).defaultType()
+    }
+
+    /// Encode the result to the given encoder.
+    /// - parameter encoder: The encoder to use to encode this instance.
+    /// - throws: `EncodingError`
+    open func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(identifier, forKey: .identifier)
+        try container.encode(serializableType, forKey: .serializableType)
+        try container.encode(startDateTime, forKey: .startDate)
+    }
+    
+    open class func codingKeys() -> [CodingKey] {
+        CodingKeys.allCases
+    }
+
+    open class func isRequired(_ codingKey: CodingKey) -> Bool {
+        guard let key = codingKey as? CodingKeys else { return false }
+        switch key {
+        case .serializableType, .identifier, .startDate:
+            return true
+        default:
+            return false
+        }
+    }
+
+    open class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let key = codingKey as? CodingKeys else {
+            throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
+        }
+        switch key {
+        case .serializableType:
+            return .init(constValue: defaultType())
+        case .identifier:
+            return .init(propertyType: .primitive(.string))
+        case .startDate, .endDate:
+            return .init(propertyType: .format(.dateTime))
+        }
+    }
+}

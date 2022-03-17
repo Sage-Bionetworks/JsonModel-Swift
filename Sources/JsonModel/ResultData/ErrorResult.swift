@@ -47,7 +47,7 @@ public protocol ErrorResult : ResultData {
 }
 
 /// `ErrorResultObject` is a result that holds information about an error.
-public struct ErrorResultObject : SerializableResultData, ErrorResult, MultiplatformResultData, Equatable {
+public struct ErrorResultObject : SerializableResultData, ErrorResult, MultiplatformTimestamp, Equatable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType="type", identifier, startDateTime = "startDate", endDateTime = "endDate", errorDescription, errorDomain, errorCode
     }

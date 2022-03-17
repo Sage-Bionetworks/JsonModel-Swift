@@ -441,11 +441,11 @@ class ResultDataTests: XCTestCase {
         
         results.forEach { result in
             
-            if let multiplatformResult = result as? MultiplatformResultData {
+            if let multiplatformResult = result as? MultiplatformTimestamp {
                 XCTAssertNil(multiplatformResult.endDateTime)
             }
             else {
-                XCTFail("\(result) does not conform to \(MultiplatformResultData.self)")
+                XCTFail("\(result) does not conform to \(MultiplatformTimestamp.self)")
             }
             
             do {
@@ -463,14 +463,15 @@ class ResultDataTests: XCTestCase {
 
                 let wrapper = try decoder.decode(_DecodingWrapper<ResultData>.self, from: jsonData)
                 let decodedResult = wrapper.value
-                if let multiplatformResult = decodedResult as? MultiplatformResultData {
-                    XCTAssertEqual("example", multiplatformResult.identifier, "\(result)")
-                    XCTAssertEqual(result.typeName, multiplatformResult.typeName, "\(result)")
-                    XCTAssertEqual(result.startDate.timeIntervalSinceReferenceDate, multiplatformResult.startDate.timeIntervalSinceReferenceDate, accuracy:1, "\(result)")
+                XCTAssertEqual("example", decodedResult.identifier, "\(decodedResult)")
+                XCTAssertEqual(result.typeName, decodedResult.typeName, "\(decodedResult)")
+                XCTAssertEqual(result.startDate.timeIntervalSinceReferenceDate, decodedResult.startDate.timeIntervalSinceReferenceDate, accuracy:1, "\(result)")
+                
+                if let multiplatformResult = decodedResult as? MultiplatformTimestamp {
                     XCTAssertNil(multiplatformResult.endDateTime, "\(result)")
                 }
                 else {
-                    XCTFail("\(decodedResult) does not conform to \(MultiplatformResultData.self)")
+                    XCTFail("\(decodedResult) does not conform to \(MultiplatformTimestamp.self)")
                 }
                 
             } catch let err {

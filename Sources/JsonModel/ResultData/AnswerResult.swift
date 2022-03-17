@@ -77,7 +77,7 @@ public extension AnswerResult {
     }
 }
 
-public final class AnswerResultObject : SerializableResultData, AnswerResult, MultiplatformResultData {
+public final class AnswerResultObject : SerializableResultData, AnswerResult, MultiplatformTimestamp {
     private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType = "type", identifier, startDate, endDate, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData
     }

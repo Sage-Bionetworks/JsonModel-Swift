@@ -154,7 +154,7 @@ open class AbstractAssessmentResultObject : AbstractBranchNodeResultObject {
 
 /// ``AssessmentResultObject`` is a result associated with a task. This object includes a step history,
 /// task run UUID,  and asynchronous results.
-public final class AssessmentResultObject : AbstractAssessmentResultObject, SerializableResultData, AssessmentResult, MultiplatformResultData {
+public final class AssessmentResultObject : AbstractAssessmentResultObject, SerializableResultData, AssessmentResult {
     
     public override class func defaultType() -> SerializableResultType {
         .StandardTypes.assessment.resultType

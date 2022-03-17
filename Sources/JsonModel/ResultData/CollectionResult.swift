@@ -76,35 +76,65 @@ public extension CollectionResult {
     }
 }
 
-/// `CollectionResultObject` is used to include multiple results associated with a single action.
-public final class CollectionResultObject : SerializableResultData, MultiplatformResultData, CollectionResult {
+open class AbstractCollectionResultObject : AbstractResultObject {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType="type", identifier, startDate, endDate, children
+        case children
     }
-    public private(set) var serializableType: SerializableResultType = .StandardTypes.collection.resultType
     
-    public let identifier: String
-    public var startDateTime: Date
-    public var endDateTime: Date?
-    
-    /// The list of input results associated with this step. These are generally assumed to be answers to
-    /// field inputs, but they are not required to implement the `AnswerResult` protocol.
     public var children: [ResultData]
     
-    public init(identifier: String, children: [ResultData] = []) {
-        self.identifier = identifier
+    public init(identifier: String, children: [ResultData] = [], startDate: Date = Date(), endDate: Date? = nil) {
         self.children = children
-        self.startDateTime = Date()
+        super.init(identifier: identifier, startDate: startDate, endDate: endDate)
     }
     
-    public init(from decoder: Decoder) throws {
+    public required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.identifier = try container.decode(String.self, forKey: .identifier)
-        self.startDateTime = try container.decodeIfPresent(Date.self, forKey: .startDate) ?? Date()
-        self.endDateTime = try container.decodeIfPresent(Date.self, forKey: .endDate)
-        
         let resultsContainer = try container.nestedUnkeyedContainer(forKey: .children)
         self.children = try decoder.serializationFactory.decodePolymorphicArray(ResultData.self, from: resultsContainer)
+        try super.init(from: decoder)
+    }
+    
+    /// Encode the result to the given encoder.
+    /// - parameter encoder: The encoder to use to encode this instance.
+    /// - throws: `EncodingError`
+    open override func encode(to encoder: Encoder) throws {
+        try super.encode(to: encoder)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        var nestedContainer = container.nestedUnkeyedContainer(forKey: .children)
+        try children.forEach { result in
+            let nestedEncoder = nestedContainer.superEncoder()
+            try result.encode(to: nestedEncoder)
+        }
+    }
+    
+    override open class func codingKeys() -> [CodingKey] {
+        var keys = super.codingKeys()
+        keys.append(contentsOf: CodingKeys.allCases)
+        return keys
+    }
+
+    override open class func isRequired(_ codingKey: CodingKey) -> Bool {
+        (codingKey as? CodingKeys).map { $0 == .children } ?? super.isRequired(codingKey)
+    }
+    
+    override open class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let key = codingKey as? CodingKeys else {
+            return try super.documentProperty(for: codingKey)
+        }
+        switch key {
+        case .children:
+            return .init(propertyType: .interfaceArray("\(ResultData.self)"), propertyDescription:
+                            "The list of input results associated with this step or recorder.")
+        }
+    }
+}
+
+/// `CollectionResultObject` is used to include multiple results associated with a single action.
+public final class CollectionResultObject : AbstractCollectionResultObject, SerializableResultData, CollectionResult {
+    
+    public override class func defaultType() -> SerializableResultType {
+        .StandardTypes.collection.resultType
     }
     
     public func deepCopy() -> CollectionResultObject {
@@ -115,50 +145,9 @@ public final class CollectionResultObject : SerializableResultData, Multiplatfor
         copy.endDateTime = self.endDateTime
         return copy
     }
-    
-    /// Encode the result to the given encoder.
-    /// - parameter encoder: The encoder to use to encode this instance.
-    /// - throws: `EncodingError`
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(serializableType, forKey: .serializableType)
-        try container.encode(identifier, forKey: .identifier)
-        try container.encode(startDateTime, forKey: .startDate)
-        try container.encodeIfPresent(endDateTime, forKey: .endDate)
-        
-        var nestedContainer = container.nestedUnkeyedContainer(forKey: .children)
-        try children.forEach { result in
-            let nestedEncoder = nestedContainer.superEncoder()
-            try result.encode(to: nestedEncoder)
-        }
-    }
 }
 
 extension CollectionResultObject : DocumentableStruct {
-    public static func codingKeys() -> [CodingKey] {
-        return CodingKeys.allCases
-    }
-    
-    public static func isRequired(_ codingKey: CodingKey) -> Bool {
-        true
-    }
-    
-    public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        guard let key = codingKey as? CodingKeys else {
-            throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
-        }
-        switch key {
-        case .serializableType:
-            return .init(constValue: SerializableResultType.StandardTypes.collection.resultType)
-        case .identifier:
-            return .init(propertyType: .primitive(.string))
-        case .startDate, .endDate:
-            return .init(propertyType: .format(.dateTime))
-        case .children:
-            return .init(propertyType: .interfaceArray("\(ResultData.self)"), propertyDescription:
-                            "The list of input results associated with this step or recorder.")
-        }
-    }
     
     public static func examples() -> [CollectionResultObject] {
         let result = CollectionResultObject(identifier: "answers")
