@@ -135,7 +135,7 @@ public struct AnswerTypeType : TypeRepresentable, Codable, Hashable {
     static public let string: AnswerTypeType = AnswerTypeType(jsonType: .string)
     
     static func allStandardTypes() -> [AnswerTypeType] {
-        return [.measurement, .dateTime, .array, .boolean, .integer, .null, .number, .object, .string]
+        return [.measurement, .dateTime, .array, .boolean, .integer, .number, .object, .string]
     }
 }
 
@@ -164,7 +164,7 @@ extension BaseAnswerType {
 }
 
 extension JsonType {
-    public var AnswerType : AnswerType {
+    public var answerType : AnswerType {
         switch self {
         case .boolean:
             return AnswerTypeBoolean()
@@ -869,27 +869,6 @@ public extension JsonElement {
                 return AnswerTypeArray(baseType: .object)
             }
         case .object(_):
-            return AnswerTypeObject()
-        }
-    }
-}
-
-public extension JsonType {
-    var answerType: AnswerType {
-        switch self {
-        case .string:
-            return AnswerTypeString()
-        case .number:
-            return AnswerTypeNumber()
-        case .integer:
-            return AnswerTypeInteger()
-        case .boolean:
-            return AnswerTypeBoolean()
-        case .null:
-            return AnswerTypeNull()
-        case .array:
-            return AnswerTypeArray()
-        case .object:
             return AnswerTypeObject()
         }
     }

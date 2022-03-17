@@ -34,7 +34,7 @@
 import Foundation
 
 /// A `CollectionResult` is used to describe a collection of results.
-public protocol CollectionResult : ResultData, AnswerFinder {
+public protocol CollectionResult : AnyObject, ResultData, AnswerFinder {
 
     /// The collection of results. This can be the async results of a sensor recorder, a response
     /// to a service call, or the results from a form where all the fields are displayed together
@@ -47,22 +47,7 @@ public extension CollectionResult {
     
     /// The `CollectionResult` conformance to the `AnswerFinder` protocol.
     func findAnswer(with identifier: String) -> AnswerResult? {
-        self.children.compactMap {
-            if let finder = $0 as? AnswerFinder,
-               let answer = finder.findAnswer(with: identifier) {
-                return answer
-            }
-            else {
-                return nil
-            }
-        }.last
-    }
-    
-    /// Find a result within this collection.
-    /// - parameter identifier: The identifier associated with the result.
-    /// - returns: The result or `nil` if not found.
-    func findResult(with identifier: String) -> ResultData? {
-        return self.children.first(where: { $0.identifier == identifier })
+        self.children.last(where: { $0.identifier == identifier }) as? AnswerResult
     }
     
     /// Insert the result at the end of the `children` collection and, if found,  remove the previous instance
@@ -70,7 +55,7 @@ public extension CollectionResult {
     /// - parameter result: The result to add to the input results.
     /// - returns: The previous result or `nil` if there wasn't one.
     @discardableResult
-    mutating func insert(_ result: ResultData) -> ResultData? {
+    func insert(_ result: ResultData) -> ResultData? {
         var previousResult: ResultData?
         if let idx = children.firstIndex(where: { $0.identifier == result.identifier }) {
             previousResult = children.remove(at: idx)
@@ -83,7 +68,7 @@ public extension CollectionResult {
     /// - parameter result: The result to remove from the input results.
     /// - returns: The previous result or `nil` if there wasn't one.
     @discardableResult
-    mutating func remove(with identifier: String) -> ResultData? {
+    func remove(with identifier: String) -> ResultData? {
         guard let idx = children.firstIndex(where: { $0.identifier == identifier }) else {
             return nil
         }
@@ -92,15 +77,15 @@ public extension CollectionResult {
 }
 
 /// `CollectionResultObject` is used to include multiple results associated with a single action.
-public final class CollectionResultObject : SerializableResultData, CollectionResult {
+public final class CollectionResultObject : SerializableResultData, MultiplatformResultData, CollectionResult {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType="type", identifier, startDate, endDate, children="inputResults"
+        case serializableType="type", identifier, startDate, endDate, children
     }
-    public private(set) var serializableType: SerializableResultType = .collection
+    public private(set) var serializableType: SerializableResultType = .StandardTypes.collection.resultType
     
     public let identifier: String
-    public var startDate: Date
-    public var endDate: Date
+    public var startDateTime: Date
+    public var endDateTime: Date?
     
     /// The list of input results associated with this step. These are generally assumed to be answers to
     /// field inputs, but they are not required to implement the `AnswerResult` protocol.
@@ -109,15 +94,14 @@ public final class CollectionResultObject : SerializableResultData, CollectionRe
     public init(identifier: String, children: [ResultData] = []) {
         self.identifier = identifier
         self.children = children
-        self.startDate = Date()
-        self.endDate = Date()
+        self.startDateTime = Date()
     }
     
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.identifier = try container.decode(String.self, forKey: .identifier)
-        self.startDate = try container.decodeIfPresent(Date.self, forKey: .startDate) ?? Date()
-        self.endDate = try container.decodeIfPresent(Date.self, forKey: .endDate) ?? Date()
+        self.startDateTime = try container.decodeIfPresent(Date.self, forKey: .startDate) ?? Date()
+        self.endDateTime = try container.decodeIfPresent(Date.self, forKey: .endDate)
         
         let resultsContainer = try container.nestedUnkeyedContainer(forKey: .children)
         self.children = try decoder.serializationFactory.decodePolymorphicArray(ResultData.self, from: resultsContainer)
@@ -127,8 +111,8 @@ public final class CollectionResultObject : SerializableResultData, CollectionRe
         let copyChildren = self.children.map { $0.deepCopy() }
         let copy = CollectionResultObject(identifier: self.identifier,
                                           children: copyChildren)
-        copy.startDate = self.startDate
-        copy.endDate = self.endDate
+        copy.startDateTime = self.startDateTime
+        copy.endDateTime = self.endDateTime
         return copy
     }
     
@@ -139,8 +123,8 @@ public final class CollectionResultObject : SerializableResultData, CollectionRe
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(serializableType, forKey: .serializableType)
         try container.encode(identifier, forKey: .identifier)
-        try container.encode(startDate, forKey: .startDate)
-        try container.encode(endDate, forKey: .endDate)
+        try container.encode(startDateTime, forKey: .startDate)
+        try container.encodeIfPresent(endDateTime, forKey: .endDate)
         
         var nestedContainer = container.nestedUnkeyedContainer(forKey: .children)
         try children.forEach { result in
@@ -165,7 +149,7 @@ extension CollectionResultObject : DocumentableStruct {
         }
         switch key {
         case .serializableType:
-            return .init(constValue: SerializableResultType.collection)
+            return .init(constValue: SerializableResultType.StandardTypes.collection.resultType)
         case .identifier:
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:
@@ -178,8 +162,8 @@ extension CollectionResultObject : DocumentableStruct {
     
     public static func examples() -> [CollectionResultObject] {
         let result = CollectionResultObject(identifier: "answers")
-        result.startDate = ISO8601TimestampFormatter.date(from: "2017-10-16T22:28:09.000-07:00")!
-        result.endDate = result.startDate.addingTimeInterval(5 * 60)
+        result.startDateTime = ISO8601TimestampFormatter.date(from: "2017-10-16T22:28:09.000-07:00")!
+        result.endDateTime = result.startDateTime.addingTimeInterval(5 * 60)
         result.children = AnswerResultObject.examples()
         return [result]
     }

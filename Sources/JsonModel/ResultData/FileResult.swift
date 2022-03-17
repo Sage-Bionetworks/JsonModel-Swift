@@ -57,15 +57,15 @@ public protocol FileResult : ResultData {
 }
 
 /// `FileResultObject` is a concrete implementation of a result that holds a pointer to a file url.
-public struct FileResultObject : SerializableResultData, FileResult, Equatable {
+public struct FileResultObject : SerializableResultData, FileResult, MultiplatformResultData, Equatable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType="type", identifier, startDate, endDate, relativePath, contentType, startUptime, jsonSchema
+        case serializableType="type", identifier, startDateTime = "startDate", endDateTime = "endDate", relativePath, contentType, startUptime, jsonSchema
     }
-    public private(set) var serializableType: SerializableResultType = .file
+    public private(set) var serializableType: SerializableResultType = .StandardTypes.file.resultType
     
     public let identifier: String
-    public var startDate: Date
-    public var endDate: Date
+    public var startDateTime: Date
+    public var endDateTime: Date?
     
     /// The system clock uptime when the recorder was started (if applicable).
     public let startUptime: TimeInterval?
@@ -90,8 +90,7 @@ public struct FileResultObject : SerializableResultData, FileResult, Equatable {
         self.contentType = contentType
         self.jsonSchema = jsonSchema
         self.startUptime = startUptime
-        self.startDate = Date()
-        self.endDate = Date()
+        self.startDateTime = Date()
     }
     
     public init(identifier: String, url: URL, rootSchema: DocumentableRootArray, startUptime: TimeInterval? = nil) {
@@ -101,8 +100,7 @@ public struct FileResultObject : SerializableResultData, FileResult, Equatable {
         self.contentType = "application/json"
         self.jsonSchema = rootSchema.jsonSchema
         self.startUptime = startUptime
-        self.startDate = Date()
-        self.endDate = Date()
+        self.startDateTime = Date()
     }
     
     public func deepCopy() -> FileResultObject { self }
@@ -114,7 +112,7 @@ extension FileResultObject : FileArchivable {
     public func buildArchivableFileData(at stepPath: String?) throws -> (fileInfo: FileInfo, data: Data)? {
         let filename = self.relativePath
         guard let url = self.url else { return nil }
-        let manifest = FileInfo(filename: filename, timestamp: self.startDate, contentType: self.contentType, identifier: self.identifier, stepPath: stepPath, jsonSchema: self.jsonSchema)
+        let manifest = FileInfo(filename: filename, timestamp: self.startDateTime, contentType: self.contentType, identifier: self.identifier, stepPath: stepPath, jsonSchema: self.jsonSchema)
         let data = try Data(contentsOf: url)
         return (manifest, data)
     }
@@ -136,10 +134,10 @@ extension FileResultObject : DocumentableStruct {
         }
         switch key {
         case .serializableType:
-            return .init(constValue: SerializableResultType.file)
+            return .init(constValue: SerializableResultType.StandardTypes.file.resultType)
         case .identifier:
             return .init(propertyType: .primitive(.string))
-        case .startDate, .endDate:
+        case .startDateTime, .endDateTime:
             return .init(propertyType: .format(.dateTime))
         case .relativePath:
             return .init(propertyType: .primitive(.string), propertyDescription:
@@ -158,8 +156,8 @@ extension FileResultObject : DocumentableStruct {
     
     public static func examples() -> [FileResultObject] {
         var fileResult = FileResultObject(identifier: "fileResult", url: URL(string: "file://temp/foo.json")!, contentType: "application/json", startUptime: 1234.567, jsonSchema: URL(string: "file://temp/foo.schema.json")!)
-        fileResult.startDate = ISO8601TimestampFormatter.date(from: "2017-10-16T22:28:09.000-07:00")!
-        fileResult.endDate = fileResult.startDate.addingTimeInterval(5 * 60)
+        fileResult.startDateTime = ISO8601TimestampFormatter.date(from: "2017-10-16T22:28:09.000-07:00")!
+        fileResult.endDateTime = fileResult.startDateTime.addingTimeInterval(5 * 60)
         return [fileResult]
     }
 }

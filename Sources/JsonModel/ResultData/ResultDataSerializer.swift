@@ -45,7 +45,7 @@ extension SerializableResultData {
     public var typeName: String { serializableType.stringValue }
 }
 
-/// `serializableType` is an extendable string enum used by the `SerializationFactory` to
+/// `SerializableResultType` is an extendable string enum used by the `SerializationFactory` to
 /// create the appropriate result type.
 public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
     
@@ -55,24 +55,17 @@ public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
         self.rawValue = rawValue
     }
     
-    /// Defaults to creating a `JsonElementResultObject`.
-    static let jsonValue: SerializableResultType = "jsonValue"
-    
-    /// Defaults to creating a `AnswerResultObject`.
-    public static let answer: SerializableResultType = "answer"
-
-    /// Defaults to creating a `CollectionResultObject`.
-    public static let collection: SerializableResultType = "collection"
-
-    /// Defaults to creating a `FileResultObject`.
-    public static let file: SerializableResultType = "file"
-
-    /// Defaults to creating a `ErrorResultObject`.
-    public static let error: SerializableResultType = "error"
+    public enum StandardTypes : String, CaseIterable {
+        case answer, assessment, base, collection, error, file, section
+        
+        public var resultType: SerializableResultType {
+            .init(rawValue: self.rawValue)
+        }
+    }
     
     /// List of all the standard types.
     public static func allStandardTypes() -> [SerializableResultType] {
-        [.answer, .collection, .file, .error]
+        StandardTypes.allCases.map { $0.resultType }
     }
 }
 
@@ -106,6 +99,9 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
             CollectionResultObject.examples().first!,
             ErrorResultObject.examples().first!,
             FileResultObject.examples().first!,
+            ResultObject.examples().first!,
+            BranchNodeResultObject.examples().first!,
+            AssessmentResultObject(),
         ]
     }
     
@@ -113,17 +109,6 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
     
     public override class func typeDocumentProperty() -> DocumentProperty {
         .init(propertyType: .reference(SerializableResultType.documentableType()))
-    }
-    
-    public override func typeName(from decoder: Decoder) throws -> String {
-        let name = try super.typeName(from: decoder)
-        if name == SerializableResultType.jsonValue.rawValue {
-            print("WARNING!!! \(name) is deprecated. Replace with `answer`.")
-            return SerializableResultType.answer.stringValue
-        }
-        else {
-            return name
-        }
     }
     
     /// Insert the given example into the example array, replacing any existing example with the

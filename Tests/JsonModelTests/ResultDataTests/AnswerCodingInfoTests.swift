@@ -1,7 +1,7 @@
 //
 //  AnswerResultTypeJSONTests.swift
 //
-//  Copyright © 2019-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2019-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -34,6 +34,10 @@ import XCTest
 @testable import JsonModel
 
 class AnswerTypeTests: XCTestCase {
+    
+    let decoder: JSONDecoder = ResultDataFactory().createJSONDecoder()
+
+    let encoder: JSONEncoder = ResultDataFactory().createJSONEncoder()
     
     override func setUp() {
         super.setUp()
@@ -191,6 +195,52 @@ class AnswerTypeTests: XCTestCase {
             
         } catch let err {
             XCTFail("Failed to decode/encode object: \(err)")
+        }
+    }
+    
+    func testAnswerTypeSerializer() {
+        // Check that an example of all the standard results are included in the serializer.
+        let serializer = AnswerTypeSerializer()
+        let actual = Set(serializer.examples.map { $0.typeName })
+        var expected = Set(["measurement", "date-time"]).union(JsonType.allCases.map { $0.rawValue })
+        expected.remove("null")
+        XCTAssertEqual(expected.count, actual.count)
+        XCTAssertEqual(expected, actual)
+        
+        let standardTypes = Set(AnswerTypeType.allStandardTypes().map { $0.rawValue })
+        XCTAssertEqual(expected.count, standardTypes.count)
+        XCTAssertEqual(expected, standardTypes)
+
+        let answerTypes: [SerializableAnswerType] = serializer.examples as! [SerializableAnswerType]
+
+        answerTypes.forEach { object in
+
+            do {
+                let jsonData = try object.jsonEncodedData()
+                guard let dictionary = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String : Any]
+                    else {
+                        XCTFail("Encoded object is not a dictionary")
+                        return
+                }
+
+                XCTAssertEqual(object.typeName, dictionary["type"] as? String)
+
+                let wrapper = try decoder.decode(_DecodingWrapper<AnswerType>.self, from: jsonData)
+                let decodedObject = wrapper.value
+                
+                XCTAssertEqual(object.typeName, decodedObject.typeName)
+                XCTAssertEqual("\(type(of: object))", "\(type(of: decodedObject))")
+
+            } catch let err {
+                XCTFail("Failed to decode/encode object: \(err)")
+            }
+        }
+    }
+    
+    fileprivate struct _DecodingWrapper<T> : Decodable {
+        let value : T
+        init(from decoder: Decoder) throws {
+            self.value = try decoder.serializationFactory.decodePolymorphicObject(T.self, from: decoder)
         }
     }
 }

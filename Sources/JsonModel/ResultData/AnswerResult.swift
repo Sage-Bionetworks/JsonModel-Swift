@@ -77,18 +77,18 @@ public extension AnswerResult {
     }
 }
 
-public final class AnswerResultObject : SerializableResultData, AnswerResult {
+public final class AnswerResultObject : SerializableResultData, AnswerResult, MultiplatformResultData {
     private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType = "type", identifier, startDate, endDate, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData
     }
-    public private(set) var serializableType: SerializableResultType = .answer
+    public private(set) var serializableType: SerializableResultType = .StandardTypes.answer.resultType
     
     public let identifier: String
     public let jsonAnswerType: AnswerType?
     public var jsonValue: JsonElement?
     public var questionText: String?
-    public var startDate: Date
-    public var endDate: Date
+    public var startDateTime: Date
+    public var endDateTime: Date?
     
     /// Additional data that researchers may wish to include with an answer result.
     public var questionData: JsonElement?
@@ -99,18 +99,17 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
         self.jsonValue = value
         self.questionText = questionText
         self.questionData = questionData
-        self.startDate = Date()
-        self.endDate = Date()
+        self.startDateTime = Date()
     }
     
-    public init(identifier: String, answerType: AnswerType?, value: JsonElement? = nil, questionText: String? = nil, questionData: JsonElement? = nil, startDate: Date = Date(), endDate: Date = Date()) {
+    public init(identifier: String, answerType: AnswerType?, value: JsonElement? = nil, questionText: String? = nil, questionData: JsonElement? = nil, startDate: Date = Date(), endDate: Date? = nil) {
         self.identifier = identifier
         self.jsonAnswerType = answerType
         self.jsonValue = value
         self.questionText = questionText
         self.questionData = questionData
-        self.startDate = startDate
-        self.endDate = endDate
+        self.startDateTime = startDate
+        self.endDateTime = endDate
     }
     
     public func deepCopy() -> AnswerResultObject {
@@ -119,8 +118,8 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
                            value: jsonValue,
                            questionText: questionText,
                            questionData: questionData,
-                           startDate: startDate,
-                           endDate: endDate)
+                           startDate: startDateTime,
+                           endDate: endDateTime)
     }
     
     public init(from decoder: Decoder) throws {
@@ -145,8 +144,8 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
             self.jsonValue = try container.decodeIfPresent(JsonElement.self, forKey: .jsonValue)
             self.jsonAnswerType = nil
         }
-        self.startDate = try container.decodeIfPresent(Date.self, forKey: .startDate) ?? Date()
-        self.endDate = try container.decodeIfPresent(Date.self, forKey: .endDate) ?? Date()
+        self.startDateTime = try container.decode(Date.self, forKey: .startDate)
+        self.endDateTime = try container.decodeIfPresent(Date.self, forKey: .endDate)
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -155,8 +154,8 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult {
         try container.encode(serializableType, forKey: .serializableType)
         try container.encodeIfPresent(self.questionData, forKey: .questionData)
         try container.encodeIfPresent(self.questionText, forKey: .questionText)
-        try container.encodeIfPresent(self.startDate, forKey: .startDate)
-        try container.encodeIfPresent(self.endDate, forKey: .endDate)
+        try container.encode(self.startDateTime, forKey: .startDate)
+        try container.encodeIfPresent(self.endDateTime, forKey: .endDate)
         if let info = self.jsonAnswerType {
             let encodable = try info as? Encodable ?? JsonElement.object(try info.jsonDictionary())
             let nestedEncoder = container.superEncoder(forKey: .jsonAnswerType)
@@ -184,7 +183,7 @@ extension AnswerResultObject : DocumentableStruct {
         }
         switch key {
         case .serializableType:
-            return .init(constValue: SerializableResultType.answer)
+            return .init(constValue: SerializableResultType.StandardTypes.answer.resultType)
         case .identifier:
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:
@@ -209,8 +208,8 @@ extension AnswerResultObject : DocumentableStruct {
         let date = ISO8601TimestampFormatter.date(from: "2017-10-16T22:28:09.000-07:00")!
         return typeAndValue.enumerated().map { (index, object) -> AnswerResultObject in
             let result = AnswerResultObject(identifier: "question\(index+1)", answerType: object.0, value: object.1)
-            result.startDate = date
-            result.endDate = date
+            result.startDateTime = date
+            result.endDateTime = date
             return result
         }
     }

@@ -47,15 +47,15 @@ public protocol ErrorResult : ResultData {
 }
 
 /// `ErrorResultObject` is a result that holds information about an error.
-public struct ErrorResultObject : SerializableResultData, ErrorResult, Equatable {
+public struct ErrorResultObject : SerializableResultData, ErrorResult, MultiplatformResultData, Equatable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType="type", identifier, startDate, endDate, errorDescription, errorDomain, errorCode
+        case serializableType="type", identifier, startDateTime = "startDate", endDateTime = "endDate", errorDescription, errorDomain, errorCode
     }
-    public private(set) var serializableType: SerializableResultType = .error
+    public private(set) var serializableType: SerializableResultType = .StandardTypes.error.resultType
     
     public let identifier: String
-    public var startDate: Date
-    public var endDate: Date
+    public var startDateTime: Date
+    public var endDateTime: Date?
     
     /// A description associated with an `NSError`.
     public let errorDescription: String
@@ -72,10 +72,10 @@ public struct ErrorResultObject : SerializableResultData, ErrorResult, Equatable
     ///     - description: The description of the error.
     ///     - domain: The error domain.
     ///     - code: The error code.
-    public init(identifier: String, description: String, domain: String, code: Int, startDate: Date = Date(), endDate: Date = Date()) {
+    public init(identifier: String, description: String, domain: String, code: Int, startDate: Date = Date(), endDate: Date? = nil) {
         self.identifier = identifier
-        self.startDate = Date()
-        self.endDate = Date()
+        self.startDateTime = startDate
+        self.endDateTime = endDate
         self.errorDescription = description
         self.errorDomain = domain
         self.errorCode = code
@@ -87,8 +87,7 @@ public struct ErrorResultObject : SerializableResultData, ErrorResult, Equatable
     ///     - error: The error for the result.
     public init(identifier: String, error: Error) {
         self.identifier = identifier
-        self.startDate = Date()
-        self.endDate = Date()
+        self.startDateTime = Date()
         self.errorDescription = (error as NSError).localizedDescription
         self.errorDomain = (error as NSError).domain
         self.errorCode = (error as NSError).code
@@ -112,10 +111,10 @@ extension ErrorResultObject : DocumentableStruct {
         }
         switch key {
         case .serializableType:
-            return .init(constValue: SerializableResultType.error)
+            return .init(constValue: SerializableResultType.StandardTypes.error.resultType)
         case .identifier:
             return .init(propertyType: .primitive(.string))
-        case .startDate, .endDate:
+        case .startDateTime, .endDateTime:
             return .init(propertyType: .format(.dateTime))
         case .errorDomain:
             return .init(propertyType: .primitive(.string), propertyDescription:
