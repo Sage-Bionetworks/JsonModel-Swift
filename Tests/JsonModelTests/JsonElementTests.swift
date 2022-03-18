@@ -59,6 +59,8 @@ final class JsonElementTests: XCTestCase {
         let original = JsonElement(3)
         XCTAssertEqual(JsonElement.integer(3), original)
         XCTAssertNotEqual(JsonElement.number(3.2), original)
+        XCTAssertTrue(3 == original)
+        XCTAssertFalse(3.2 == original)
         
         let factory = SerializationFactory.defaultFactory
         let decoder = factory.createJSONDecoder()
@@ -123,6 +125,8 @@ final class JsonElementTests: XCTestCase {
         let original = JsonElement(3.2)
         XCTAssertEqual(JsonElement.number(3.2), original)
         XCTAssertNotEqual(JsonElement.number(3), original)
+        XCTAssertTrue(3.2 == original)
+        XCTAssertFalse(3 == original)
         
         let factory = SerializationFactory.defaultFactory
         let decoder = factory.createJSONDecoder()
@@ -204,6 +208,24 @@ final class JsonElementTests: XCTestCase {
             XCTFail("Failed to decode/encode object: \(err)")
             return
         }
+    }
+    
+    func testNumberToInt_Equality() {
+        let left = JsonElement.integer(3)
+        let right = JsonElement.number(3)
+        XCTAssertTrue(left == right)
+        XCTAssertTrue(right == left)
+    }
+    
+    func testComparable() {
+        let values: [JsonElement] = [
+            .number(3), .integer(4), .number(2.3)
+        ]
+        let expected: [JsonElement] = [
+            .number(2.3), .number(3), .integer(4)
+        ]
+        XCTAssertNotEqual(expected, values)
+        XCTAssertEqual(expected, values.sorted())
     }
 }
 

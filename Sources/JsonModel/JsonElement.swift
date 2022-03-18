@@ -47,7 +47,7 @@ extension JsonType : DocumentableStringEnum, StringEnumSet {
 }
 
 /// A `Codable` element that can be used to serialize any `JsonSerializable`.
-public enum JsonElement : Codable, Hashable {
+public enum JsonElement : Codable {
     case string(String)
     case integer(Int)
     case number(JsonNumber)
@@ -154,24 +154,40 @@ public enum JsonElement : Codable, Hashable {
             try AnyCodableDictionary(value).encode(to: encoder)
         }
     }
+}
+
+extension JsonElement : Hashable {
     
     public static func == (lhs: JsonElement, rhs: JsonElement) -> Bool {
         switch lhs {
         case .null:
             if case .null = rhs { return true } else { return false }
         case .boolean(let lv):
-            if case .boolean(let rv) = rhs { return rv == lv } else { return false }
+            if case .boolean(let rv) = rhs { return lv == rv } else { return false }
         case .string(let lv):
-            if case .string(let rv) = rhs { return rv == lv } else { return false }
-        case .integer(let lv):
-            if case .integer(let rv) = rhs { return rv == lv } else { return false }
-        case .number(let lv):
-            if case .number(let rv) = rhs { return rv.jsonNumber() == lv.jsonNumber() } else { return false }
+            if case .string(let rv) = rhs { return lv == rv } else { return false }
         case .array(let lv):
             if case .array(let rv) = rhs { return (lv as NSArray).isEqual(to: rv) } else { return false }
         case .object(let lv):
             if case .object(let rv) = rhs { return (lv as NSDictionary).isEqual(to: rv) } else { return false }
+        default:
+            return equal(lhs: lhs, rhs: rhs)
         }
+    }
+    
+    public static func == (lhs: JsonElement, rhs: JsonNumber) -> Bool {
+        switch lhs {
+        case .integer(let lv):
+            return lv.jsonNumber() == rhs.jsonNumber()
+        case .number(let lv):
+            return lv.jsonNumber() == rhs.jsonNumber()
+        default:
+            return false
+        }
+    }
+    
+    public static func == (lhs: JsonNumber, rhs: JsonElement) -> Bool {
+        rhs == lhs
     }
     
     public func hash(into hasher: inout Hasher) {
@@ -193,6 +209,54 @@ public enum JsonElement : Codable, Hashable {
             (value as NSDictionary).hash(into: &hasher)
         }
     }
+}
+
+extension JsonElement : Comparable {
+    public static func < (lhs: JsonElement, rhs: JsonElement) -> Bool {
+        switch lhs {
+        case .string(let lv):
+            if case .string(let rv) = rhs {
+                return lv < rv
+            } else {
+                return false
+            }
+        default:
+            return lessThan(lhs: lhs, rhs: rhs)
+        }
+    }
+}
+
+extension JsonElement : JsonNumber {
+    public func jsonNumber() -> NSNumber? {
+        switch self {
+        case .integer(let value):
+            return value.jsonNumber()
+        case .number(let value):
+            return value.jsonNumber()
+        case .string(let value):
+            return NumberFormatter().number(from: value)
+        default:
+            return nil
+        }
+    }
+}
+
+fileprivate func lessThan(lhs: JsonNumber, rhs: JsonNumber) -> Bool {
+    guard let lv = lhs.jsonNumber()?.doubleValue,
+          let rv = rhs.jsonNumber()?.doubleValue
+    else {
+        return false
+    }
+    return lv < rv
+}
+
+fileprivate func equal(lhs: JsonNumber, rhs: JsonNumber) -> Bool {
+    guard let lv = lhs.jsonNumber(),
+          let rv = rhs.jsonNumber()
+    else {
+        return false
+    }
+    return lv == rv
 }
 
 extension JsonElement : JsonValue {
