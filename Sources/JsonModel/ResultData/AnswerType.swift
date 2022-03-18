@@ -155,6 +155,10 @@ public protocol BaseAnswerType : SerializableAnswerType {
     static var defaultJsonType: JsonType { get }
 }
 
+public protocol DecimalAnswerType : BaseAnswerType {
+    var significantDigits: Int? { get }
+}
+
 extension BaseAnswerType {
     public var typeName: String { serializableType.rawValue }
     
@@ -391,7 +395,7 @@ public struct AnswerTypeInteger : BaseAnswerType, Codable, Hashable {
     }
 }
 
-public struct AnswerTypeNumber : BaseAnswerType, Codable, Hashable {
+public struct AnswerTypeNumber : DecimalAnswerType, Codable, Hashable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
         case serializableType = "type", significantDigits
     }
@@ -612,17 +616,19 @@ public struct AnswerTypeDateTime : BaseAnswerType, Codable, Hashable {
     }
 }
 
-public struct AnswerTypeMeasurement : BaseAnswerType, Codable, Hashable {
+public struct AnswerTypeMeasurement : DecimalAnswerType, Codable, Hashable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", unit
+        case serializableType = "type", unit, significantDigits
     }
     public static let defaultJsonType: JsonType = .number
     public static let defaultType: AnswerTypeType = .measurement
     public private(set) var serializableType: AnswerTypeType = Self.defaultType
     public let unit: String?
+    public let significantDigits: Int?
     
-    public init(unit: String? = nil) {
+    public init(unit: String? = nil, significantDigits: Int? = nil) {
         self.unit = unit
+        self.significantDigits = significantDigits
     }
 }
 extension AnswerTypeMeasurement : NumberJsonType {
@@ -833,6 +839,9 @@ extension AnswerTypeMeasurement : AnswerTypeDocumentable, DocumentableStruct {
         case .unit:
             return .init(propertyType: .primitive(.string), propertyDescription:
                             "The unit of measurement into which the value is converted for storage.")
+        case .significantDigits:
+            return .init(propertyType: .primitive(.number), propertyDescription:
+                            "The number of significant digits to use in encoding the answer.")
         }
     }
 
