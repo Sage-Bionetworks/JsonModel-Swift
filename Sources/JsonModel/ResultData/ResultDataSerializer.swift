@@ -206,6 +206,7 @@ open class AbstractResultObject : Codable, MultiplatformTimestamp {
         try container.encode(identifier, forKey: .identifier)
         try container.encode(serializableType, forKey: .serializableType)
         try container.encode(startDateTime, forKey: .startDate)
+        try container.encodeIfPresent(endDateTime, forKey: .endDate)
     }
     
     open class func codingKeys() -> [CodingKey] {
