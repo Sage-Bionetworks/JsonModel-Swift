@@ -91,6 +91,11 @@ public protocol DocumentableStringOptionSet : Documentable, Codable {
     static func examples() -> [String]
 }
 
+public protocol DocumentableAny : Documentable {
+    /// Any dictionary that can be used to define the json schema definition for this object.
+    static func jsonSchemaDefinition() -> [String : JsonSerializable]
+}
+
 public protocol DocumentableRoot {
     
     /// The class name for the root object.
@@ -790,6 +795,9 @@ public class JsonDocumentBuilder {
                                                 required: required,
                                                 interfaces: interfaces,
                                                 examples: examples))
+            }
+            else if let docType = klass as? DocumentableAny.Type {
+                return .any(.init(id: ref, definition: docType.jsonSchemaDefinition()))
             }
             else {
                 fatalError("Not implemented")

@@ -163,6 +163,7 @@ public enum JsonSchemaDefinition : Codable, Hashable {
     case stringLiteral(JsonSchemaStringLiteral)
     case stringEnum(JsonSchemaStringEnum)
     case stringOptionSet(JsonSchemaStringOptionSet)
+    case any(JsonSchemaAnyDefinition)
     
     public var className: String? {
         switch self {
@@ -173,6 +174,8 @@ public enum JsonSchemaDefinition : Codable, Hashable {
         case .stringLiteral(let value):
             return value.id.className
         case .stringOptionSet(let value):
+            return value.id.className
+        case .any(let value):
             return value.id.className
         }
     }
@@ -190,6 +193,9 @@ public enum JsonSchemaDefinition : Codable, Hashable {
         else if let obj = try? JsonSchemaObject(from: decoder), obj.isValidDecoding {
             self = .object(obj)
         }
+        else if let obj = try? JsonSchemaAnyDefinition(from: decoder) {
+            self = .any(obj)
+        }
         else {
             let context = DecodingError.Context(codingPath: decoder.codingPath,
                                                 debugDescription: "Cannot find match for this decoding")
@@ -206,6 +212,8 @@ public enum JsonSchemaDefinition : Codable, Hashable {
         case .stringLiteral(let value):
             try value.encode(to: encoder)
         case .stringOptionSet(let value):
+            try value.encode(to: encoder)
+        case .any(let value):
             try value.encode(to: encoder)
         }
     }
@@ -327,6 +335,49 @@ public struct JsonSchemaTypedDictionary : Codable, Hashable {
     
     fileprivate var isValidDecoding: Bool {
         return jsonType == .object
+    }
+}
+
+public struct JsonSchemaAnyDefinition : Codable, Hashable {
+    public fileprivate(set) var id: JsonSchemaReferenceId
+    
+    public var definition: [String : JsonSerializable] {
+        switch json {
+        case .object(let dictionary):
+            return dictionary
+        default:
+            return [:]
+        }
+    }
+    private let json: JsonElement
+    
+    public init(id: JsonSchemaReferenceId,
+                definition: [String : JsonSerializable]) {
+        self.id = id
+        self.json = .object(definition)
+    }
+    
+    private enum CodingKeys : String, CodingKey {
+        case id = "$id"
+    }
+    
+    public init(from decoder: Decoder) throws {
+        var dictionary = try AnyCodableDictionary(from: decoder).dictionary
+        guard let idString = dictionary[CodingKeys.id.rawValue] as? String,
+              let id = JsonSchemaReferenceId(stringValue: idString)
+        else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription:
+                                                        "$id is a required key for decoding definitions using this library."))
+        }
+        dictionary[CodingKeys.id.rawValue] = nil
+        self.id = id
+        self.json = .object(dictionary)
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        try self.json.encode(to: encoder)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
     }
 }
 
@@ -659,14 +710,10 @@ struct OrderedJsonDictionary<Element : Codable> : Codable, Hashable where Elemen
         let container = try decoder.container(keyedBy: AnyCodingKey.self)
         let allKeys = container.allKeys
         var dictionary = Dictionary<AnyCodingKey, Element>()
-        
-        print(allKeys)
-        
         for codingKey in allKeys {
             let orderedKey: AnyCodingKey = .init(stringValue: codingKey.stringValue,
                                                  intValue: allKeys.firstIndex(where: { $0.stringValue == codingKey.stringValue }))
             let nestedDecoder = try container.superDecoder(forKey: codingKey)
-            print(orderedKey)
             dictionary[orderedKey] = try Element.init(from: nestedDecoder)
         }
         self.orderedDictionary = dictionary
