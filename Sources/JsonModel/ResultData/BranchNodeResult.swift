@@ -59,12 +59,12 @@ public extension BranchNodeResult {
     }
     
     func findAnswer(with identifier:String ) -> AnswerResult? {
-        for result in stepHistory {
+        for result in stepHistory.reversed() {
             if let answerResult = (result as? AnswerFinder)?.findAnswer(with: identifier) {
                 return answerResult
             }
         }
-        if let results = asyncResults {
+        if let results = asyncResults?.reversed() {
             for result in results {
                 if let answerResult = (result as? AnswerFinder)?.findAnswer(with: identifier) {
                     return answerResult
