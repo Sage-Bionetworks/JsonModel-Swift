@@ -79,11 +79,13 @@ public final class AnswerTypeSerializer : AbstractPolymorphicSerializer, Polymor
             AnswerTypeArray.examples().first!,
             AnswerTypeBoolean.examples().first!,
             AnswerTypeDateTime.examples().first!,
+            AnswerTypeDuration.examples().first!,
             AnswerTypeInteger.examples().first!,
             AnswerTypeMeasurement.examples().first!,
             AnswerTypeNumber.examples().first!,
             AnswerTypeObject.examples().first!,
             AnswerTypeString.examples().first!,
+            AnswerTypeTime.examples().first!,
         ]
     }
     
@@ -125,6 +127,8 @@ public struct AnswerTypeType : TypeRepresentable, Codable, Hashable {
     
     static public let measurement: AnswerTypeType = "measurement"
     static public let dateTime: AnswerTypeType = "date-time"
+    static public let time: AnswerTypeType = "time"
+    static public let duration: AnswerTypeType = "duration"
     
     static public let array: AnswerTypeType = AnswerTypeType(jsonType: .array)
     static public let boolean: AnswerTypeType = AnswerTypeType(jsonType: .boolean)
@@ -135,7 +139,7 @@ public struct AnswerTypeType : TypeRepresentable, Codable, Hashable {
     static public let string: AnswerTypeType = AnswerTypeType(jsonType: .string)
     
     static func allStandardTypes() -> [AnswerTypeType] {
-        return [.measurement, .dateTime, .array, .boolean, .integer, .number, .object, .string]
+        return [.measurement, .dateTime, .time, .duration, .array, .boolean, .integer, .number, .object, .string]
     }
 }
 
@@ -557,27 +561,46 @@ public struct AnswerTypeArray : SerializableAnswerType, Codable, Hashable {
     }
 }
 
-public struct AnswerTypeDateTime : BaseAnswerType, Codable, Hashable {
+public struct AnswerTypeDateTime : DateTimeAnswerType, Codable, Hashable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", _codingFormat = "codingFormat"
+        case serializableType = "type", codingFormat
     }
     public static let defaultJsonType: JsonType = .string
     public static let defaultType: AnswerTypeType = .dateTime
     public private(set) var serializableType: AnswerTypeType = Self.defaultType
     
-    public var codingFormat: String {
-        _codingFormat ?? ISO8601TimestampFormatter.dateFormat
+    public let codingFormat: String
+    
+    public init(codingFormat: String = ISO8601TimestampFormatter.dateFormat) {
+        self.codingFormat = codingFormat
     }
-    private let _codingFormat: String?
+}
+
+public struct AnswerTypeTime : DateTimeAnswerType, Codable, Hashable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case serializableType = "type", codingFormat
+    }
+    public static let defaultJsonType: JsonType = .string
+    public static let defaultType: AnswerTypeType = .time
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
+    
+    public let codingFormat: String
+    
+    public init(codingFormat: String = ISO8601TimeOnlyFormatter.dateFormat) {
+        self.codingFormat = codingFormat
+    }
+}
+
+public protocol DateTimeAnswerType : BaseAnswerType {
+    var codingFormat: String { get }
+}
+
+extension DateTimeAnswerType {
     
     public var formatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = codingFormat
         return formatter
-    }
-    
-    public init(codingFormat: String? = nil) {
-        self._codingFormat = codingFormat
     }
     
     public func decodeValue(from decoder: Decoder) throws -> JsonElement {
@@ -614,6 +637,29 @@ public struct AnswerTypeDateTime : BaseAnswerType, Codable, Hashable {
             throw encodingError(value)
         }
     }
+}
+
+/// The duration answer type represents a duration of time where duration is measured in seconds.
+public struct AnswerTypeDuration : DecimalAnswerType, Codable, Hashable {
+    private enum CodingKeys : String, OrderedEnumCodingKey {
+        case serializableType = "type", displayUnits, significantDigits
+    }
+    public static let defaultJsonType: JsonType = .number
+    public static let defaultType: AnswerTypeType = .duration
+    public private(set) var serializableType: AnswerTypeType = Self.defaultType
+    
+    /// The units used to build the question for the participant.
+    public let displayUnits: [String]?
+    
+    /// The number of significant digits for the value in seconds.
+    public let significantDigits: Int?
+    
+    public init(significantDigits: Int = 0, displayUnits: [String] = ["H","M"]) {
+        self.displayUnits = displayUnits
+        self.significantDigits = significantDigits
+    }
+}
+extension AnswerTypeDuration : NumberJsonType {
 }
 
 public struct AnswerTypeMeasurement : DecimalAnswerType, Codable, Hashable {
@@ -654,6 +700,8 @@ struct AnswerTypeExamples {
         AnswerTypeString.self,
         AnswerTypeArray.self,
         AnswerTypeDateTime.self,
+        AnswerTypeTime.self,
+        AnswerTypeDuration.self,
         AnswerTypeMeasurement.self,
     ]
 }
@@ -802,7 +850,7 @@ extension AnswerTypeDateTime : AnswerTypeDocumentable, DocumentableStruct {
         switch key {
         case .serializableType:
             return .init(constValue: defaultType)
-        case ._codingFormat:
+        case .codingFormat:
             return .init(propertyType: .primitive(.string), propertyDescription:
                             "The iso8601 format for the date-time components used by this answer type.")
         }
@@ -818,6 +866,71 @@ extension AnswerTypeDateTime : AnswerTypeDocumentable, DocumentableStruct {
             (AnswerTypeDateTime(codingFormat: "HH:mm"), .string("08:30")),
             (AnswerTypeDateTime(), .string("2017-10-16T22:28:09.000-07:00")),
         ]
+    }
+}
+
+extension AnswerTypeTime : AnswerTypeDocumentable, DocumentableStruct {
+    public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
+
+    public static func isRequired(_ codingKey: CodingKey) -> Bool {
+        guard let key = codingKey as? CodingKeys else { return false }
+        return key == .serializableType
+    }
+
+    public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let key = codingKey as? CodingKeys else {
+            throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
+        }
+        switch key {
+        case .serializableType:
+            return .init(constValue: defaultType)
+        case .codingFormat:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The iso8601 format for the time components used by this answer type.")
+        }
+    }
+
+    public static func examples() -> [AnswerTypeTime] {
+        exampleTypeAndValues().map { $0.0 as! Self }
+    }
+    
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)] {
+        [
+            (AnswerTypeTime(), .string("22:28:00.000")),
+        ]
+    }
+}
+
+extension AnswerTypeDuration : AnswerTypeDocumentable, DocumentableStruct {
+    public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
+
+    public static func isRequired(_ codingKey: CodingKey) -> Bool {
+        guard let key = codingKey as? CodingKeys else { return false }
+        return key == .serializableType
+    }
+
+    public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let key = codingKey as? CodingKeys else {
+            throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
+        }
+        switch key {
+        case .serializableType:
+            return .init(constValue: defaultType)
+        case .displayUnits:
+            return .init(propertyType: .primitiveArray(.string), propertyDescription:
+                            "The units used to display the duration as a question. These are the ISO8601 duration units in sequence.")
+        case .significantDigits:
+            return .init(propertyType: .primitive(.number), propertyDescription:
+                            "The number of significant digits to use in encoding the answer.")
+        }
+    }
+
+    public static func examples() -> [AnswerTypeDuration] {
+        exampleTypeAndValues().map { $0.0 as! Self }
+    }
+    
+    static func exampleTypeAndValues() -> [(AnswerType, JsonElement)] {
+        [(AnswerTypeDuration(), .number(75))]
     }
 }
 

@@ -118,6 +118,23 @@ class AnswerTypeTests: XCTestCase {
             XCTFail("Failed to decode/encode object: \(err)")
         }
     }
+    
+    func testAnswerTypeDuration_Codable() {
+        do {
+            let expectedObject = 12.5
+            let expectedJson: JsonElement = .number(12.5)
+            
+            let AnswerType = AnswerTypeNumber()
+            let objectValue = try AnswerType.decodeAnswer(from: expectedJson)
+            let jsonValue = try AnswerType.encodeAnswer(from: expectedObject)
+            
+            XCTAssertEqual(objectValue as? Double, expectedObject)
+            XCTAssertEqual(jsonValue, expectedJson)
+            
+        } catch let err {
+            XCTFail("Failed to decode/encode object: \(err)")
+        }
+    }
 
     func testAnswerTypeDateTime_Codable() {
 
@@ -134,6 +151,33 @@ class AnswerTypeTests: XCTestCase {
                 XCTAssertEqual(comp.year, 2016)
                 XCTAssertEqual(comp.month, 2)
                 XCTAssertEqual(comp.day, 20)
+                
+                let jsonValue = try AnswerType.encodeAnswer(from: date)
+                XCTAssertEqual(expectedJson, jsonValue)
+            }
+            else {
+                XCTFail("Failed to decode String to a Date: \(String(describing: objectValue))")
+            }
+            
+        } catch let err {
+            XCTFail("Failed to decode/encode object: \(err)")
+        }
+    }
+    
+    func testAnswerTypeTime_Codable() {
+
+        do {
+            let expectedJson: JsonElement = .string("22:32:00.000")
+            
+            let AnswerType = AnswerTypeTime()
+
+            let objectValue = try AnswerType.decodeAnswer(from: expectedJson)
+            if let date = objectValue as? Date {
+                let calendar = Calendar(identifier: .iso8601)
+                let calendarComponents: Set<Calendar.Component> = [.hour, .minute]
+                let comp = calendar.dateComponents(calendarComponents, from: date)
+                XCTAssertEqual(comp.hour, 22)
+                XCTAssertEqual(comp.minute, 32)
                 
                 let jsonValue = try AnswerType.encodeAnswer(from: date)
                 XCTAssertEqual(expectedJson, jsonValue)
@@ -202,7 +246,7 @@ class AnswerTypeTests: XCTestCase {
         // Check that an example of all the standard results are included in the serializer.
         let serializer = AnswerTypeSerializer()
         let actual = Set(serializer.examples.map { $0.typeName })
-        var expected = Set(["measurement", "date-time"]).union(JsonType.allCases.map { $0.rawValue })
+        var expected = Set(["measurement", "date-time", "time", "duration"]).union(JsonType.allCases.map { $0.rawValue })
         expected.remove("null")
         XCTAssertEqual(expected.count, actual.count)
         XCTAssertEqual(expected, actual)
