@@ -649,17 +649,22 @@ public struct AnswerTypeDuration : DecimalAnswerType, Codable, Hashable {
     public private(set) var serializableType: AnswerTypeType = Self.defaultType
     
     /// The units used to build the question for the participant.
-    public let displayUnits: [String]?
+    public let displayUnits: [DurationUnit]?
     
     /// The number of significant digits for the value in seconds.
     public let significantDigits: Int?
     
-    public init(significantDigits: Int = 0, displayUnits: [String] = ["H","M"]) {
+    public init(significantDigits: Int = 0, displayUnits: [DurationUnit] = DurationUnit.defaultDispayUnits) {
         self.displayUnits = displayUnits
         self.significantDigits = significantDigits
     }
 }
 extension AnswerTypeDuration : NumberJsonType {
+}
+
+public enum DurationUnit : String, StringEnumSet, DocumentableStringEnum {
+    case hour, minute, second
+    public static let defaultDispayUnits: [DurationUnit] = [.hour, .minute]
 }
 
 public struct AnswerTypeMeasurement : DecimalAnswerType, Codable, Hashable {
@@ -917,8 +922,8 @@ extension AnswerTypeDuration : AnswerTypeDocumentable, DocumentableStruct {
         case .serializableType:
             return .init(constValue: defaultType)
         case .displayUnits:
-            return .init(propertyType: .primitiveArray(.string), propertyDescription:
-                            "The units used to display the duration as a question. These are the ISO8601 duration units in sequence.")
+            return .init(propertyType: .referenceArray(DurationUnit.documentableType()), propertyDescription:
+                            "The units used to display the duration as a question.")
         case .significantDigits:
             return .init(propertyType: .primitive(.number), propertyDescription:
                             "The number of significant digits to use in encoding the answer.")
