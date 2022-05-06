@@ -78,6 +78,10 @@ extension StringEnumSet {
     public var indexPosition: Int {
         type(of: self).allValues().firstIndex(of: self.stringValue)!
     }
+    
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.indexPosition < rhs.indexPosition
+    }
 }
 
 public protocol DocumentableStringLiteral : DocumentableString {
