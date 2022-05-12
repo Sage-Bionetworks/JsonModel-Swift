@@ -100,7 +100,7 @@ final class DocumentableTests: XCTestCase {
         XCTAssertEqual("Sample", jsonSchema.root.title)
         XCTAssertEqual("Sample is an example interface used for unit testing.", jsonSchema.root.description)
         
-        XCTAssertTrue(jsonSchema.root.isOpen)
+        XCTAssertNil(jsonSchema.root.additionalProperties)
         XCTAssertNil(jsonSchema.root.allOf)
         XCTAssertNil(jsonSchema.root.examples)
         XCTAssertNotNil(jsonSchema.definitions)
@@ -155,7 +155,7 @@ final class DocumentableTests: XCTestCase {
             XCTAssertEqual(key, obj.title)
             XCTAssertEqual(obj.allOf?.map { $0.ref }, ["#"])
             XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
-            XCTAssertFalse(obj.isOpen)
+            XCTAssertNil(obj.additionalProperties)
             let expectedExamples = [
                 AnyCodableDictionary(["type":"a","value":3]),
                 AnyCodableDictionary(["type":"a","value":2,"color":"yellow","animalMap": ["blue":["robin","sparrow"]]])
@@ -179,7 +179,7 @@ final class DocumentableTests: XCTestCase {
             XCTAssertEqual(key, obj.title)
             XCTAssertEqual(obj.allOf?.map { $0.ref }, ["#"])
             XCTAssertEqual(Set(obj.required ?? []), ["type","value"])
-            XCTAssertFalse(obj.isOpen)
+            XCTAssertNil(obj.additionalProperties)
             
             let sampleItemRef = JsonSchemaReferenceId("SampleItem", isExternal: externalSampleItem)
             
