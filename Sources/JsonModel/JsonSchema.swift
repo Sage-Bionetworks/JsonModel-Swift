@@ -63,7 +63,7 @@ public struct JsonSchema : Codable, Hashable {
     public init(id: URL,
                 description: String,
                 isArray: Bool,
-                isOpen: Bool,
+                additionalProperties: Bool? = nil,
                 codingKeys: [CodingKey],
                 interfaces: [JsonSchemaObjectRef]?,
                 definitions: [JsonSchemaDefinition],
@@ -79,7 +79,7 @@ public struct JsonSchema : Codable, Hashable {
         // Build the definitions
         var allDefinitions: [JsonSchemaDefinition] = interfaces?.compactMap {
             guard let refId = $0.refId, !refId.isExternal else { return nil }
-            return .object(JsonSchemaObject(id: refId, isOpen: true))
+            return .object(JsonSchemaObject(id: refId))
         } ?? []
         allDefinitions.append(contentsOf: definitions)
         let defs = allDefinitions.reduce(into: [String : JsonSchemaDefinition]()) {
@@ -90,7 +90,7 @@ public struct JsonSchema : Codable, Hashable {
         
         // Nil out the root of the object used to store typed info about this schema
         var root = JsonSchemaObject(id: refId,
-                                    isOpen: isOpen,
+                                    additionalProperties: additionalProperties,
                                     description: description,
                                     codingKeys: codingKeys,
                                     properties: properties,
@@ -394,20 +394,16 @@ public struct JsonSchemaObject : Codable, Hashable {
     public let description: String?
     public let allOf: [JsonSchemaObjectRef]?
     public let required: [String]?
+    public let additionalProperties: Bool?
     public let examples: [AnyCodableDictionary]?
     
     public var properties: [String : JsonSchemaProperty]? {
         orderedProperties?.orderedDictionary._mapKeys { $0.stringValue }
     }
     let orderedProperties: OrderedJsonDictionary<JsonSchemaProperty>?
-    
-    public var isOpen: Bool {
-        return additionalProperties ?? true
-    }
-    fileprivate let additionalProperties: Bool?
-    
+
     public init(id: JsonSchemaReferenceId,
-                isOpen: Bool = false,
+                additionalProperties: Bool? = nil,
                 description: String? = "",
                 codingKeys: [CodingKey] = [],
                 properties: [String : JsonSchemaProperty]? = nil,
@@ -417,7 +413,7 @@ public struct JsonSchemaObject : Codable, Hashable {
         self.id = id
         self.title = id.className
         self.description = description
-        self.additionalProperties = isOpen ? nil : false
+        self.additionalProperties = additionalProperties
         self.allOf = (interfaces?.count ?? 0) == 0 ? nil : interfaces
         self.orderedProperties = (properties?.count ?? 0) == 0 ? nil : .init(properties!, orderedKeys: codingKeys)
         self.required = required

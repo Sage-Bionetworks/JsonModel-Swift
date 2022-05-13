@@ -529,7 +529,7 @@ public class JsonDocumentBuilder {
             return JsonSchema(id: URL(string: rootPointer.refId.classPath)!,
                               description: rootPointer.documentDescription ?? "",
                               isArray: rootPointer.isArray,
-                              isOpen: isOpen,
+                              additionalProperties: (isOpen || interfaces.count > 0) ? nil : false,
                               codingKeys: docType.codingKeys(),
                               interfaces: interfaces.count > 0 ? interfaces : nil,
                               definitions: definitions,
@@ -792,7 +792,7 @@ public class JsonDocumentBuilder {
                     return JsonSchemaObjectRef(ref: refId)
                 }
                 return .object(JsonSchemaObject(id: ref,
-                                                isOpen: docType.isOpen(),
+                                                additionalProperties: (docType.isOpen() || interfaces.count > 0) ? nil : false,
                                                 description: "",
                                                 codingKeys: docType.codingKeys(),
                                                 properties: properties,
