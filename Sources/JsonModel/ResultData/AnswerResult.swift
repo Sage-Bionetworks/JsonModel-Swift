@@ -73,7 +73,8 @@ public extension AnswerResult {
     /// encoding strategy desired by the researchers who are using it in their studies, while keeping the
     /// model generic and reusable for the developers.
     func encodingValue() throws -> JsonElement? {
-        try self.jsonAnswerType?.encodeAnswer(from: self.jsonValue) ?? self.jsonValue
+        let val = try self.jsonAnswerType?.encodeAnswer(from: self.jsonValue) ?? self.jsonValue
+        return val.flatMap { $0 == .null ? nil : $0 }
     }
 }
 
