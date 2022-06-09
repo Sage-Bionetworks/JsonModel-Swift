@@ -384,6 +384,59 @@ class AnswerResultObjectTests: XCTestCase {
             XCTFail("Failed to decode/encode object: \(err)")
         }
     }
+    
+    func testAnswerResultObject_StringArray_NullValue() {
+        let json = """
+        {
+            "type":"answer",
+            "identifier":"foo",
+            "startDate":"2017-10-16T22:28:09.000-02:30",
+            "answerType":{"type":"array","baseType":"string"},
+            "value":null
+        }
+        """.data(using: .utf8)! // our data in native (JSON) format
+        
+        do {
+            
+            let object = try decoder.decode(AnswerResultObject.self, from: json)
+            
+            XCTAssertEqual(object.identifier, "foo")
+            XCTAssertEqual(object.typeName, "answer")
+            XCTAssertNil(object.endDateTime)
+            
+            if let answerType = object.jsonAnswerType as? AnswerTypeArray {
+                XCTAssertEqual(answerType.baseType, .string)
+            }
+            else {
+                XCTFail("Failed to decode \(String(describing: object.jsonAnswerType)) as a AnswerTypeArray")
+            }
+            XCTAssertEqual(object.jsonValue, .null)
+            
+            let jsonData = try encoder.encode(object)
+            guard let dictionary = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String : Any]
+                else {
+                    XCTFail("Encoded object is not a dictionary")
+                    return
+            }
+            
+            XCTAssertEqual(dictionary["identifier"] as? String, "foo")
+            XCTAssertEqual(dictionary["type"] as? String, "answer")
+            XCTAssertEqual(dictionary["startDate"] as? String, "2017-10-16T22:28:09.000-02:30")
+            XCTAssertNil(dictionary["endDate"])
+            XCTAssertNil(dictionary["value"])
+            
+            if let answerType = dictionary["answerType"] as? [String:Any] {
+                XCTAssertEqual(answerType["type"] as? String, "array")
+                XCTAssertEqual(answerType["baseType"] as? String, "string")
+            }
+            else {
+                XCTFail("Encoded object does not include the answerType")
+            }
+            
+        } catch let err {
+            XCTFail("Failed to decode/encode object: \(err)")
+        }
+    }
 
     func testAnswerResultObject_IntegerArray_StringSeparator_Codable() {
         let json = """

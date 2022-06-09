@@ -502,31 +502,36 @@ public struct AnswerTypeArray : SerializableAnswerType, Codable, Hashable {
     }
     
     private func _decodeArray(_ obj: JsonElement, _ codingPath: [CodingKey]) throws -> JsonElement {
-        if case .string(let stringValue) = obj,
-            let separator = sequenceSeparator {
-            let stringArray = stringValue.components(separatedBy: separator)
-            let arr: [JsonSerializable] = try stringArray.map {
-                switch self.baseType {
-                case .integer:
-                    return ($0 as NSString).integerValue
-                case .boolean:
-                    return ($0 as NSString).boolValue
-                case .number:
-                    return ($0 as NSString).doubleValue
-                case .string:
-                    return $0
-                default:
-                    let context = DecodingError.Context(codingPath: codingPath,
-                                                        debugDescription: "A base type of `object` is not valid for an AnswerTypeArray with a non-nil separator")
-                    throw DecodingError.dataCorrupted(context)
+        switch obj {
+        case .string(let stringValue):
+            if let separator = sequenceSeparator {
+                let stringArray = stringValue.components(separatedBy: separator)
+                let arr: [JsonSerializable] = try stringArray.map {
+                    switch self.baseType {
+                    case .integer:
+                        return ($0 as NSString).integerValue
+                    case .boolean:
+                        return ($0 as NSString).boolValue
+                    case .number:
+                        return ($0 as NSString).doubleValue
+                    case .string:
+                        return $0
+                    default:
+                        let context = DecodingError.Context(codingPath: codingPath,
+                                                            debugDescription: "A base type of `object` is not valid for an AnswerTypeArray with a non-nil separator")
+                        throw DecodingError.dataCorrupted(context)
+                    }
                 }
+                return .array(arr)
             }
-            return .array(arr)
-        }
-        else if case .array(_) = obj {
+            else {
+                throw decodingError(codingPath)
+            }
+        
+        case .null, .array(_):
             return obj
-        }
-        else {
+        
+        default:
             throw decodingError(codingPath)
         }
     }
@@ -541,7 +546,10 @@ public struct AnswerTypeArray : SerializableAnswerType, Codable, Hashable {
     }
     
     public func encodeAnswer(from value: Any?) throws -> JsonElement {
-        guard let value = value else { return .null }
+        guard let value = value, !(value is NSNull), (value as? JsonElement) != .null
+        else {
+            return .null
+        }
         let obj = (value as? JsonElement)?.jsonObject() ?? value
         let arr: [Any] = (obj as? [Any]) ?? [obj]
         if let separator = sequenceSeparator {
