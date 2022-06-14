@@ -301,17 +301,16 @@ public enum JsonSchemaElement : Codable, Hashable {
 
 public struct JsonSchemaObjectRef : Codable, Hashable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case ref = "$ref", description
+        case _ref = "$ref", description
     }
-    public let ref: String
     public let description: String?
+    public var refId: JsonSchemaReferenceId? { _ref.value }
+    private let _ref: JsonSchemaRef
     
-    public var refId: JsonSchemaReferenceId? {
-        .init(stringValue: ref)
-    }
+    var ref: String { _ref.encodingPath }
     
     public init(ref: JsonSchemaReferenceId?, description: String? = nil) {
-        self.ref = ref?.classPath ?? "#"
+        self._ref = .init(ref)
         self.description = description
     }
 }
@@ -588,18 +587,54 @@ public struct JsonSchemaStringEnum : Codable, Hashable {
 
 public struct JsonSchemaConst : Codable, Hashable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case const, ref = "$ref", description
+        case const, _ref = "$ref", description
     }
     public let const: String
-    public let ref: JsonSchemaReferenceId?
+    public var ref: JsonSchemaReferenceId? { _ref?.value}
+    private let _ref: JsonSchemaRef?
     public let description: String?
-    
+
     public init(const: String,
                 ref: JsonSchemaReferenceId? = nil,
                 description: String? = nil) {
         self.const = const
-        self.ref = ref
+        self._ref = ref.map { .init($0) }
         self.description = description
+    }
+}
+
+fileprivate let kDefinitionsPrefix = "#/definitions/"
+
+struct JsonSchemaRef : Codable, Hashable {
+    let value: JsonSchemaReferenceId?
+    
+    var encodingPath: String {
+        value.map { ref in
+            ref.classPath == "#\(ref.className)" ? "\(kDefinitionsPrefix)\(ref.className)" : ref.classPath
+        } ?? "#"
+    }
+    
+    init(_ value: JsonSchemaReferenceId?) {
+        self.value = value
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let stringValue = try container.decode(String.self)
+        if stringValue.hasPrefix(kDefinitionsPrefix) {
+            self.value = .init(String(stringValue.dropFirst(kDefinitionsPrefix.count)))
+        }
+        else if stringValue == "#" {
+            self.value = nil
+        }
+        else {
+            self.value = try .init(from: decoder)
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(encodingPath)
     }
 }
 
@@ -646,7 +681,7 @@ public struct JsonSchemaReferenceId : Codable, Hashable {
     init(url: URL) {
         self.classPath = url.absoluteString
         self.className = url.deletingPathExtension().lastPathComponent
-        self.url = url
+        self.url = Self.parseURL(from: url)
     }
     
     public init(from decoder: Decoder) throws {
@@ -676,11 +711,17 @@ public struct JsonSchemaReferenceId : Codable, Hashable {
             return (String(stringValue[stringValue.index(after: idx)...]), nil)
         }
         else if stringValue.lowercased().hasSuffix(".json"), stringValue.count > 5, let url = URL(string: stringValue) {
-            return (url.deletingPathExtension().lastPathComponent, url)
+            return (url.deletingPathExtension().lastPathComponent, parseURL(from: url))
         }
         else {
             return nil
         }
+    }
+    
+    private static func parseURL(from url: URL) -> URL? {
+        let relativePath = url.lastPathComponent
+        let baseUrl = url.deletingLastPathComponent()
+        return baseUrl.absoluteString.hasPrefix("http") ? URL(string: relativePath, relativeTo: baseUrl) : nil
     }
     
     public func encode(to encoder: Encoder) throws {

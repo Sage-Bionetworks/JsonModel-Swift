@@ -118,7 +118,7 @@ final class JsonSchemaTests: XCTestCase {
     func testJsonSchemaObjectRef() {
         let json = """
         {
-            "$ref": "#FooClass"
+            "$ref": "#/definitions/FooClass"
         }
         """.data(using: .utf8)! // our data in native (JSON) format
         
@@ -157,7 +157,7 @@ final class JsonSchemaTests: XCTestCase {
         let json = """
         {
             "type": "array",
-            "items": { "$ref": "#FooClass" },
+            "items": { "$ref": "#/definitions/FooClass" },
             "description": "Test of a reference array"
         }
         """.data(using: .utf8)! // our data in native (JSON) format
@@ -236,7 +236,7 @@ final class JsonSchemaTests: XCTestCase {
         let json = """
         {
             "type": "object",
-            "additionalProperties": { "$ref": "#FooClass" },
+            "additionalProperties": { "$ref": "#/definitions/FooClass" },
             "description": "Test of a typed dictionary"
         }
         """.data(using: .utf8)! // our data in native (JSON) format
@@ -314,7 +314,7 @@ final class JsonSchemaTests: XCTestCase {
     func testJsonSchemaConst() {
         let json = """
         {
-            "$ref": "#FooType",
+            "$ref": "#/definitions/FooType",
             "const": "boo"
         }
         """.data(using: .utf8)! // our data in native (JSON) format
@@ -439,14 +439,14 @@ final class JsonSchemaTests: XCTestCase {
             "description": "This is an example of a polymorphic object",
             "properties": {
                 "type": {
-                    "$ref": "#GooType",
+                    "$ref": "#/definitions/GooType",
                     "const": "foo"
                 },
                 "identifier": {
                     "type": "string"
                 },
                 "baloo": {
-                    "$ref": "#Baloo"
+                    "$ref": "Boo.json#Baloo"
                 },
                 "luckyNumbers": {
                     "type": "array",
@@ -456,7 +456,7 @@ final class JsonSchemaTests: XCTestCase {
                 }
             },
             "required": ["type", "identifier"],
-            "allOf": [{ "$ref": "#Goo" }],
+            "allOf": [{ "$ref": "#/definitions/Goo" }],
             "examples": [{
                 "type": "foo",
                 "identifier": "boo"
@@ -474,7 +474,7 @@ final class JsonSchemaTests: XCTestCase {
                                         properties: [
                                             "type" : .const(JsonSchemaConst(const: "foo", ref: JsonSchemaReferenceId("GooType"))),
                                             "identifier" : .primitive(.string),
-                                            "baloo" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("Baloo"))),
+                                            "baloo" : .reference(JsonSchemaObjectRef(ref: JsonSchemaReferenceId("Baloo", root: .init("Boo", isExternal: true)))),
                                             "luckyNumbers" : .array(JsonSchemaArray(items: .primitive(.integer)))],
                                         required: ["type", "identifier"],
                                         interfaces: [.init(ref: JsonSchemaReferenceId("Goo"))],
@@ -485,9 +485,31 @@ final class JsonSchemaTests: XCTestCase {
 
         do {
             let decodedObject = try decoder.decode(JsonSchemaObject.self, from: json)
-            let decodedDefinition = try decoder.decode(JsonSchemaDefinition.self, from: json)
-
             XCTAssertEqual(original, decodedObject)
+            
+            XCTAssertEqual(original.id, decodedObject.id)
+            XCTAssertEqual(original.title, decodedObject.title)
+            XCTAssertEqual(original.className, decodedObject.className)
+            XCTAssertEqual(original.jsonType, decodedObject.jsonType)
+            XCTAssertEqual(original.description, decodedObject.description)
+            XCTAssertEqual(original.allOf, decodedObject.allOf)
+            XCTAssertEqual(original.properties, decodedObject.properties)
+            if let originalBaloo = original.properties?["baloo"],
+               case .reference(let ogBaloo) = originalBaloo,
+               let decodedBaloo = decodedObject.properties?["baloo"],
+               case .reference(let newBaloo) = decodedBaloo {
+                XCTAssertEqual(ogBaloo.refId, newBaloo.refId)
+                print(ogBaloo)
+            }
+            else {
+                XCTFail("Failed to decode the 'baloo' property")
+            }
+            
+            XCTAssertEqual(original.required, decodedObject.required)
+            XCTAssertEqual(original.examples, decodedObject.examples)
+            XCTAssertEqual(original.additionalProperties, decodedObject.additionalProperties)
+            
+            let decodedDefinition = try decoder.decode(JsonSchemaDefinition.self, from: json)
             XCTAssertEqual(JsonSchemaDefinition.object(original), decodedDefinition)
 
             let encodedData = try encoder.encode(original)
@@ -550,23 +572,24 @@ final class JsonSchemaTests: XCTestCase {
             },
             "properties": {
                 "type": {
-                    "$ref": "#GooType",
+                    "$ref": "#/definitions/GooType",
                     "const": "foo"
                 },
                 "identifier": {
                     "type": "string"
                 },
                 "baloo": {
-                    "$ref": "#Baloo"
+                    "$ref": "#/definitions/Baloo"
                 },
                 "ruType": {
-                    "$ref": "#RuType"
+                    "$ref": "#/definitions/RuType"
                 }
             },
             "required": ["type", "identifier"],
             "allOf": [
-                { "$ref": "#Goo" },
-                { "$ref": "Moo.json" }],
+                { "$ref": "#/definitions/Goo" },
+                { "$ref": "Moo.json" }
+            ],
             "examples": [{
                 "type": "foo",
                 "identifier": "boo"
@@ -716,22 +739,22 @@ final class JsonSchemaTests: XCTestCase {
                 "description": "This is an example of a polymorphic object",
                 "properties": {
                     "type": {
-                        "$ref": "#GooType",
+                        "$ref": "#/definitions/GooType",
                         "const": "foo"
                     },
                     "identifier": {
                         "type": "string"
                     },
                     "baloo": {
-                        "$ref": "#Baloo"
+                        "$ref": "#/definitions/Baloo"
                     },
                     "ruType": {
-                        "$ref": "#RuType"
+                        "$ref": "#/definitions/RuType"
                     }
                 },
                 "required": ["type", "identifier"],
                 "allOf": [{
-                        "$ref": "#Goo"
+                        "$ref": "#/definitions/Goo"
                     },
                     {
                         "$ref": "Moo.json"
