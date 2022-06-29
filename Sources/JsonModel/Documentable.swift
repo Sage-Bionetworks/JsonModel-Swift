@@ -349,6 +349,15 @@ public class JsonDocumentBuilder {
         commonInit(factory.documentableInterfaces(), factory.documentableRootObjects)
     }
     
+    public init(baseUrl: URL, rootDocument: DocumentableRoot) {
+        self.baseUrl = baseUrl
+        self.factory = nil
+        let roots = [
+            RootObjectHolder(jsonSchema: rootDocument.jsonSchema, rootDocumentType: rootDocument.rootDocumentType)
+        ]
+        commonInit([], roots)
+    }
+    
     @available(*, deprecated, message: "Base URL and root documents are defined on the factory.")
     public init(baseUrl: URL, factory: SerializationFactory, rootDocuments: [DocumentableObject.Type] = []) {
         self.baseUrl = baseUrl
