@@ -340,7 +340,7 @@ open class SerializationFactory : FactoryRegistration {
             var container = encoder.singleValueContainer()
             try container.encode(string)
         })
-        encoder.outputFormatting = .prettyPrinted
+        encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
         encoder.userInfo[.factory] = self
         encoder.userInfo[.codingInfo] = CodingInfo()
         encoder.nonConformingFloatEncodingStrategy = .convertToString(positiveInfinity: nonConformingCodingStrategy.positiveInfinity,
