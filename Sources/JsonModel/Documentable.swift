@@ -520,7 +520,10 @@ public class JsonDocumentBuilder {
     }
     
     public func buildSchemas() throws -> [JsonSchema] {
-        let roots = self.objects.filter { $0.isRoot }
+        // Only include roots that have a shared base url
+        let roots = self.objects.filter {
+            $0.isRoot && $0.refId.baseURL == self.baseUrl
+        }
         return try roots.map { (rootPointer) -> JsonSchema in
             guard let docType = rootPointer.klass as? DocumentableBase.Type else {
                 throw DocumentableError.invalidMapping("\(rootPointer.klass) does not conform to `DocumentableBase`.")
@@ -597,7 +600,7 @@ public class JsonDocumentBuilder {
     fileprivate func buildProperties(for dType: DocumentableBase.Type, in objPointer: KlassPointer) throws
         -> (properties: [String : JsonSchemaProperty], required: [String]) {
             
-            let parentDocType = objPointer.mainParent?.klass.documentableType() as? DocumentableBase.Type
+            let parentDocType = objPointer.mainParent?.klass.documentableType() as? DocumentableInterface.Type
             let parentKeys = parentDocType?.codingKeys() ?? []
             
             let codingKeys = dType.codingKeys()

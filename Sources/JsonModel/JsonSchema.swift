@@ -415,7 +415,7 @@ public struct JsonSchemaObject : Codable, Hashable {
         self.additionalProperties = additionalProperties
         self.allOf = (interfaces?.count ?? 0) == 0 ? nil : interfaces
         self.orderedProperties = (properties?.count ?? 0) == 0 ? nil : .init(properties!, orderedKeys: codingKeys)
-        self.required = required
+        self.required = (required?.count ?? 0) == 0 ? nil : required
         self.examples = (examples?.count ?? 0) == 0 ? nil : examples!.map {
             AnyCodableDictionary($0, orderedKeys: codingKeys)
         }
