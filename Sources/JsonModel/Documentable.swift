@@ -597,7 +597,7 @@ public class JsonDocumentBuilder {
     fileprivate func buildProperties(for dType: DocumentableBase.Type, in objPointer: KlassPointer) throws
         -> (properties: [String : JsonSchemaProperty], required: [String]) {
             
-            let parentDocType = objPointer.mainParent?.klass.documentableType() as? DocumentableBase.Type
+            let parentDocType = objPointer.mainParent?.klass.documentableType() as? DocumentableInterface.Type
             let parentKeys = parentDocType?.codingKeys() ?? []
             
             let codingKeys = dType.codingKeys()
