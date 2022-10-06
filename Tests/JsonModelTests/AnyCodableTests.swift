@@ -58,6 +58,7 @@ final class AnyCodableTests: XCTestCase {
         
         let factory = SerializationFactory.defaultFactory
         let encoder = factory.createJSONEncoder()
+        (encoder as? OrderedJSONEncoder)?.shouldOrderKeys = true
         let decoder = factory.createJSONDecoder()
         
         do {

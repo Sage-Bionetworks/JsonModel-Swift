@@ -56,8 +56,9 @@ public protocol AssessmentResult : BranchNodeResult {
 
 /// Abstract implementation to allow extending an assessment result while retaining the serializable type.
 open class AbstractAssessmentResultObject : AbstractBranchNodeResultObject {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
+    private enum CodingKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
         case assessmentIdentifier, versionString, taskRunUUID, schemaIdentifier
+        var relativeIndex: Int { 1 }
     }
 
     public let versionString: String?
