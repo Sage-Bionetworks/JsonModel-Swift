@@ -135,8 +135,9 @@ public struct PathMarker: Hashable, Codable {
 
 /// Abstract implementation to allow extending an assessment result while retaining the serializable type.
 open class AbstractBranchNodeResultObject : AbstractResultObject {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
+    private enum CodingKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
         case stepHistory, asyncResults, path
+        var relativeIndex: Int { 2 }
     }
 
     public var stepHistory: [ResultData]
