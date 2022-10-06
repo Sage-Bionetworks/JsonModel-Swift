@@ -60,7 +60,10 @@ class OrderedJSONEncoderTests: XCTestCase {
                                             asyncResults: [])
 
         do {
-            let data = try result.jsonEncodedData()
+            let encoder = OrderedJSONEncoder()
+            encoder.shouldOrderKeys = true
+            let data = try encoder.encode(result)
+            
             let expectedKeyOrder = ["type", "identifier", "startDate", "endDate", "assessmentIdentifier", "versionString", "taskRunUUID", "schemaIdentifier", "stepHistory", "asyncResults", "path"]
             guard let pretty = String(data: data, encoding: .utf8) else {
                 XCTFail("Unexpected NULL string")
@@ -83,5 +86,24 @@ class OrderedJSONEncoderTests: XCTestCase {
             XCTFail("Failed to encode result. \(error)")
         }
     }
-
+    
+// syoung 10/06/2022 This test takes about 12 seconds to run b/c it's huge so commenting out
+// but leaving in place as a reference. The issue discovered is that attempting to sort the
+// keys to make them more readable was causing a crash on the old regex and the replacement
+// is more memory efficient but still very slow.
+//    func testOrderedJSONEncoderMemoryCrash() throws {
+//        let assessmentResult = AssessmentResultObject(identifier: "foo")
+//        for ii in 1...2 {
+//            let collectionResult = CollectionResultObject(identifier: "collection\(ii)")
+//            for nn in 1...5000 {
+//                collectionResult.children.append(ResultObject(identifier: "result\(nn)", startDate: Date(), endDate: Date()))
+//            }
+//            collectionResult.endDateTime = collectionResult.children.last?.endDate
+//            assessmentResult.appendStepHistory(with: collectionResult)
+//        }
+//
+//        let encoder = OrderedJSONEncoder()
+//        encoder.shouldOrderKeys = true
+//        let _ = try encoder.encode(assessmentResult)
+//    }
 }

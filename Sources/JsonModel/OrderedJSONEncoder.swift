@@ -67,7 +67,8 @@ open class OrderedJSONEncoder : JSONEncoder {
     }
     
     /// Should the encoded data be sorted to order the keys for coding keys that implement the `OrderedCodingKey` protocol?
-    public var shouldOrderKeys: Bool = true
+    /// By default, keys are *not* ordered so that encoding will run faster, but they can be if the protocol supports doing so.
+    public var shouldOrderKeys: Bool = false
     
     override open var keyEncodingStrategy: JSONEncoder.KeyEncodingStrategy {
         get {
@@ -96,17 +97,17 @@ open class OrderedJSONEncoder : JSONEncoder {
             return orderedData
         }
         // Look for keys where the order was added to the key value and remove them.
-        let replaceStr = "\\\"\\d*\(IndexedCodingKey.separator)"
-        let searchStr = "^\\s*\(replaceStr).*\\\"\\s\\:"
+        let replaceStr = "\\d*\(IndexedCodingKey.separator)"
+        let searchStr = "^\\s*\\\"\(replaceStr).*\\\"\\s\\:"
         let searchRegex = try! NSRegularExpression(pattern: searchStr, options: [.anchorsMatchLines])
         let matches = searchRegex.matches(in: json, options: [], range: NSRange(location: 0, length: json.count))
-        var replacementJson = json
         let replaceRegex = try! NSRegularExpression(pattern: replaceStr, options:[])
-        matches.reversed().forEach { match in
-            replacementJson = replaceRegex.stringByReplacingMatches(in: replacementJson,
-                                                                    options: [],
-                                                                    range: match.range,
-                                                                    withTemplate: "\"")
+        let replaceRanges = matches.compactMap {
+            Range(replaceRegex.rangeOfFirstMatch(in: json, range: $0.range), in: json)
+        }
+        var replacementJson = json
+        replaceRanges.reversed().forEach {
+            replacementJson.removeSubrange($0)
         }
         return replacementJson.data(using: .utf8) ?? orderedData
     }

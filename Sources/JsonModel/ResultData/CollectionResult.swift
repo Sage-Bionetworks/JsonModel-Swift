@@ -77,8 +77,9 @@ public extension CollectionResult {
 }
 
 open class AbstractCollectionResultObject : AbstractResultObject {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
+    private enum CodingKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
         case children
+        var relativeIndex: Int { 1 }
     }
     
     public var children: [ResultData]
