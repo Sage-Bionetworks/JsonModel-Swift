@@ -16,7 +16,7 @@ let package = Package(
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
         .library(
             name: "JsonModel",
-            targets: ["JsonModel"]),
+            targets: ["JsonModel", "ResultModel"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -31,5 +31,12 @@ let package = Package(
         .testTarget(
             name: "JsonModelTests",
             dependencies: ["JsonModel"]),
+        
+        .target(
+            name: "ResultModel",
+            dependencies: ["JsonModel"]),
+        .testTarget(
+            name: "ResultModelTests",
+            dependencies: ["ResultModel"]),
     ]
 )

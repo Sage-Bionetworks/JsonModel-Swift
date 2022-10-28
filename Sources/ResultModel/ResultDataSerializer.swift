@@ -32,6 +32,7 @@
 //
 
 import Foundation
+import JsonModel
 
 
 /// `SerializableResultData` is the base implementation for `ResultData` that is serialized using

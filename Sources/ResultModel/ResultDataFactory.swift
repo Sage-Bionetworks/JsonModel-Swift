@@ -2,7 +2,7 @@
 //  ResultDataFactory.swift
 //  
 //
-//  Copyright © 2020-2021 Sage Bionetworks. All rights reserved.
+//  Copyright © 2020-2022 Sage Bionetworks. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -32,6 +32,7 @@
 //
 
 import Foundation
+import JsonModel
 
 /// `ResultDataFactory` is a subclass of the `SerializationFactory` that registers a serializer
 /// for `JsonResultData` objects that can be used to deserialize the results.

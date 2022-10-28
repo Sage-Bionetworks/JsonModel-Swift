@@ -32,7 +32,8 @@
 //
 
 import XCTest
-@testable import JsonModel
+import JsonModel
+@testable import ResultModel
 
 class AnswerResultObjectTests: XCTestCase {
     

@@ -32,6 +32,7 @@
 //
 
 import Foundation
+import JsonModel
 
 /// The ``BranchNodeResult`` is the result created for a given level of navigation of a node tree. The
 /// ``stepHistory`` is additive where each time a node is traversed, it is added to the list.

@@ -32,6 +32,7 @@
 //
 
 import Foundation
+import JsonModel
 
 /// The coding information for an answer. This allows for adding custom information to the "kind" of question because
 /// JSON only supports a small subset of value types that are often encoded and can be described using JSON Schema
