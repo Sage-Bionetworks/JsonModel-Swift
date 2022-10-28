@@ -32,6 +32,7 @@
 //
 
 import Foundation
+import JsonModel
 
 /// An ``AssessmentResult`` is the top-level ``ResultData`` for an assessment.
 public protocol AssessmentResult : BranchNodeResult {

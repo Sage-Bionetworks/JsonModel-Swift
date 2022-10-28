@@ -32,6 +32,7 @@
 //
 
 import Foundation
+import JsonModel
 
 /// `ErrorResult` is a result that holds information about an error.
 public protocol ErrorResult : ResultData {

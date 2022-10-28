@@ -31,6 +31,7 @@
 //
 
 import Foundation
+import JsonModel
 
 /// `ResultData` is the base protocol for an object that stores data.
 ///

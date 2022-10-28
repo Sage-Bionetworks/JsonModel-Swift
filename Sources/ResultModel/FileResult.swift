@@ -32,6 +32,7 @@
 //
 
 import Foundation
+import JsonModel
 
 /// `FileResult` is a result that holds a pointer to a file url.
 public protocol FileResult : ResultData {

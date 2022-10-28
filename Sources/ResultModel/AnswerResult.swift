@@ -32,6 +32,7 @@
 //
 
 import Foundation
+import JsonModel
 
 /// An `AnswerResult` is used to hold a serializable answer to a question or measurement. This
 /// protocol is defined as a class to allow for mutating the `jsonValue` without requiring the

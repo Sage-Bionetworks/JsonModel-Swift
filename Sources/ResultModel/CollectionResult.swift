@@ -32,6 +32,7 @@
 //
 
 import Foundation
+import JsonModel
 
 /// A `CollectionResult` is used to describe a collection of results.
 public protocol CollectionResult : AnyObject, ResultData, AnswerFinder {
