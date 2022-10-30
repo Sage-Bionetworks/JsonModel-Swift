@@ -1,15 +1,42 @@
 # JsonModel
 
-JsonModel is a set of utilities built on top of the Swift Codable protocol to allow for polymorphic serialization
-and documentation using a subset of the  [JSON Schema draft 7](https://json-schema.org/understanding-json-schema/index.html).
+JsonModel is a set of utilities built on top of the Swift Codable protocol to allow 
+for polymorphic serialization and documentation using a subset of 
+[JSON Schema draft 7](https://json-schema.org/understanding-json-schema/index.html).
 
-TODO: syoung 03/31/2020 Link to the examples in the test cases.
+See the unit tests and the `ResultModel` target for examples for how to use this 
+library to support polymorphic serialization.
+
+### Version 1.1
+
+Moved definitions for the `ResultData` protocol used by Sage Bionetworks
+into this library to simplify the dependency chain for the libraries and 
+frameworks used by our organization.
+
+### Version 1.6
+
+Added ResultModel library with a placeholder file so that libraries that depend
+on the `ResultData` protocol can support both a version of the library where the 
+actual model is defined using `import JsonModel` and version
+2 where the model for results is defined using `import ResultModel`.
+
+```
+    .package(name: "JsonModel",
+             url: "https://github.com/Sage-Bionetworks/JsonModel-Swift.git",
+             "1.6.0"..<"3.0.0"),
+```
+
+### Version 2
+
+Moved the results protocols and objects into a separate target within the JsonModel
+library. To migrate to this version, you will need to `import ResultModel` anywhere
+that you reference `ResultData` model objects.
 
 ## License
 
 JsonModel is available under the BSD license:
 
-Copyright (c) 2017-2021, Sage Bionetworks
+Copyright (c) 2017-2022, Sage Bionetworks
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
