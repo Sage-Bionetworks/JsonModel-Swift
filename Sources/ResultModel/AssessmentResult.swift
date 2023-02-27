@@ -30,7 +30,7 @@ public protocol AssessmentResult : BranchNodeResult {
 /// Abstract implementation to allow extending an assessment result while retaining the serializable type.
 open class AbstractAssessmentResultObject : AbstractBranchNodeResultObject {
     private enum CodingKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
-        case assessmentIdentifier, versionString, taskRunUUID, schemaIdentifier
+        case assessmentIdentifier, versionString, taskRunUUID, schemaIdentifier, jsonSchema = "$schema"
         var relativeIndex: Int { 1 }
     }
 
@@ -81,6 +81,9 @@ open class AbstractAssessmentResultObject : AbstractBranchNodeResultObject {
         try container.encodeIfPresent(self.assessmentIdentifier, forKey: .assessmentIdentifier)
         try container.encodeIfPresent(self.schemaIdentifier, forKey: .schemaIdentifier)
         try container.encodeIfPresent(self.versionString, forKey: .versionString)
+        if let root = self as? DocumentableRootObject {
+            try container.encodeIfPresent(root.jsonSchema, forKey: .jsonSchema)
+        }
     }
     
     override open class func codingKeys() -> [CodingKey] {
@@ -122,6 +125,8 @@ open class AbstractAssessmentResultObject : AbstractBranchNodeResultObject {
             to allow the controller for the task to set this on the ``AssessmentResult`` children
             included in this run.
             """.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "  ", with: "\n"))
+        case .jsonSchema:
+            return .init(propertyType: .format(.uri), propertyDescription: "The json schema URI for this result.")
         }
     }
 }
