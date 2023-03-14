@@ -31,27 +31,21 @@ public protocol OpenOrderedCodingKey : OrderedCodingKey {
 /// `OrderedCodingKey` protocol.
 open class OrderedJSONEncoder : JSONEncoder {
     
-    public override init() {
-        self._keyEncodingStrategy = .custom({ codingPath in
-            return IndexedCodingKey(key: codingPath.last!) ?? codingPath.last!
-        })
-        super.init()
-    }
-    
-    /// Should the encoded data be sorted to order the keys for coding keys that implement the `OrderedCodingKey` protocol?
-    /// By default, keys are *not* ordered so that encoding will run faster, but they can be if the protocol supports doing so.
-    public var shouldOrderKeys: Bool = false
-    
-    override open var keyEncodingStrategy: JSONEncoder.KeyEncodingStrategy {
-        get {
-            shouldOrderKeys ? _keyEncodingStrategy : super.keyEncodingStrategy
-        }
-        set {
-            super.keyEncodingStrategy = newValue
-            shouldOrderKeys = false
+    /// Should the encoded data be sorted to order the keys for coding keys that implement the
+    /// `OrderedCodingKey` protocol? By default, keys are *not* ordered so that encoding will
+    /// run faster, but they can be if the protocol supports doing so.
+    public var shouldOrderKeys: Bool = false {
+        didSet {
+            if shouldOrderKeys {
+                self.keyEncodingStrategy = .custom({ codingPath in
+                    return IndexedCodingKey(key: codingPath.last!) ?? codingPath.last!
+                })
+            }
+            else {
+                self.keyEncodingStrategy = .useDefaultKeys
+            }
         }
     }
-    private var _keyEncodingStrategy: JSONEncoder.KeyEncodingStrategy
     
     override open var outputFormatting: JSONEncoder.OutputFormatting {
         get {

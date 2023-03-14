@@ -39,15 +39,15 @@ final class AnyCodableTests: XCTestCase {
             
             // The order of the keys should be the same as the `orderedKeys` and *not*
             // in the order defined either using alphabetical sort or the `input` declaration.
-            let actualOrder: [String.Index] = orderedKeys.map {
+            let mappedOrder: [(index: String.Index, value: String) ] = orderedKeys.map {
                 guard let range = jsonString.range(of: $0) else {
                     XCTFail("Could not find \($0) in the json string")
-                    return jsonString.endIndex
+                    return (jsonString.endIndex, "")
                 }
-                return range.lowerBound
-            }
-            let sortedOrder = actualOrder.sorted()
-            XCTAssertEqual(actualOrder, sortedOrder)
+                return (range.lowerBound, $0)
+            }.sorted(by: { $0.index < $1.index })
+            let actualOrder = mappedOrder.map { $0.value }
+            XCTAssertEqual(orderedKeys, actualOrder)
             
             // Decode from the data and the dictionaries should match.
             let object = try decoder.decode(AnyCodableDictionary.self, from: jsonData)
