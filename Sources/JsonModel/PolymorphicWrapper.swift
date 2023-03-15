@@ -113,7 +113,7 @@ public struct PolymorphicValue<ProtocolValue> : Codable {
     }
     
     public func encode(to encoder: Encoder) throws {
-        try encoder.encodePolymorphicAny(wrappedValue)
+        try encoder.encodePolymorphic(wrappedValue)
     }
 }
 
@@ -144,19 +144,7 @@ public struct PolymorphicArray<ProtocolValue> : Codable {
     
     public func encode(to encoder: Encoder) throws {
         var container = encoder.unkeyedContainer()
-        try wrappedValue.forEach { obj in
-            let nestedEncoder = container.superEncoder()
-            try nestedEncoder.encodePolymorphicAny(obj)
-        }
+        try container.encodePolymorphic(wrappedValue)
     }
 }
 
-extension Encoder {
-    fileprivate func encodePolymorphicAny(_ obj: Any) throws {
-        guard let encodable = obj as? Encodable else {
-            throw EncodingError.invalidValue(obj,
-                .init(codingPath: self.codingPath, debugDescription: "Object `\(type(of: obj))` does not conform to the `Encodable` protocol"))
-        }
-        try self.encodePolymorphic(encodable)
-    }
-}

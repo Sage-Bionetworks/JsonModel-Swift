@@ -269,11 +269,7 @@ struct AnotherA : Another, Codable {
         try container.encodeIfPresent(self.sampleItem, forKey: .sampleItem)
         if let samples = self.samples {
             var nestedContainer = container.nestedUnkeyedContainer(forKey: .samples)
-            try samples.forEach {
-                let encodable = $0 as! Encodable
-                let nestedEncoder = nestedContainer.superEncoder()
-                try encodable.encode(to: nestedEncoder)
-            }
+            try nestedContainer.encodePolymorphic(samples)
         }
     }
 }

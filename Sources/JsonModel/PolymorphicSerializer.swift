@@ -215,13 +215,45 @@ enum PolymorphicCodableTypeKeys: String, Codable, OpenOrderedCodingKey {
 extension Encoder {
     
     /// Add the "type" key to an encoded object.
-    public func encodePolymorphic<T : Encodable>(_ obj: T) throws {
-        let polymorphicEncoder = PolymorphicEncoder(self, encodable: obj)
-        try obj.encode(to: polymorphicEncoder)
-        if let error = polymorphicEncoder.error {
-            throw error
+    public func encodePolymorphic(_ obj: Any) throws {
+        if let encodable = obj as? Encodable {
+            // Use the `Encodable` protocol if supported. This can pass on the `userInfo` from the encoder.
+            let polymorphicEncoder = PolymorphicEncoder(self, encodable: encodable)
+            try encodable.encode(to: polymorphicEncoder)
+            if let error = polymorphicEncoder.error {
+                throw error
+            }
+        }
+        else if let dictionaryRep = obj as? DictionaryRepresentable {
+            // Otherwise, look to see if this is an older object that pre-dates Swift 2.0 `Codable`
+            var dictionary = try dictionaryRep.jsonDictionary()
+            if dictionary[PolymorphicCodableTypeKeys.type.rawValue] == nil {
+                dictionary[PolymorphicCodableTypeKeys.type.rawValue] = typeName(for: obj)
+            }
+            let jsonElement = JsonElement.object(dictionary)
+            try jsonElement.encode(to: self)
+        }
+        else {
+            // If the object isn't serializable as a dictionary, then can't encode it.
+            throw EncodingError.invalidValue(obj,
+                .init(codingPath: self.codingPath, debugDescription: "Object `\(type(of: obj))` does not conform to the `Encodable` protocol"))
         }
     }
+}
+
+extension UnkeyedEncodingContainer {
+    
+    /// Add the "type" key to an array of encoded object.
+    mutating public func encodePolymorphic(_ array: [Any]) throws {
+        try array.forEach { obj in
+            let nestedEncoder = self.superEncoder()
+            try nestedEncoder.encodePolymorphic(obj)
+        }
+    }
+}
+
+fileprivate func typeName(for obj: Any) -> String {
+    (obj as? PolymorphicTyped)?.typeName ?? "\(type(of: obj))"
 }
 
 /// Work-around for polymorphic encoding that includes a "type" in a dictionary where the "type"
@@ -249,7 +281,7 @@ class PolymorphicEncoder : Encoder {
         guard !typeAdded else { return }
         typeAdded = true
         do {
-            let typeName = (encodable as? PolymorphicTyped)?.typeName ?? "\(type(of: encodable))"
+            let typeName = typeName(for: encodable)
             var container = wrappedEncoder.container(keyedBy: PolymorphicCodableTypeKeys.self)
             try container.encode(typeName, forKey: .type)
         } catch {

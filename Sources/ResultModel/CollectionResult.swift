@@ -76,10 +76,7 @@ open class AbstractCollectionResultObject : AbstractResultObject {
         try super.encode(to: encoder)
         var container = encoder.container(keyedBy: CodingKeys.self)
         var nestedContainer = container.nestedUnkeyedContainer(forKey: .children)
-        try children.forEach { result in
-            let nestedEncoder = nestedContainer.superEncoder()
-            try result.encode(to: nestedEncoder)
-        }
+        try nestedContainer.encodePolymorphic(children)
     }
     
     override open class func codingKeys() -> [CodingKey] {

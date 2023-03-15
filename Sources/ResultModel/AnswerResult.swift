@@ -131,9 +131,8 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult, Mu
         try container.encode(self.startDateTime, forKey: .startDate)
         try container.encodeIfPresent(self.endDateTime, forKey: .endDate)
         if let info = self.jsonAnswerType {
-            let encodable = try info as? Encodable ?? JsonElement.object(try info.jsonDictionary())
             let nestedEncoder = container.superEncoder(forKey: .jsonAnswerType)
-            try encodable.encode(to: nestedEncoder)
+            try nestedEncoder.encodePolymorphic(info)
         }
         let jsonVal = try self.encodingValue()
         try container.encodeIfPresent(jsonVal, forKey: .jsonValue)
