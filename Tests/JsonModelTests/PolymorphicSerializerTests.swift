@@ -101,7 +101,7 @@ final class PolymorphicSerializerTests: XCTestCase {
         """.data(using: .utf8)! // our data in native (JSON) format
         
         let factory = TestFactory.defaultFactory
-        try factory.sampleSerializer.add(typeOf: SampleC.self)
+        factory.sampleSerializer.add(typeOf: SampleC.self)
         let decoder = factory.createJSONDecoder()
         
         let sampleWrapper = try decoder.decode(SampleWrapper.self, from: json)
@@ -143,7 +143,7 @@ class SampleSerializer : GenericPolymorphicSerializer<Sample>, DocumentableInter
         "Sample is an example interface used for unit testing."
     }
     
-    init() {
+    override init() {
         super.init([
             SampleA(value: 3),
             SampleB(value: "foo"),

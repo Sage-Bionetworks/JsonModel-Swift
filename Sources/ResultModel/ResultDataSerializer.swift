@@ -66,7 +66,7 @@ public final class ResultDataSerializer : GenericPolymorphicSerializer<ResultDat
         URL(string: "\(self.interfaceName).json", relativeTo: kSageJsonSchemaBaseURL)!
     }
     
-    init() {
+    override init() {
         super.init([
             AnswerResultObject.examples().first!,
             CollectionResultObject.examples().first!,

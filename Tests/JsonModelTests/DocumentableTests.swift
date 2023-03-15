@@ -205,7 +205,7 @@ class AnotherSerializer : GenericPolymorphicSerializer<Another>, DocumentableInt
         "Another example interface used for unit testing."
     }
     
-    init() {
+    override init() {
         super.init([
             AnotherA(),
             AnotherB(),

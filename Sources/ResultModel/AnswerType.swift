@@ -47,7 +47,7 @@ public final class AnswerTypeSerializer : GenericPolymorphicSerializer<AnswerTyp
         URL(string: "\(self.interfaceName).json", relativeTo: kSageJsonSchemaBaseURL)!
     }
     
-    init() {
+    override init() {
         super.init([
             AnswerTypeArray.examples().first!,
             AnswerTypeBoolean.examples().first!,

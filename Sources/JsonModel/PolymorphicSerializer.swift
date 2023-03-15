@@ -96,14 +96,19 @@ open class GenericPolymorphicSerializer<ProtocolValue> : GenericSerializer {
     }
     private var _examples: [String : ProtocolValue] = [:]
     
+    public init() {
+    }
+    
     public init(_ examples: [ProtocolValue]) {
         examples.forEach { example in
             try? self.add(example)
         }
     }
     
-    public init(_ typeMap: [String : Decodable.Type]) {
-        self.typeMap = typeMap
+    public init(_ types: [Decodable.Type]) {
+        types.forEach { decodable in
+            self.add(typeOf: decodable)
+        }
     }
     
     /// Insert the given example into the example array, replacing any existing example with the
@@ -128,7 +133,7 @@ open class GenericPolymorphicSerializer<ProtocolValue> : GenericSerializer {
     
     /// Insert the given `ProtocolValue.Type` into the type map, replacing any existing class with
     /// the same "type" decoding.
-    public final func add(typeOf typeValue: Decodable.Type) throws {
+    public final func add(typeOf typeValue: Decodable.Type) {
         let typeName = (typeValue as? PolymorphicStaticTyped.Type)?.typeName ?? "\(typeValue)"
         typeMap[typeName] = typeValue
         _examples[typeName] = nil
