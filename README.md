@@ -32,6 +32,11 @@ Moved the results protocols and objects into a separate target within the JsonMo
 library. To migrate to this version, you will need to `import ResultModel` anywhere
 that you reference `ResultData` model objects.
 
+### Version 2.1
+
+- Added property wrappers that can be used in polymorphic serialization.
+- Deprecated `PolymorphicSerializer` and replaced with `GenericPolymorphicSerializer`
+
 ## License
 
 JsonModel is available under the BSD license:

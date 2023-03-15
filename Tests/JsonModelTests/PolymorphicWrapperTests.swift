@@ -44,6 +44,44 @@ final class PolymorphicWrapperTests: XCTestCase {
         
         XCTAssertEqual(expectedJson, encodedJson)
     }
+    
+    func testPolymorphicPropertyWrapper_DefaultTyped() throws {
+        let sampleTest = SampleTest(single: SampleX(name: "foo", value: 5), array: [])
+        let encoder = JSONEncoder()
+        let jsonData = try encoder.encode(sampleTest)
+        let dictionary = try JSONSerialization.jsonObject(with: jsonData) as! NSDictionary
+        let expectedDictionary : NSDictionary = [
+            "single" : [
+                "type" : "SampleX",
+                "name" : "foo",
+                "value" : 5
+            ],
+            "array" : []
+        ]
+        XCTAssertEqual(expectedDictionary, dictionary)
+    }
+    
+    func testPolymorphicPropertyWrapper_NotDictionary() throws {
+        let sampleTest = SampleTest(single: "foo", array: [])
+        let encoder = JSONEncoder()
+        do {
+            let _ = try encoder.encode(sampleTest)
+        }
+        catch EncodingError.invalidValue(_, let context) {
+            XCTAssertEqual("Cannot encode a polymorphic object to a single value container.", context.debugDescription)
+            return
+        }
+        
+        XCTFail("This test should throw an invalid value error and exit before here.")
+    }
+}
+
+extension String : Sample {
+}
+
+fileprivate struct SampleX : Sample, Encodable {
+    let name: String
+    let value: UInt
 }
 
 fileprivate struct SampleTest : Codable {

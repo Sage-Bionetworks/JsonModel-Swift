@@ -196,7 +196,7 @@ class AnotherTestFactory : SerializationFactory {
     }
 }
 
-class AnotherSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
+class AnotherSerializer : GenericPolymorphicSerializer<Another>, DocumentableInterface {
     var jsonSchema: URL {
         URL(string: "Another.json", relativeTo: kSageJsonSchemaBaseURL)!
     }
@@ -205,10 +205,12 @@ class AnotherSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
         "Another example interface used for unit testing."
     }
     
-    let examples: [Another] = [
-        AnotherA(),
-        AnotherB(),
-    ]
+    init() {
+        super.init([
+            AnotherA(),
+            AnotherB(),
+        ])
+    }
     
     override class func typeDocumentProperty() -> DocumentProperty {
         DocumentProperty(propertyType: .reference(AnotherType.self))

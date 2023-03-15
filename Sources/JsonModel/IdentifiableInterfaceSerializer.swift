@@ -6,6 +6,7 @@
 import Foundation
 
 /// Convenience implementation for a serializer that includes a required `identifier` key.
+@available(*, deprecated, message: "Use `GenericPolymorphicSerializer` instead.")
 open class IdentifiableInterfaceSerializer : AbstractPolymorphicSerializer {
     private enum InterfaceKeys : String, OpenOrderedCodingKey {
         case identifier
@@ -30,3 +31,4 @@ open class IdentifiableInterfaceSerializer : AbstractPolymorphicSerializer {
         }
     }
 }
+

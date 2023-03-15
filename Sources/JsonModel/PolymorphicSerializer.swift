@@ -17,19 +17,55 @@ import Foundation
 /// that word makes for messy, hard-to-read code. Therefore, this protocol returns the `String`
 /// value as `typeName` rather than mapping directly to `type`.
 ///
-/// - seealso: `PolymorphicSerializerTests`
+/// - See Also: `PolymorphicSerializerTests`
 ///
 public protocol PolymorphicRepresentable : PolymorphicTyped, Decodable {
 }
 
+/// An explicitly defined protocol for a polymorphically-typed serializable value.
+///
+/// - Discussion:
+/// Older implementations of the `JsonModel-Swift` package followed the Obj-C compatible
+/// serialization protocols defined in Swift 2.0 where an object could conform to either the
+/// `Encodable` protocol or the `Decodable` protocol without conforming to the `Codable`
+/// protocol. Additionally, these older objects often had serialization strategies that
+/// conflicted with either encoding or decoding. To work-around this, we introduced the
+/// `PolymorphicRepresentable` protocol which **only** required adherence to the `Decodable`
+/// protocol and not to the `Encodable` protocol. This allowed developers who only needed
+/// to decode their objects, to use the ``SerializationFactory`` to handle polymorphic
+/// object decoding without requiring them to also implement an unused `Encodable` protocol
+/// adherence.
+public protocol PolymorphicCodable : PolymorphicRepresentable, Encodable {
+}
+
+/// This is the original protocol used by ``PolymorphicSerializer`` to decode an object from
+/// a list of example instances. It is retained so that older implementations of polymorphic
+/// objects do not need to be migrated.
 public protocol PolymorphicTyped {
     /// A "name" for the class of object that can be used in Dictionary representable objects.
     var typeName: String { get }
 }
 
+/// A **static** implementation that allows decoding from an object Type rather than requiring
+/// an example instance.
+public protocol PolymorphicStaticTyped : PolymorphicTyped {
+    /// A "name" for the class of object that can be used in Dictionary representable objects.
+    static var typeName: String { get }
+}
+
+extension PolymorphicStaticTyped {
+    public var typeName: String { Self.typeName }
+}
+
 /// The generic method for a decodable. This is a work-around for the limitations of Swift generics
 /// where an instance of a class that has an associated type cannot be stored in a dictionary or
 /// array.
+///
+/// - Note:
+/// When this library was originally written, Swift Generics were very limited in functionality.
+/// This protocol was originally designed as a work-around to those limitations. While generics
+/// are much more useful with Swift 5.7, the original implementation is retained.
+///
 public protocol GenericSerializer : AnyObject {
     var interfaceName : String { get }
     func decode(from decoder: Decoder) throws -> Any
@@ -38,7 +74,13 @@ public protocol GenericSerializer : AnyObject {
     func validate() throws
 }
 
-/// A serializer protocol for decoding serializable objects.
+extension Decodable {
+    static func decodingType() -> Decodable.Type {
+        self
+    }
+}
+
+/// A serializer for decoding serializable objects.
 ///
 /// This serializer is designed to allow for decoding objects that use
 /// [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) so it requires that
@@ -46,6 +88,194 @@ public protocol GenericSerializer : AnyObject {
 /// key in the JSON dictionary, this is not recommended because it would require all of your
 /// Swift Codable implementations to also use the new coding key.
 ///
+open class GenericPolymorphicSerializer<ProtocolValue> : GenericSerializer {
+    public private(set) var typeMap: [String : Decodable.Type] = [:]
+    
+    public var examples: [ProtocolValue] {
+        _examples.map { $0.value }
+    }
+    private var _examples: [String : ProtocolValue] = [:]
+    
+    public init(_ examples: [ProtocolValue]) {
+        examples.forEach { example in
+            try? self.add(example)
+        }
+    }
+    
+    public init(_ typeMap: [String : Decodable.Type]) {
+        self.typeMap = typeMap
+    }
+    
+    /// Insert the given example into the example array, replacing any existing example with the
+    /// same `typeName` as one of the new example.
+    public final func add(_ example: ProtocolValue) throws {
+        guard let decodable = example as? Decodable else {
+            throw PolymorphicSerializerError.exampleNotDecodable(example)
+        }
+        let typeValue = type(of: decodable).decodingType()
+        let typeName = (example as? PolymorphicTyped)?.typeName ?? "\(typeValue)"
+        typeMap[typeName] = typeValue
+        _examples[typeName] = example
+    }
+
+    /// Insert the given examples into the example array, replacing any existing examples with the
+    /// same `typeName` as one of the new examples.
+    public final func add(contentsOf newExamples: [ProtocolValue]) throws {
+        try newExamples.forEach { example in
+            try self.add(example)
+        }
+    }
+    
+    /// Insert the given `ProtocolValue.Type` into the type map, replacing any existing class with
+    /// the same "type" decoding.
+    public final func add(typeOf typeValue: Decodable.Type) throws {
+        let typeName = (typeValue as? PolymorphicStaticTyped.Type)?.typeName ?? "\(typeValue)"
+        typeMap[typeName] = typeValue
+        _examples[typeName] = nil
+    }
+    
+    open func typeName(from decoder: Decoder) throws -> String {
+        let container = try decoder.container(keyedBy: PolymorphicCodableTypeKeys.self)
+        guard let type = try container.decodeIfPresent(String.self, forKey: .type) else {
+            throw PolymorphicSerializerError.typeKeyNotFound
+        }
+        return type
+    }
+    
+    // MARK: GenericSerializer
+    
+    public var interfaceName: String {
+        "\(ProtocolValue.self)"
+    }
+    
+    public func decode(from decoder: Decoder) throws -> Any {
+        let name = try typeName(from: decoder)
+        guard let typeValue = typeMap[name] else {
+            throw PolymorphicSerializerError.exampleNotFound(name)
+        }
+        return try typeValue.init(from: decoder)
+    }
+    
+    public func documentableExamples() -> [DocumentableObject] {
+        examples.compactMap { $0 as? DocumentableObject }
+    }
+    
+    public func canDecode(_ typeName: String) -> Bool {
+        typeMap[typeName] != nil
+    }
+    
+    public func validate() throws {
+        // do nothing
+    }
+    
+    // MARK: DocumentableInterface
+    
+    /// Protocols are not sealed.
+    open func isSealed() -> Bool {
+        false
+    }
+    
+    /// Default is to return the "type" key.
+    open class func codingKeys() -> [CodingKey] {
+        [PolymorphicCodableTypeKeys.type]
+    }
+    
+    /// Default is to return `true`.
+    open class func isRequired(_ codingKey: CodingKey) -> Bool {
+        true
+    }
+    
+    /// Default is to return the "type" property.
+    open class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        guard let _ = codingKey as? PolymorphicCodableTypeKeys else {
+            throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not handled by \(self).")
+        }
+        return typeDocumentProperty()
+    }
+    
+    /// Default is a string but this can be overriden to return a `TypeRepresentable` reference.
+    open class func typeDocumentProperty() -> DocumentProperty {
+        DocumentProperty(propertyType: .primitive(.string))
+    }
+}
+
+public enum PolymorphicSerializerError : Error {
+    case typeKeyNotFound
+    case exampleNotFound(String)
+    case exampleNotDecodable(Any)
+    case typeNotDecodable(Any.Type)
+}
+
+enum PolymorphicCodableTypeKeys: String, Codable, OpenOrderedCodingKey {
+    case type
+    public var sortOrderIndex: Int? { 0 }
+    public var relativeIndex: Int { 0 }
+}
+
+extension Encoder {
+    
+    /// Add the "type" key to an encoded object.
+    public func encodePolymorphic<T : Encodable>(_ obj: T) throws {
+        let polymorphicEncoder = PolymorphicEncoder(self, encodable: obj)
+        try obj.encode(to: polymorphicEncoder)
+        if let error = polymorphicEncoder.error {
+            throw error
+        }
+    }
+}
+
+/// Work-around for polymorphic encoding that includes a "type" in a dictionary where the "type"
+/// field is not encoded by the object.
+class PolymorphicEncoder : Encoder {
+    let wrappedEncoder : Encoder
+    let encodable: Encodable
+    var error: Error?
+    var typeAdded: Bool = false
+    
+    init(_ wrappedEncoder : Encoder, encodable: Encodable) {
+        self.wrappedEncoder = wrappedEncoder
+        self.encodable = encodable
+    }
+    
+    var codingPath: [CodingKey] {
+        wrappedEncoder.codingPath
+    }
+    
+    var userInfo: [CodingUserInfoKey : Any] {
+        wrappedEncoder.userInfo
+    }
+    
+    func insertType() {
+        guard !typeAdded else { return }
+        typeAdded = true
+        do {
+            let typeName = (encodable as? PolymorphicTyped)?.typeName ?? "\(type(of: encodable))"
+            var container = wrappedEncoder.container(keyedBy: PolymorphicCodableTypeKeys.self)
+            try container.encode(typeName, forKey: .type)
+        } catch {
+            self.error = error
+        }
+    }
+    
+    func container<Key>(keyedBy type: Key.Type) -> KeyedEncodingContainer<Key> where Key : CodingKey {
+        insertType()
+        return wrappedEncoder.container(keyedBy: type)
+    }
+    
+    func unkeyedContainer() -> UnkeyedEncodingContainer {
+        self.error = EncodingError.invalidValue(encodable,
+            .init(codingPath: codingPath, debugDescription: "Cannot encode a polymorphic object to an array."))
+        return wrappedEncoder.unkeyedContainer()
+    }
+    
+    func singleValueContainer() -> SingleValueEncodingContainer {
+        self.error = EncodingError.invalidValue(encodable,
+            .init(codingPath: codingPath, debugDescription: "Cannot encode a polymorphic object to a single value container."))
+        return wrappedEncoder.singleValueContainer()
+    }
+}
+
+@available(*, deprecated, message: "Use `GenericPolymorphicSerializer` instead.")
 public protocol PolymorphicSerializer : GenericSerializer, DocumentableInterface {
     /// The `ProtocolValue` is the protocol or base class to which all the codable objects for this
     /// serializer should conform.
@@ -65,6 +295,7 @@ public protocol PolymorphicSerializer : GenericSerializer, DocumentableInterface
     func typeName(from decoder: Decoder) throws -> String
 }
 
+@available(*, deprecated, message: "Use `GenericPolymorphicSerializer` instead.")
 extension PolymorphicSerializer {
     
     /// The name of the base class or protocol to set as the base implementation that is deserialized
@@ -104,6 +335,7 @@ extension PolymorphicSerializer {
     }
 }
 
+@available(*, deprecated, message: "Use `GenericPolymorphicSerializer` instead.")
 open class AbstractPolymorphicSerializer {
     public enum TypeKeys: String, Codable, OpenOrderedCodingKey {
         case type
@@ -147,10 +379,5 @@ open class AbstractPolymorphicSerializer {
     open class func typeDocumentProperty() -> DocumentProperty {
         DocumentProperty(propertyType: .primitive(.string))
     }
-}
-
-public enum PolymorphicSerializerError : Error {
-    case typeKeyNotFound
-    case exampleNotFound(String)
 }
 

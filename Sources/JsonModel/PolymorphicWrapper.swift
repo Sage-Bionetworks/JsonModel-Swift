@@ -3,10 +3,6 @@
 
 import Foundation
 
-/// An explicitly defined protocol for a polymorphically-typed serializable value.
-public protocol PolymorphicCodable : PolymorphicRepresentable, Encodable {
-}
-
 /// Wrap a ``PolymorphicCodable`` interface to allow automatic synthesis of a polymorphically-typed value.
 ///
 /// This implementation was modified from an investigation of property wrappers originally created
@@ -117,7 +113,7 @@ public struct PolymorphicValue<ProtocolValue> : Codable {
     }
     
     public func encode(to encoder: Encoder) throws {
-        try encoder.encodePolymorphic(wrappedValue)
+        try encoder.encodePolymorphicAny(wrappedValue)
     }
 }
 
@@ -150,24 +146,17 @@ public struct PolymorphicArray<ProtocolValue> : Codable {
         var container = encoder.unkeyedContainer()
         try wrappedValue.forEach { obj in
             let nestedEncoder = container.superEncoder()
-            try nestedEncoder.encodePolymorphic(obj)
+            try nestedEncoder.encodePolymorphicAny(obj)
         }
     }
 }
 
-fileprivate enum PolymorphicCodableTypeKeys: String, CodingKey {
-    case type
-}
-
 extension Encoder {
-    fileprivate func encodePolymorphic(_ obj: Any) throws {
+    fileprivate func encodePolymorphicAny(_ obj: Any) throws {
         guard let encodable = obj as? Encodable else {
             throw EncodingError.invalidValue(obj,
                 .init(codingPath: self.codingPath, debugDescription: "Object `\(type(of: obj))` does not conform to the `Encodable` protocol"))
         }
-        let typeName = (obj as? PolymorphicTyped)?.typeName ?? "\(type(of: obj))"
-        var container = self.container(keyedBy: PolymorphicCodableTypeKeys.self)
-        try container.encode(typeName, forKey: .type)
-        try encodable.encode(to: self)
+        try self.encodePolymorphic(encodable)
     }
 }
