@@ -12,7 +12,7 @@ import Foundation
 /// limitations, it is **highly recommended** that you thoroughly unit test your implementations
 /// for the expected encoding and decoding of polymorphic objects.
 ///
-/// The simpliest example is a non-null, read/write, required value without a default such as:
+/// The simplest example is a non-null, read/write, required value without a default such as:
 ///
 /// ```
 /// struct SampleTest : Codable {

@@ -61,7 +61,7 @@ final class PolymorphicSerializerTests: XCTestCase {
             XCTAssertEqual("a", typeName)
         }
         else {
-            XCTFail("Encoding does not include 'valtypeue' keyword. \(dictionary)")
+            XCTFail("Encoding does not include 'type' keyword. \(dictionary)")
         }
     }
     

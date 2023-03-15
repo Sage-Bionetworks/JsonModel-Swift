@@ -29,7 +29,7 @@ public protocol PolymorphicRepresentable : PolymorphicTyped, Decodable {
 /// serialization protocols defined in Swift 2.0 where an object could conform to either the
 /// `Encodable` protocol or the `Decodable` protocol without conforming to the `Codable`
 /// protocol. Additionally, these older objects often had serialization strategies that
-/// conflicted with either encoding or decoding. To work-around this, we introduced the
+/// conflicted with either encoding or decoding. To work around this, we introduced the
 /// `PolymorphicRepresentable` protocol which **only** required adherence to the `Decodable`
 /// protocol and not to the `Encodable` protocol. This allowed developers who only needed
 /// to decode their objects, to use the ``SerializationFactory`` to handle polymorphic
