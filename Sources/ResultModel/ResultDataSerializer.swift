@@ -85,13 +85,13 @@ public final class ResultDataSerializer : GenericPolymorphicSerializer<ResultDat
     /// Insert the given example into the example array, replacing any existing example with the
     /// same `typeName` as one of the new example.
     public func add(_ example: SerializableResultData) {
-        try? add(example as ResultData)
+        try! add(example as ResultData)
     }
     
     /// Insert the given examples into the example array, replacing any existing examples with the
     /// same `typeName` as one of the new examples.
     public func add(contentsOf newExamples: [SerializableResultData]) {
-        try? add(contentsOf: newExamples as [ResultData])
+        try! add(contentsOf: newExamples as [ResultData])
     }
     
     private enum InterfaceKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {

@@ -91,25 +91,6 @@ public struct MooObject : Codable, PolymorphicTyped, GooProtocol {
     }
 }
 
-/// This object must be wrapped to allow serialization at the root.
-///
-/// - Example:
-/// ```
-///     let factory = GooFactory()
-///     let decoder = factory.createJSONDecoder()
-///     let encoder = factory.createJSONEncoder()
-///
-///     let json = """
-///     {
-///         "type" : "ragu",
-///         "value" : 7,
-///         "goo" : { "type" : "foo", "value" : 2 }
-///     }
-///     """.data(using: .utf8)!
-///
-///     let decodedObject = try decoder.decode(PolymorphicValue<GooProtocol>.self, from: json)
-///     let encodedData = try encoder.encode(decodedObject)
-/// ```
 public struct RaguObject : Codable, PolymorphicStaticTyped, GooProtocol {
     public static let typeName: String = "ragu"
 

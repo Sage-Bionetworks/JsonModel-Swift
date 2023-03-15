@@ -134,7 +134,6 @@ struct SampleWrapper : Codable {
 }
 
 class SampleSerializer : GenericPolymorphicSerializer<Sample>, DocumentableInterface {
-    //AbstractPolymorphicSerializer, PolymorphicSerializer {
     var jsonSchema: URL {
         URL(string: "Sample.json", relativeTo: kSageJsonSchemaBaseURL)!
     }
