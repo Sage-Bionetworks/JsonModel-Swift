@@ -69,7 +69,7 @@ import Foundation
 ///
 /// - Limitation 3:
 /// This property wrapper does not explicitly require conformance to the `Codable` or
-/// `PolymorphicTyped` protocols (limitation of Swift Generics as of 03/14/2022), but will fail to
+/// `PolymorphicTyped` protocols (limitation of Swift Generics as of 03/14/2023), but will fail to
 /// encode at runtime if the objects do *not* conform to these protocols. Finally, if you attempt
 /// to decode with a ``SerializationFactory`` that does not have a registered serializer for the
 /// given ``ProtocolValue``, then decoding will fail at runtime.
