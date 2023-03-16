@@ -54,7 +54,7 @@ extension SerializableResultType : DocumentableStringLiteral {
     }
 }
 
-public final class ResultDataSerializer : IdentifiableInterfaceSerializer, PolymorphicSerializer {
+public final class ResultDataSerializer : GenericPolymorphicSerializer<ResultData>, DocumentableInterface {
     public var documentDescription: String? {
         """
         The interface for any `ResultData` that is serialized using the `Codable` protocol and the
@@ -67,7 +67,7 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
     }
     
     override init() {
-        self.examples = [
+        super.init([
             AnswerResultObject.examples().first!,
             CollectionResultObject.examples().first!,
             ErrorResultObject.examples().first!,
@@ -75,10 +75,8 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
             ResultObject.examples().first!,
             BranchNodeResultObject.examples().first!,
             AssessmentResultObject(),
-        ]
+        ])
     }
-    
-    public private(set) var examples: [ResultData]
     
     public override class func typeDocumentProperty() -> DocumentProperty {
         .init(propertyType: .reference(SerializableResultType.documentableType()))
@@ -87,20 +85,17 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
     /// Insert the given example into the example array, replacing any existing example with the
     /// same `typeName` as one of the new example.
     public func add(_ example: SerializableResultData) {
-        examples.removeAll(where: { $0.typeName == example.typeName })
-        examples.append(example)
+        try! add(example as ResultData)
     }
     
     /// Insert the given examples into the example array, replacing any existing examples with the
     /// same `typeName` as one of the new examples.
     public func add(contentsOf newExamples: [SerializableResultData]) {
-        let newNames = newExamples.map { $0.typeName }
-        self.examples.removeAll(where: { newNames.contains($0.typeName) })
-        self.examples.append(contentsOf: newExamples)
+        try! add(contentsOf: newExamples as [ResultData])
     }
     
     private enum InterfaceKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
-        case startDate, endDate
+        case identifier, startDate, endDate
         var relativeIndex: Int { 2 }
     }
     
@@ -114,7 +109,7 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
         guard let key = codingKey as? InterfaceKeys else {
             return super.isRequired(codingKey)
         }
-        return key == .startDate
+        return key == .startDate || key == .identifier
     }
     
     public override class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -122,6 +117,9 @@ public final class ResultDataSerializer : IdentifiableInterfaceSerializer, Polym
             return try super.documentProperty(for: codingKey)
         }
         switch key {
+        case .identifier:
+            return .init(propertyType: .primitive(.string), propertyDescription:
+                            "The identifier for the result.")
         case .startDate:
             return .init(propertyType: .format(.dateTime), propertyDescription:
                             "The start date timestamp for the result.")

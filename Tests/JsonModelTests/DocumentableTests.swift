@@ -196,7 +196,7 @@ class AnotherTestFactory : SerializationFactory {
     }
 }
 
-class AnotherSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
+class AnotherSerializer : GenericPolymorphicSerializer<Another>, DocumentableInterface {
     var jsonSchema: URL {
         URL(string: "Another.json", relativeTo: kSageJsonSchemaBaseURL)!
     }
@@ -205,10 +205,12 @@ class AnotherSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
         "Another example interface used for unit testing."
     }
     
-    let examples: [Another] = [
-        AnotherA(),
-        AnotherB(),
-    ]
+    override init() {
+        super.init([
+            AnotherA(),
+            AnotherB(),
+        ])
+    }
     
     override class func typeDocumentProperty() -> DocumentProperty {
         DocumentProperty(propertyType: .reference(AnotherType.self))
@@ -267,11 +269,7 @@ struct AnotherA : Another, Codable {
         try container.encodeIfPresent(self.sampleItem, forKey: .sampleItem)
         if let samples = self.samples {
             var nestedContainer = container.nestedUnkeyedContainer(forKey: .samples)
-            try samples.forEach {
-                let encodable = $0 as! Encodable
-                let nestedEncoder = nestedContainer.superEncoder()
-                try encodable.encode(to: nestedEncoder)
-            }
+            try nestedContainer.encodePolymorphic(samples)
         }
     }
 }

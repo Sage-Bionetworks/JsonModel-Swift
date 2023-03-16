@@ -7,10 +7,16 @@ import XCTest
 
 final class PolymorphicSerializerTests: XCTestCase {
     
-    func testSampleSerializer() {
+    func testSampleSerializer() throws {
         let serializer = SampleSerializer()
         
         XCTAssertEqual("Sample", serializer.interfaceName)
+        
+        try serializer.validate()
+        
+    }
+    
+    func testSampleSerializer_Decoding() throws {
         
         let json = """
         {
@@ -21,41 +27,41 @@ final class PolymorphicSerializerTests: XCTestCase {
         
         let factory = TestFactory.defaultFactory
         let decoder = factory.createJSONDecoder()
+        
+        let sampleWrapper = try decoder.decode(SampleWrapper.self, from: json)
+        
+        guard let sample = sampleWrapper.value as? SampleA else {
+            XCTFail("\(sampleWrapper.value) not of expected type.")
+            return
+        }
+        
+        XCTAssertEqual(5, sample.value)
+    }
+    
+    func testSampleSerializer_Encoding() throws {
+        let sampleWrapper = SampleWrapper(value: SampleA(value: 5))
+        let factory = TestFactory.defaultFactory
         let encoder = factory.createJSONEncoder()
         
-        do {
-            let sampleWrapper = try decoder.decode(SampleWrapper.self, from: json)
-            
-            guard let sample = sampleWrapper.value as? SampleA else {
-                XCTFail("\(sampleWrapper.value) not of expected type.")
-                return
-            }
-            
-            XCTAssertEqual(5, sample.value)
-            
-            let encoding = try encoder.encode(sampleWrapper)
-            let encodedJson = try JSONSerialization.jsonObject(with: encoding, options: [])
-            guard let dictionary = encodedJson as? [String : Any] else {
-                XCTFail("\(encodedJson) not a dictionary.")
-                return
-            }
-            
-            if let value = dictionary["value"] as? Int {
-                XCTAssertEqual(5, value)
-            }
-            else {
-                XCTFail("Encoding does not include 'value' keyword. \(dictionary)")
-            }
-            
-            if let typeName = dictionary["type"] as? String {
-                XCTAssertEqual("a", typeName)
-            }
-            else {
-                XCTFail("Encoding does not include 'valtypeue' keyword. \(dictionary)")
-            }
-
-        } catch let err {
-            XCTFail("Failed to decode/encode object: \(err)")
+        let encoding = try encoder.encode(sampleWrapper)
+        let encodedJson = try JSONSerialization.jsonObject(with: encoding, options: [])
+        guard let dictionary = encodedJson as? [String : Any] else {
+            XCTFail("\(encodedJson) not a dictionary.")
+            return
+        }
+        
+        if let value = dictionary["value"] as? Int {
+            XCTAssertEqual(5, value)
+        }
+        else {
+            XCTFail("Encoding does not include 'value' keyword. \(dictionary)")
+        }
+        
+        if let typeName = dictionary["type"] as? String {
+            XCTAssertEqual("a", typeName)
+        }
+        else {
+            XCTFail("Encoding does not include 'type' keyword. \(dictionary)")
         }
     }
     
@@ -84,10 +90,37 @@ final class PolymorphicSerializerTests: XCTestCase {
             XCTFail("Failed to decode/encode object: \(err)")
         }
     }
+    
+    func testSampleSerializer_StaticTyped() throws {
+        let json = """
+        {
+            "name": "moo",
+            "type": "c",
+            "value": 2
+        }
+        """.data(using: .utf8)! // our data in native (JSON) format
+        
+        let factory = TestFactory.defaultFactory
+        factory.sampleSerializer.add(typeOf: SampleC.self)
+        let decoder = factory.createJSONDecoder()
+        
+        let sampleWrapper = try decoder.decode(SampleWrapper.self, from: json)
+            
+        guard let sample = sampleWrapper.value as? SampleC else {
+            XCTFail("\(sampleWrapper.value) not of expected type.")
+            return
+        }
+        
+        XCTAssertEqual("moo", sample.name)
+        XCTAssertEqual(2, sample.value)
+    }
 }
 
 struct SampleWrapper : Codable {
     let value: Sample
+    init(value: Sample) {
+        self.value = value
+    }
     init(from decoder: Decoder) throws {
         self.value = try decoder.serializationFactory.decodePolymorphicObject(Sample.self, from: decoder)
     }
@@ -100,7 +133,7 @@ struct SampleWrapper : Codable {
     }
 }
 
-class SampleSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
+class SampleSerializer : GenericPolymorphicSerializer<Sample>, DocumentableInterface {
     var jsonSchema: URL {
         URL(string: "Sample.json", relativeTo: kSageJsonSchemaBaseURL)!
     }
@@ -109,10 +142,12 @@ class SampleSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
         "Sample is an example interface used for unit testing."
     }
     
-    let examples: [Sample] = [
-        SampleA(value: 3),
-        SampleB(value: "foo"),
-    ]
+    override init() {
+        super.init([
+            SampleA(value: 3),
+            SampleB(value: "foo"),
+        ])
+    }
     
     override class func typeDocumentProperty() -> DocumentProperty {
         DocumentProperty(propertyType: .reference(SampleType.self))
@@ -340,6 +375,13 @@ extension SampleB : DocumentableStruct {
         return [SampleB(value: "foo"),
                 SampleB(value: "foo", animals: SampleAnimals.birds, jsonBlob: .array([1,2]), timestamp: Date(), numberMap: ["one" : 1])]
     }
+}
+
+struct SampleC : Sample, Codable, PolymorphicStaticTyped {
+    static var typeName: String { "c" }
+    
+    let name: String
+    let value: UInt
 }
 
 struct SampleNotRegistered : Sample, Codable {

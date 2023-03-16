@@ -35,7 +35,7 @@ public protocol AnswerType : PolymorphicTyped, DictionaryRepresentable {
     func encodeAnswer(from value: Any?) throws -> JsonElement
 }
 
-public final class AnswerTypeSerializer : AbstractPolymorphicSerializer, PolymorphicSerializer {
+public final class AnswerTypeSerializer : GenericPolymorphicSerializer<AnswerType>, DocumentableInterface {
     public var documentDescription: String? {
         """
         `AnswerType` is used to allow carrying additional information about the properties of a
@@ -48,7 +48,7 @@ public final class AnswerTypeSerializer : AbstractPolymorphicSerializer, Polymor
     }
     
     override init() {
-        examples = [
+        super.init([
             AnswerTypeArray.examples().first!,
             AnswerTypeBoolean.examples().first!,
             AnswerTypeDateTime.examples().first!,
@@ -59,20 +59,11 @@ public final class AnswerTypeSerializer : AbstractPolymorphicSerializer, Polymor
             AnswerTypeObject.examples().first!,
             AnswerTypeString.examples().first!,
             AnswerTypeTime.examples().first!,
-        ]
+        ])
     }
-    
-    public private(set) var examples: [AnswerType]
     
     public override class func typeDocumentProperty() -> DocumentProperty {
         .init(propertyType: .reference(AnswerTypeType.documentableType()))
-    }
-    
-    public func add(_ example: AnswerType) {
-        if let idx = examples.firstIndex(where: { $0.typeName == example.typeName }) {
-            examples.remove(at: idx)
-        }
-        examples.append(example)
     }
 }
 

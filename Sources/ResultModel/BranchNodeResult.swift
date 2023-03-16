@@ -159,17 +159,11 @@ open class AbstractBranchNodeResultObject : AbstractResultObject {
         try container.encode(path, forKey: .path)
 
         var nestedContainer = container.nestedUnkeyedContainer(forKey: .stepHistory)
-        for result in stepHistory {
-            let nestedEncoder = nestedContainer.superEncoder()
-            try result.encode(to: nestedEncoder)
-        }
+        try nestedContainer.encodePolymorphic(stepHistory)
 
         if let results = asyncResults {
             var asyncContainer = container.nestedUnkeyedContainer(forKey: .asyncResults)
-            for result in results {
-                let nestedEncoder = asyncContainer.superEncoder()
-                try result.encode(to: nestedEncoder)
-            }
+            try asyncContainer.encodePolymorphic(results)
         }
     }
     
