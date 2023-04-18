@@ -112,6 +112,14 @@ public protocol DocumentableObject : DocumentableBase {
     static func jsonExamples() throws -> [[String : JsonSerializable]]
 }
 
+/// A protocol that allows a JsonSchema to define "additionalProperties" explicitly.
+/// Any serializable object that may be serialized using other languages that have
+/// a different set of required properties (for example, Kotlin serialization) should
+/// not set `additionalProperties == false`.
+public protocol FinalDocumentableObject : DocumentableStruct {
+    static var additionalProperties: Bool { get }
+}
+
 /// Structs that implement the Codable protocol.
 public protocol DocumentableStruct : DocumentableObject, Codable {
     static func examples() -> [Self]
@@ -509,11 +517,10 @@ public class JsonDocumentBuilder {
             let examples = try (docType as? DocumentableObject.Type).map {
                 try $0.jsonExamples()
             }
-            let isOpen = (docType as? DocumentableObject.Type)?.isOpen() ?? !rootPointer.isSealed
             return JsonSchema(id: URL(string: rootPointer.refId.classPath)!,
                               description: rootPointer.documentDescription ?? "",
                               isArray: rootPointer.isArray,
-                              additionalProperties: (isOpen || interfaces.count > 0) ? nil : false,
+                              additionalProperties: (docType as? FinalDocumentableObject.Type)?.additionalProperties,
                               codingKeys: docType.codingKeys(),
                               interfaces: interfaces.count > 0 ? interfaces : nil,
                               definitions: definitions,
@@ -776,7 +783,7 @@ public class JsonDocumentBuilder {
                     return JsonSchemaObjectRef(ref: refId)
                 }
                 return .object(JsonSchemaObject(id: ref,
-                                                additionalProperties: (docType.isOpen() || interfaces.count > 0) ? nil : false,
+                                                additionalProperties: (docType as? FinalDocumentableObject.Type)?.additionalProperties,
                                                 description: "",
                                                 codingKeys: docType.codingKeys(),
                                                 properties: properties,
