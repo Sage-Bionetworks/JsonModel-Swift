@@ -159,8 +159,8 @@ public protocol DocumentableInterface : DocumentableBase, DocumentableRoot {
     /// The name of the interface that is described by this documentable.
     var interfaceName: String { get }
     
-    /// A list of `DocumentableObject` classes that implement this interface.
-    func documentableExamples() -> [DocumentableObject]
+    /// A list of `DocumentableObject.Type` classes that implement this interface.
+    func documentableAnyOf() -> [DocumentableObject.Type]
     
     /// Is the interface sealed or can it be extended?
     func isSealed() -> Bool

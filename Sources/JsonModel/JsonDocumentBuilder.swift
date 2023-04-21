@@ -92,8 +92,8 @@ public class JsonDocumentBuilder {
         interfacePointers.forEach { (serializer, pointer) in
             let docType = type(of: serializer)
             recursiveAddProps(docType: docType, pointer: pointer)
-            serializer.documentableExamples().forEach {
-                recursiveAddObject(documentableType: type(of: $0), parent: pointer, isSubclass: true)
+            serializer.documentableAnyOf().forEach {
+                recursiveAddObject(documentableType: $0, parent: pointer, isSubclass: true)
             }
         }
     }
