@@ -56,6 +56,10 @@ extension StringEnumSet {
     }
 }
 
+public protocol DocumentableCodingKey : CodingKey, DocumentableStringEnum, StringEnumSet {
+    static var requiredKeys: [Self] { get }
+}
+
 public protocol DocumentableStringLiteral : DocumentableString {
     /// An array of encodable objects to use as the set of examples for decoding this object.
     static func examples() -> [String]
@@ -134,6 +138,99 @@ extension DocumentableStruct {
     // The examples can be created by encoding self as a dictionary.
     public static func jsonExamples() throws -> [[String : JsonSerializable]] {
         return try examples().map { try $0.jsonEncodedDictionary() }
+    }
+    
+    /// A fall-back method for defining the document properties.
+    ///
+    /// - Note: This function can only handle cases where
+    /// (a) the examples include all the coding keys with non-nil values, and
+    /// (b) sets and arrays only support `[String]`, `[Int]`, or `[Double]`, and
+    /// (c) the mirrored values do not include interfaces, constants, dictionaries, or default values.
+    public static func mirroredPropertyType(for codingKey: CodingKey) throws -> DocumentProperty {
+        for example in examples() {
+            let mirror = Mirror(reflecting: example)
+            for child in mirror.children {
+                if child.label == codingKey.stringValue {
+                    if child.value is Date {
+                        return .init(propertyType: .format(.dateTime))
+                    }
+                    else if child.value is URL {
+                        return .init(propertyType: .format(.uri))
+                    }
+                    else if child.value is UUID {
+                        return .init(propertyType: .format(.uuid))
+                    }
+                    else if let obj = child.value as? Documentable {
+                        return .init(propertyType: .reference(type(of: obj).documentableType()))
+                    }
+                    else if let obj = child.value as? DocumentableSequence, let docType = obj.castDocumentableType() {
+                        return .init(propertyType: .referenceArray(docType))
+                    }
+                    else if child.value is String {
+                        return .init(propertyType: .primitive(.string))
+                    }
+                    else if child.value is Bool {
+                        return .init(propertyType: .primitive(.boolean))
+                    }
+                    else if child.value is IntegerNumber {
+                        return .init(propertyType: .primitive(.integer))
+                    }
+                    else if child.value is JsonNumber {
+                        return .init(propertyType: .primitive(.number))
+                    }
+                    else if child.value is [String] || child.value is Set<String> {
+                        return .init(propertyType: .primitiveArray(.string))
+                    }
+                    else if child.value is [Int] || child.value is Set<Int> {
+                        return .init(propertyType: .primitiveArray(.integer))
+                    }
+                    else if child.value is [JsonNumber] || child.value is Set<Double> {
+                        return .init(propertyType: .primitiveArray(.number))
+                    }
+                }
+            }
+        }
+        throw DocumentableError.cannotMirror(codingKey)
+    }
+}
+
+protocol DocumentableSequence {
+    func castDocumentableType() -> Documentable.Type?
+}
+
+extension Set : DocumentableSequence where Element : Documentable {
+    func castDocumentableType() -> Documentable.Type? {
+        Array(self).castDocumentableType()
+    }
+}
+
+extension Array : DocumentableSequence where Element : Documentable {
+    func castDocumentableType() -> Documentable.Type? {
+        first.flatMap { firstObj in
+            let docType = type(of: firstObj).documentableType()
+            for element in self {
+                if type(of: element) != docType {
+                    return nil
+                }
+            }
+            return docType
+        }
+    }
+}
+
+public protocol GenericDocumentableStruct : DocumentableStruct {
+    associatedtype CodingKeys : DocumentableCodingKey
+}
+
+extension GenericDocumentableStruct {
+    /// A generic documentable struct is a true struct and the coding keys can be a single level.
+    public static func codingKeys() -> [CodingKey] {
+        CodingKeys.allCases.map { $0 as CodingKey }
+    }
+    
+    /// The required keys are defined on the enum.
+    public static func isRequired(_ codingKey: CodingKey) -> Bool {
+        (codingKey as? CodingKeys).map { CodingKeys.requiredKeys.contains($0) } ?? false
     }
 }
 
@@ -281,6 +378,9 @@ public enum DocumentableError : Error {
     /// The json schema could not be built b/c the mappings weren't set up correctly.
     case invalidMapping(String)
     
+    /// The given coding key cannot be mirrored using the Documentable examples
+    case cannotMirror(CodingKey)
+    
     /// The domain of the error.
     public static var errorDomain: String {
         return "DocumentableErrorDomain"
@@ -293,6 +393,8 @@ public enum DocumentableError : Error {
             return -1
         case .invalidMapping(_):
             return -2
+        case .cannotMirror(_):
+            return -3
         }
     }
     
@@ -302,6 +404,7 @@ public enum DocumentableError : Error {
         switch(self) {
         case .invalidCodingKey(_, let str): description = str
         case .invalidMapping(let str): description = str
+        case .cannotMirror(let key): description = "Cannot mirror `\(key.stringValue)` using the provided examples."
         }
         return ["NSDebugDescription": description]
     }
