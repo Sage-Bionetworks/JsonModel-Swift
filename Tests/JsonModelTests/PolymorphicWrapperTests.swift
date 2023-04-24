@@ -55,8 +55,8 @@ final class PolymorphicWrapperTests: XCTestCase {
                 "type" : "SampleX",
                 "name" : "foo",
                 "value" : 5
-            ],
-            "array" : []
+            ] as [String : Any],
+            "array" : [] as [Any]
         ]
         XCTAssertEqual(expectedDictionary, dictionary)
     }

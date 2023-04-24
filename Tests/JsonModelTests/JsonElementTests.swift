@@ -162,7 +162,7 @@ final class JsonElementTests: XCTestCase {
     }
     
     func testDictionary() {
-        let original = JsonElement(["foo":1,"goo":"two"])
+        let original = JsonElement(["foo":1,"goo":"two"] as [String : Any])
         XCTAssertEqual(JsonElement.object(["foo":1,"goo":"two"]), original)
         XCTAssertNotEqual(JsonElement.object([:]), original)
         

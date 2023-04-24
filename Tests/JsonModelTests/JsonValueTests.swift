@@ -203,11 +203,11 @@ final class JsonValueTests: XCTestCase {
             0 : [ ["identifier" : "bar",
                    "items" : [ ["index" : NSNumber(value: 0)],
                                ["index" : NSNumber(value: 1)],
-                               ["index" : NSNumber(value: 2)]]],
+                               ["index" : NSNumber(value: 2)]]] as [String : Any],
                   ["identifier" : "goo"]
             ],
-            1 : [ "date" : date, "url" : url, "data" : data, "uuid" : uuid, "null" : NSNull()],
-            2 : [ ["item" : "bar", "uuid" : barUUID], ["item" : "goo", "uuid" : gooUUID]],
+            1 : [ "date" : date, "url" : url, "data" : data, "uuid" : uuid, "null" : NSNull()] as [String : Any],
+            2 : [ ["item" : "bar", "uuid" : barUUID] as [String : Any], ["item" : "goo", "uuid" : gooUUID]],
         ]
     
         let ns_json = (dictionary as NSDictionary).jsonObject()
@@ -221,10 +221,10 @@ final class JsonValueTests: XCTestCase {
             "0" : [ ["identifier" : "bar",
                    "items" : [ ["index" : NSNumber(value: 0)],
                                ["index" : NSNumber(value: 1)],
-                               ["index" : NSNumber(value: 2)]]],
+                               ["index" : NSNumber(value: 2)]]] as [String : Any],
                   ["identifier" : "goo"]
             ],
-            "1" : [ "date" : expectedDate, "url" : "https://foo.org", "data" : "ABC4", "uuid" : uuid.uuidString, "null" : NSNull()],
+            "1" : [ "date" : expectedDate, "url" : "https://foo.org", "data" : "ABC4", "uuid" : uuid.uuidString, "null" : NSNull()] as [String : Any],
             "2" : [ ["item" : "bar", "uuid" : barUUID.uuidString,], ["item" : "goo", "uuid" : gooUUID.uuidString,]],
         ]
         

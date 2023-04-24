@@ -86,7 +86,7 @@ final class AnyCodableTests: XCTestCase {
             "uuid" : uuid,
             "url" : url,
             "array" : ["cat", "dog", "duck"],
-            "dictionary" : ["a" : 1, "b" : "bat", "c" : true]
+            "dictionary" : ["a" : 1, "b" : "bat", "c" : true] as [String : Any]
             ]
 
         do {

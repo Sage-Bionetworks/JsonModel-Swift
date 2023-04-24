@@ -165,6 +165,10 @@ open class GenericPolymorphicSerializer<ProtocolValue> : GenericSerializer {
         examples.compactMap { $0 as? DocumentableObject }
     }
     
+    public func documentableAnyOf() -> [DocumentableObject.Type] {
+        typeMap.compactMap { $0.value as? DocumentableObject.Type }
+    }
+    
     public func canDecode(_ typeName: String) -> Bool {
         typeMap[typeName] != nil
     }
@@ -369,6 +373,10 @@ extension PolymorphicSerializer {
     
     public func documentableExamples() -> [DocumentableObject] {
         return examples.compactMap { $0 as? DocumentableObject }
+    }
+    
+    public func documentableAnyOf() -> [DocumentableObject.Type] {
+        documentableExamples().map { type(of: $0) }
     }
 }
 
