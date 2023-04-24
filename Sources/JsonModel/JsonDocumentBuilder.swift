@@ -84,7 +84,7 @@ public class JsonDocumentBuilder {
 
         // Then add the properties and documentables from each pointer. Add definitions from the root
         // documents *first* and then for the interfaces. This is b/c properties that do not reference
-        // an interface and and are only used by the root object, should be defined on the root object
+        // an interface and are only used by the root object, should be defined on the root object
         // rather than the interface.
         rootDocPointers.forEach { root in
             recursiveAddProps(docType: root.0, pointer: root.1)
