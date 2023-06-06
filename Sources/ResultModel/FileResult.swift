@@ -113,7 +113,7 @@ extension FileResultObject : DocumentableStruct {
         case .startDateTime, .endDateTime:
             return .init(propertyType: .format(.dateTime))
         case .relativePath:
-            return .init(propertyType: .primitive(.string), propertyDescription:
+            return .init(propertyType: .format(.uriRelative), propertyDescription:
                             "The relative path to the file-based result.")
         case .contentType:
             return .init(propertyType: .primitive(.string), propertyDescription:
