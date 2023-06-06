@@ -73,7 +73,8 @@ final class DocumentableTests: XCTestCase {
                let typeProp = props["type"],
                case .const(let constType) = typeProp {
                 XCTAssertEqual("test", constType.const)
-                XCTAssertEqual("https://sage-bionetworks.github.io/mobile-client-json/schemas/v2/ResultData.json#SerializableResultType", constType.ref?.classPath)
+                // TODO: syoung 06/06/2023 Revisit this when/if we update the schema from Draft 7 to a new schema that supports both const and $ref
+//                XCTAssertEqual("https://sage-bionetworks.github.io/mobile-client-json/schemas/v2/ResultData.json#SerializableResultType", constType.ref?.classPath)
             }
             else {
                 XCTFail("Failed to add expected property.")
