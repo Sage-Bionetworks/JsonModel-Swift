@@ -286,7 +286,6 @@ final class JsonSchemaTests: XCTestCase {
     func testJsonSchemaConst() {
         let json = """
         {
-            "$ref": "#/definitions/FooType",
             "const": "boo"
         }
         """.data(using: .utf8)! // our data in native (JSON) format
@@ -411,7 +410,6 @@ final class JsonSchemaTests: XCTestCase {
             "description": "This is an example of a polymorphic object",
             "properties": {
                 "type": {
-                    "$ref": "#/definitions/GooType",
                     "const": "foo"
                 },
                 "identifier": {
@@ -544,7 +542,6 @@ final class JsonSchemaTests: XCTestCase {
             },
             "properties": {
                 "type": {
-                    "$ref": "#/definitions/GooType",
                     "const": "foo"
                 },
                 "identifier": {
@@ -711,7 +708,6 @@ final class JsonSchemaTests: XCTestCase {
                 "description": "This is an example of a polymorphic object",
                 "properties": {
                     "type": {
-                        "$ref": "#/definitions/GooType",
                         "const": "foo"
                     },
                     "identifier": {

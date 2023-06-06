@@ -559,19 +559,19 @@ public struct JsonSchemaStringEnum : Codable, Hashable {
 
 public struct JsonSchemaConst : Codable, Hashable {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case const, _ref = "$ref", description
+        case const, description
     }
     public let const: String
-    public var ref: JsonSchemaReferenceId? { _ref?.value}
-    private let _ref: JsonSchemaRef?
     public let description: String?
-
+    
     public init(const: String,
                 ref: JsonSchemaReferenceId? = nil,
                 description: String? = nil) {
         self.const = const
-        self._ref = ref.map { .init($0) }
         self.description = description
+        
+        // TODO: syoung 06/06/2023 Draft 7 does not support $ref and const together - revisit when we update the target schema
+        // self.ref = ref
     }
 }
 
