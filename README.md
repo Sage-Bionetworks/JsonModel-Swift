@@ -22,7 +22,7 @@ actual model is defined using `import JsonModel` and version
 
 ```
     .package(name: "JsonModel",
-             url: "https://github.com/Sage-Bionetworks/JsonModel-Swift.git",
+             url: "https://github.com/BridgeDigitalHealth/JsonModel-Swift.git",
              "1.6.0"..<"3.0.0"),
 ```
 

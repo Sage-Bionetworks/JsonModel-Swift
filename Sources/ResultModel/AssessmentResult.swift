@@ -161,7 +161,7 @@ extension AssessmentResultObject : DocumentableRootObject {
     }
 
     public var jsonSchema: URL {
-        URL(string: "\(self.className).json", relativeTo: kSageJsonSchemaBaseURL)!
+        URL(string: "\(self.className).json", relativeTo: kBDHJsonSchemaBaseURL)!
     }
 
     public var documentDescription: String? {

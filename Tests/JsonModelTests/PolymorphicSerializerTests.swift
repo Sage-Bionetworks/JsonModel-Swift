@@ -135,7 +135,7 @@ struct SampleWrapper : Codable {
 
 class SampleSerializer : GenericPolymorphicSerializer<Sample>, DocumentableInterface {
     var jsonSchema: URL {
-        URL(string: "Sample.json", relativeTo: kSageJsonSchemaBaseURL)!
+        URL(string: "Sample.json", relativeTo: kBDHJsonSchemaBaseURL)!
     }
 
     var documentDescription: String? {

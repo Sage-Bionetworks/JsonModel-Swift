@@ -143,7 +143,7 @@ open class SerializationFactory : FactoryRegistration {
     
     /// The base url for the objects for this factory.
     open var jsonSchemaBaseURL: URL {
-        kSageJsonSchemaBaseURL
+        kBDHJsonSchemaBaseURL
     }
     
     /// A list of root objects included in this factory that are *not* included as definition on an existing `DocumentableInterface`.

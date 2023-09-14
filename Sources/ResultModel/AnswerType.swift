@@ -44,7 +44,7 @@ public final class AnswerTypeSerializer : GenericPolymorphicSerializer<AnswerTyp
     }
     
     public var jsonSchema: URL {
-        URL(string: "\(self.interfaceName).json", relativeTo: kSageJsonSchemaBaseURL)!
+        URL(string: "\(self.interfaceName).json", relativeTo: kBDHJsonSchemaBaseURL)!
     }
     
     override init() {

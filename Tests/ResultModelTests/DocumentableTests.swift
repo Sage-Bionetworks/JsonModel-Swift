@@ -63,7 +63,7 @@ final class DocumentableTests: XCTestCase {
             if let interface = schema.root.allOf?.first?.refId {
                 XCTAssertEqual("ResultData", interface.className)
                 XCTAssertTrue(interface.isExternal)
-                XCTAssertEqual("https://sage-bionetworks.github.io/mobile-client-json/schemas/v2/ResultData.json", interface.classPath)
+                XCTAssertEqual("https://bridgedigitalhealth.github.io/mobile-client-json/schemas/v2/ResultData.json", interface.classPath)
             }
             else {
                 XCTFail("Failed to add expected interfaces.")
@@ -74,7 +74,7 @@ final class DocumentableTests: XCTestCase {
                case .const(let constType) = typeProp {
                 XCTAssertEqual("test", constType.const)
                 // TODO: syoung 06/06/2023 Revisit this when/if we update the schema from Draft 7 to a new schema that supports both const and $ref
-//                XCTAssertEqual("https://sage-bionetworks.github.io/mobile-client-json/schemas/v2/ResultData.json#SerializableResultType", constType.ref?.classPath)
+//                XCTAssertEqual("https://bridgedigitalhealth.github.io/mobile-client-json/schemas/v2/ResultData.json#SerializableResultType", constType.ref?.classPath)
             }
             else {
                 XCTFail("Failed to add expected property.")
@@ -115,7 +115,7 @@ struct TestResult : SerializableResultData, DocumentableStruct, DocumentableRoot
     }
     
     public var jsonSchema: URL {
-        URL(string: "\(self.className).json", relativeTo: kSageJsonSchemaBaseURL)!
+        URL(string: "\(self.className).json", relativeTo: kBDHJsonSchemaBaseURL)!
     }
 
     public var documentDescription: String? {

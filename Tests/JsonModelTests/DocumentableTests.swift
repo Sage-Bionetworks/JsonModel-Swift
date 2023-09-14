@@ -68,7 +68,7 @@ final class DocumentableTests: XCTestCase {
     
     func checkSampleSchema(_ jsonSchema: JsonSchema, _ externalSampleItem: Bool) {
         
-        XCTAssertEqual("\(kSageJsonSchemaBaseURL)Sample.json", jsonSchema.id.classPath)
+        XCTAssertEqual("\(kBDHJsonSchemaBaseURL)Sample.json", jsonSchema.id.classPath)
         XCTAssertEqual("Sample", jsonSchema.root.title)
         XCTAssertEqual("Sample is an example interface used for unit testing.", jsonSchema.root.description)
         
@@ -234,7 +234,7 @@ class AnotherTestFactory : SerializationFactory {
 
 class AnotherSerializer : GenericPolymorphicSerializer<Another>, DocumentableInterface {
     var jsonSchema: URL {
-        URL(string: "Another.json", relativeTo: kSageJsonSchemaBaseURL)!
+        URL(string: "Another.json", relativeTo: kBDHJsonSchemaBaseURL)!
     }
 
     var documentDescription: String? {
