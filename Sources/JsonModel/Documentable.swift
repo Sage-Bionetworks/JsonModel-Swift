@@ -7,6 +7,7 @@ import Foundation
 
 /// Hardcoded URL to the repo that hosts the json schemas for the mobile client shared libraries.
 public let kBDHJsonSchemaBaseURL = URL(string: "https://bridgedigitalhealth.github.io/mobile-client-json/schemas/v2/")!
+public let kSageJsonSchemaBaseURL = kBDHJsonSchemaBaseURL
 
 public protocol TypeRepresentable : Hashable, RawRepresentable, ExpressibleByStringLiteral {
     var stringValue: String { get }
