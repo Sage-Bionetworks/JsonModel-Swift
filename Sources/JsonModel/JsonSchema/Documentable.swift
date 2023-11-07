@@ -9,14 +9,6 @@ import Foundation
 public let kBDHJsonSchemaBaseURL = URL(string: "https://bridgedigitalhealth.github.io/mobile-client-json/schemas/v2/")!
 public let kSageJsonSchemaBaseURL = kBDHJsonSchemaBaseURL
 
-public protocol TypeRepresentable : Hashable, RawRepresentable, ExpressibleByStringLiteral {
-    var stringValue: String { get }
-}
-
-extension RawRepresentable where Self.RawValue == String {
-    public var stringValue: String { return rawValue }
-}
-
 /// A `Documentable` is used to create the `JsonSchema` for a collection of serializable objects.
 /// It is generally assumed that the objects conform to `Decodable` and/or `Encodable` but neither
 /// protocol is required
@@ -38,23 +30,6 @@ public protocol DocumentableString : Documentable, Codable {
 public protocol DocumentableStringEnum : DocumentableString {
     /// An array of encodable objects to use as the set of examples for decoding this object.
     static func allValues() -> [String]
-}
-
-public protocol StringEnumSet : Hashable, RawRepresentable, CaseIterable where RawValue == String {
-}
-
-extension StringEnumSet {
-    public static func allValues() -> [String] {
-        return self.allCases.map { $0.rawValue }
-    }
-    
-    public var indexPosition: Int {
-        type(of: self).allValues().firstIndex(of: self.stringValue)!
-    }
-    
-    public static func < (lhs: Self, rhs: Self) -> Bool {
-        lhs.indexPosition < rhs.indexPosition
-    }
 }
 
 public protocol DocumentableCodingKey : CodingKey, DocumentableStringEnum, StringEnumSet {

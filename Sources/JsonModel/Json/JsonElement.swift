@@ -5,19 +5,6 @@
 
 import Foundation
 
-/// An enum listing the json-types for serialization.
-public enum JsonType : String, Codable, CaseIterable {
-    case string, number, integer, boolean, null, array, object
-    
-    var isPrimitive: Bool {
-        let primitiveTypes: [JsonType] = [.string, .number, .integer, .boolean, .null]
-        return primitiveTypes.contains(self)
-    }
-}
-
-extension JsonType : DocumentableStringEnum, StringEnumSet {
-}
-
 /// A `Codable` element that can be used to serialize any `JsonSerializable`.
 public enum JsonElement : Codable {
     case string(String)
@@ -252,7 +239,7 @@ extension JsonElement : JsonValue {
     }
 }
 
-public protocol JsonElementFormatter {
+protocol JsonElementFormatter {
     func jsonElement(from string: String) -> JsonElement?
     func string(from jsonElement: JsonElement) -> String?
 }
