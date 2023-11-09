@@ -1,6 +1,6 @@
 import Foundation
 
-@attached(member, names: named(CodingKeys))
+@attached(member, names: named(CodingKeys), named(init), named(encode))
 @attached(extension, conformances: Codable)
 public macro Serializable() = #externalMacro(module: "SerializableMacros", type: "SerializableMacro")
 

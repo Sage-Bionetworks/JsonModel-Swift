@@ -20,13 +20,19 @@ final class SerializableMacrosTests: XCTestCase {
         XCTAssertEqual("two", encoding["foo"] as? String)
         XCTAssertEqual(2, encoding["baloo"] as? Int)
         XCTAssertNil(encoding["goo"])
+        XCTAssertEqual("one", encoding["u_who"] as? String)
     }
-    
-    @Serializable
-    public struct SimpleStruct {
-        public let foo: String
-        public let baloo: Int
-        @Transient public var goo: Double = 0
-    }
-
 }
+
+@Serializable
+struct SimpleStruct {
+    let foo: String
+    let baloo: Int
+    @Transient var goo: Double = 0
+    @SerialName("u_who") var youHoo: Fish = .one
+}
+
+public enum Fish : String, Codable {
+    case one, two, red, blue
+}
+
