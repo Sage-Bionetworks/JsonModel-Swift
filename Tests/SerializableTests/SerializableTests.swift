@@ -199,7 +199,48 @@ final class SerializableTests: XCTestCase {
         indentationWidth: .spaces(4)
         )
     }
-
+    
+    func testExpansionPublicAddDefaultValue() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        public struct Person : Codable {
+            public let name: String
+            public var age: Int = 21
+        }
+        """,
+        expandedSource: """
+        public struct Person : Codable {
+            public let name: String
+            public var age: Int = 21
+        
+            public init(name: String, age: Int = 21) {
+                self.name = name
+                self.age = age
+            }
+        
+            public init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decodeIfPresent(Int.self, forKey: .age) ?? 21
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+            }
+        
+            public func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
     
     func testExpansionShouldNotAddDefaultValue() {
         assertMacroExpansion(
@@ -230,59 +271,3 @@ final class SerializableTests: XCTestCase {
     }
 }
 
-struct Person {
-    let name: String
-    let age: Int
-    var foo: String = "goo"
-    var mapping: [String : Int] = [:]
-    var hulu: Fish?
-    
-    init(name: String, age: Int, foo: String = "goo", mapping: [String : Int] = [:], hulu: Fish? = nil) {
-        self.name = name
-        self.age = age
-        self.foo = foo
-        self.mapping = mapping
-        self.hulu = hulu
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.name = try container.decode(String.self, forKey: .name)
-        self.age = try container.decode(Int.self, forKey: .age)
-        self.foo = try container.decodeIfPresent(String.self, forKey: .foo) ?? "goo"
-        self.mapping = try container.decodeIfPresent([String : Int].self, forKey: .mapping) ?? [:]
-        self.hulu = try container.decodeIfPresent(Fish.self, forKey: .hulu)
-    }
-    
-    enum CodingKeys: CodingKey {
-        case name
-        case age
-        case foo
-        case mapping
-        case hulu
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.name, forKey: .name)
-        try container.encode(self.age, forKey: .age)
-        try container.encode(self.foo, forKey: .foo)
-        try container.encode(self.mapping, forKey: .mapping)
-        try container.encodeIfPresent(self.hulu, forKey: .hulu)
-    }
-}
-
-extension Person: Codable {
-}
-
-enum Fish : String, Codable {
-    case one, two, red, blue
-}
-
-let a = """
-    init(name: String, age: Int, foo: String = "goo", mapping: [String : Int] = [:], hulu: Fish? = nil) {
-"""
-
-let b = """
-    init(name: String, age: Int, foo: String  = "goo", mapping: [String : Int]  = [:], hulu: Fish? = nil) {
-"""

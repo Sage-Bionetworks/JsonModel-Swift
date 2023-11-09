@@ -11,6 +11,12 @@ extension SerializableMacro: MemberMacro {
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
         
+        // Only applies to classes and structs
+        guard [SwiftSyntax.SyntaxKind.classDecl, .structDecl].contains(declaration.kind)
+        else {
+            throw SerializableMacroError.invalidDeclarationKind(declaration)
+        }
+
         var hasDefaultValues = false
         
         // Get the list of members
@@ -53,31 +59,28 @@ extension SerializableMacro: MemberMacro {
         }
         
         // TODO: syoung 11/09/2023 do not add if there is already an initializer and/or encoder func
-        // TODO: syoung 11/09/2023 handle public/internal modifier
         // TODO: syoung 11/09/2023 support final classes
         
-        // Check that this macro supports creating initializers for this object
-        guard declaration.is(StructDeclSyntax.self)
-        else {
-            throw SerializableMacroError.onlyApplicableToStructOrFinal
-        }
+        let accessLevel = declaration.getAccessLevel() ?? .internal
 
         // Add init for decoding
-        let decodeInitializer = try buildDecodeInitializer(memberList)
+        let decodeInitializer = try buildDecodeInitializer(memberList, accessLevel)
         ret.insert(DeclSyntax(decodeInitializer), at: 0)
 
         // Add init with all the properties
-        let propInitializer = try buildDefaultInitializer(memberList)
+        let propInitializer = try buildDefaultInitializer(memberList, accessLevel)
         ret.insert(DeclSyntax(propInitializer), at: 0)
         
         // Add encoding func
-        let encodeFunc = try buildEncodeFunc(memberList)
+        let encodeFunc = try buildEncodeFunc(memberList, accessLevel)
         ret.append(DeclSyntax(encodeFunc))
 
         return ret
     }
     
-    static func buildDefaultInitializer(_ memberList: [VariableDeclSyntax]) throws -> InitializerDeclSyntax {
+    private static func buildDefaultInitializer(_ memberList: [VariableDeclSyntax], _ inAccessLevel: AccessLevelModifier) throws -> InitializerDeclSyntax {
+        
+        // Pre-build the parameters and assignments
         let parameters = memberList.map { ivar -> String in
             let defaultParam = ivar.defaultValue ?? (ivar.isOptionalType ? ExprSyntax(stringLiteral: "nil") : nil)
             return "\(ivar.propertyName!): \(ivar.type!.trimmed)" + (defaultParam.map { " = \($0)"} ?? "")
@@ -85,14 +88,20 @@ extension SerializableMacro: MemberMacro {
         let assignments = memberList.map { ivar -> String in
             return "self.\(ivar.propertyName!) = \(ivar.propertyName!)"
         }
-        return try InitializerDeclSyntax("init(\(raw: parameters.joined(separator: ", ")))") {
+        
+        // For an initializer, if the access level is "open" then init() uses public
+        let accessLevel = (inAccessLevel == .open) ? .public : inAccessLevel
+        
+        return try InitializerDeclSyntax("\(raw: accessLevel.stringLiteral())init(\(raw: parameters.joined(separator: ", ")))") {
             for assignment in assignments {
                 ExprSyntax(stringLiteral: assignment)
             }
         }
     }
     
-    static func buildDecodeInitializer(_ memberList: [VariableDeclSyntax]) throws -> InitializerDeclSyntax {
+    private static func buildDecodeInitializer(_ memberList: [VariableDeclSyntax], _ inAccessLevel: AccessLevelModifier) throws -> InitializerDeclSyntax {
+        
+        // Pre-build the assignments
         let assignments = memberList.map { ivar -> String in
             let type = ivar.type!.as(OptionalTypeSyntax.self)?.wrappedType.trimmed ?? ivar.type!.trimmed
             let isOptional = ivar.type!.is(OptionalTypeSyntax.self) || (ivar.defaultValue != nil)
@@ -100,7 +109,11 @@ extension SerializableMacro: MemberMacro {
             let assignment = "self.\(ivar.propertyName!) = try container.\(decodeSyntax)(\(type).self, forKey: .\(ivar.propertyName!))"
             return assignment + (ivar.defaultValue.map { " ?? \($0)" } ?? "")
         }
-        return try InitializerDeclSyntax("init(from decoder: Decoder) throws") {
+        
+        // For an initializer, if the access level is "open" then init() uses public
+        let accessLevel = (inAccessLevel == .open) ? .public : inAccessLevel
+        
+        return try InitializerDeclSyntax("\(raw: accessLevel.stringLiteral())init(from decoder: Decoder) throws") {
             try VariableDeclSyntax("let container = try decoder.container(keyedBy: CodingKeys.self)")
             for assignment in assignments {
                 ExprSyntax(stringLiteral: assignment)
@@ -108,13 +121,13 @@ extension SerializableMacro: MemberMacro {
         }
     }
     
-    static func buildEncodeFunc(_ memberList: [VariableDeclSyntax]) throws -> FunctionDeclSyntax {
+    private static func buildEncodeFunc(_ memberList: [VariableDeclSyntax], _ accessLevel: AccessLevelModifier) throws -> FunctionDeclSyntax {
         let encodings = memberList.map { ivar -> String in
             let isOptional = ivar.type!.is(OptionalTypeSyntax.self)
             let encodeSyntax = isOptional ? "encodeIfPresent" : "encode"
             return "try container.\(encodeSyntax)(self.\(ivar.propertyName!), forKey: .\(ivar.propertyName!))"
         }
-        return try FunctionDeclSyntax("func encode(to encoder: Encoder) throws") {
+        return try FunctionDeclSyntax("\(raw: accessLevel.stringLiteral())func encode(to encoder: Encoder) throws") {
             try VariableDeclSyntax("var container = encoder.container(keyedBy: CodingKeys.self)")
             for encoding in encodings {
                 ExprSyntax(stringLiteral: encoding)
@@ -166,22 +179,6 @@ public struct TransientMacro: PeerMacro {
 
 extension VariableDeclSyntax {
     
-    fileprivate var propertyName: String? {
-        bindings.first?.pattern.as(IdentifierPatternSyntax.self)?.identifier.text
-    }
-    
-    fileprivate var type: TypeSyntax? {
-        bindings.first?.typeAnnotation?.type
-    }
-    
-    fileprivate var isOptionalType: Bool {
-        type?.is(OptionalTypeSyntax.self) ?? false
-    }
-    
-    fileprivate var defaultValue: ExprSyntax? {
-        bindings.first?.initializer?.value
-    }
-    
     fileprivate var customCodingKey: ExprSyntax? {
         self.firstElement(ofType: SerialNameMacro.self)?.as(AttributeSyntax.self)?.arguments?.as(LabeledExprListSyntax.self)?.first?.expression
     }
@@ -193,51 +190,10 @@ extension VariableDeclSyntax {
     fileprivate var isReadWrite: Bool {
         isStoredProperty && self.bindingSpecifier.text.trimmingCharacters(in: .whitespacesAndNewlines) == "var"
     }
-
-    /// Determine whether this variable has the syntax of a stored property.
-    ///
-    /// - Note: This syntactic check cannot account for semantic adjustments
-    /// due to accessor macros or property wrappers.
-    fileprivate var isStoredProperty: Bool {
-        guard bindings.count == 1,
-              let binding = bindings.first
-        else {
-            return false
-        }
-        
-        switch binding.accessorBlock?.accessors {
-        case .none:
-            return true
-            
-        case .accessors(let accessors):
-            for accessor in accessors {
-                switch accessor.accessorSpecifier.tokenKind {
-                case .keyword(.willSet), .keyword(.didSet):
-                    // Observers can occur on a stored property.
-                    break
-                    
-                default:
-                    // Other accessors make it a computed property.
-                    return false
-                }
-            }
-            return true
-            
-        case .getter:
-            return false
-        }
-    }
-    
-    fileprivate func firstElement(ofType macroType: PeerMacro.Type) -> AttributeListSyntax.Element? {
-        let macroName = "\(macroType)".replacingOccurrences(of: "Macro", with: "")
-        return self.as(VariableDeclSyntax.self)?.attributes.first(where: { element in
-            element.as(AttributeSyntax.self)?.attributeName.as(IdentifierTypeSyntax.self)?.description.trimmingCharacters(in: .whitespacesAndNewlines) == macroName
-        })
-    }
 }
 
 public enum SerializableMacroError : Error {
     case missingRequiredSyntax(String)
-    case onlyApplicableToStructOrFinal
+    case invalidDeclarationKind(DeclGroupSyntax)
 }
 
