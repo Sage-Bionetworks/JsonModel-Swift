@@ -65,6 +65,13 @@ extension VariableDeclSyntax {
 }
 
 extension DeclGroupSyntax {
+    
+    func getPredefinedInits() -> [InitializerDeclSyntax] {
+        return self.memberBlock.members.compactMap { element in
+            element.decl.as(InitializerDeclSyntax.self)
+        }
+    }
+    
     func getAccessLevel() -> AccessLevelModifier? {
         return self.modifiers.mapFirst(where: { modifier in
             AccessLevelModifier(rawValue: modifier.name.trimmedDescription)

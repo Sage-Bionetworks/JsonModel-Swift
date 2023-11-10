@@ -242,6 +242,51 @@ final class SerializableTests: XCTestCase {
         )
     }
     
+    func testExpansionAddDefaultValue_DoNotAddInit() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        public struct Person : Codable {
+            public let name: String
+            public var age: Int = 21
+        
+            public init(name: String) {
+                self.name = name
+            }
+        }
+        """,
+        expandedSource: """
+        public struct Person : Codable {
+            public let name: String
+            public var age: Int = 21
+        
+            public init(name: String) {
+                self.name = name
+            }
+        
+            public init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decodeIfPresent(Int.self, forKey: .age) ?? 21
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+            }
+        
+            public func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
     func testExpansionShouldNotAddDefaultValue() {
         assertMacroExpansion(
         """

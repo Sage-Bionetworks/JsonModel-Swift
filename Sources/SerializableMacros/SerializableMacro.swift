@@ -4,22 +4,31 @@ import SwiftSyntaxMacros
 public struct SerializableMacro {
 }
 
+// TODO: syoung 11/10/2023 support polymorphic serialization
+
 extension SerializableMacro: MemberMacro {
+    
+    private static func checkExpectations(
+        node: AttributeSyntax,
+        declaration: some DeclGroupSyntax
+    ) throws {
+        
+        guard [SwiftSyntax.SyntaxKind.classDecl, .structDecl].contains(declaration.kind)
+        else {
+            throw SerializableMacroError.invalidDeclarationKind(declaration, "Only classes and structs are supported.")
+        }
+    }
+    
     public static func expansion(
         of node: AttributeSyntax,
         providingMembersOf declaration: some DeclGroupSyntax,
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
         
-        // Only applies to classes and structs
-        guard [SwiftSyntax.SyntaxKind.classDecl, .structDecl].contains(declaration.kind)
-        else {
-            throw SerializableMacroError.invalidDeclarationKind(declaration)
-        }
+        try checkExpectations(node: node, declaration: declaration)
 
-        var hasDefaultValues = false
-        
         // Get the list of members
+        var hasDefaultValues = false
         let memberList = try declaration.memberBlock.members.compactMap { member -> VariableDeclSyntax? in
             guard let varDecl = member.decl.as(VariableDeclSyntax.self),
                   !varDecl.isTransient,
@@ -58,18 +67,24 @@ extension SerializableMacro: MemberMacro {
             return ret
         }
         
-        // TODO: syoung 11/09/2023 do not add if there is already an initializer and/or encoder func
-        // TODO: syoung 11/09/2023 support final classes
+        // TODO: syoung 11/10/2023 support classes
+        if declaration.kind == .classDecl {
+            throw SerializableMacroError.invalidDeclarationKind(declaration, "Only structs are supported.")
+        }
         
+        // TODO: syoung 11/10/2023 support custom access level
         let accessLevel = declaration.getAccessLevel() ?? .internal
+        let predefinedInits = declaration.getPredefinedInits()
 
         // Add init for decoding
         let decodeInitializer = try buildDecodeInitializer(memberList, accessLevel)
         ret.insert(DeclSyntax(decodeInitializer), at: 0)
 
-        // Add init with all the properties
-        let propInitializer = try buildDefaultInitializer(memberList, accessLevel)
-        ret.insert(DeclSyntax(propInitializer), at: 0)
+        // Add init with all the properties, but only if there aren't any predefined inits.
+        if predefinedInits.count == 0 {
+            let propInitializer = try buildDefaultInitializer(memberList, accessLevel)
+            ret.insert(DeclSyntax(propInitializer), at: 0)
+        }
         
         // Add encoding func
         let encodeFunc = try buildEncodeFunc(memberList, accessLevel)
@@ -194,6 +209,6 @@ extension VariableDeclSyntax {
 
 public enum SerializableMacroError : Error {
     case missingRequiredSyntax(String)
-    case invalidDeclarationKind(DeclGroupSyntax)
+    case invalidDeclarationKind(DeclGroupSyntax, String)
 }
 
