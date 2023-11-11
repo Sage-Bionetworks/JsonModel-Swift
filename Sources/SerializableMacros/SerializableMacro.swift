@@ -2,11 +2,6 @@ import SwiftSyntax
 import SwiftSyntaxMacros
 
 public struct SerializableMacro {
-}
-
-// TODO: syoung 11/10/2023 support polymorphic serialization
-
-extension SerializableMacro: MemberMacro {
     
     private static func checkExpectations(
         node: AttributeSyntax,
@@ -18,7 +13,12 @@ extension SerializableMacro: MemberMacro {
             throw SerializableMacroError.invalidDeclarationKind(declaration, "Only classes and structs are supported.")
         }
     }
-    
+}
+
+// TODO: syoung 11/10/2023 support polymorphic serialization
+
+extension SerializableMacro: MemberMacro {
+
     public static func expansion(
         of node: AttributeSyntax,
         providingMembersOf declaration: some DeclGroupSyntax,
@@ -26,9 +26,14 @@ extension SerializableMacro: MemberMacro {
     ) throws -> [DeclSyntax] {
         
         try checkExpectations(node: node, declaration: declaration)
+        
+        let isClass = declaration.kind == .classDecl
+        let isFinal = declaration.getIsFinal()
+        let subclassIndex = try node.getSubclassIndex() ?? (isClass && !isFinal ? 0 : nil)
+        var hasDefaultValues = false
+        let isSubclass = isClass && (subclassIndex ?? 0) > 0
 
         // Get the list of members
-        var hasDefaultValues = false
         let memberList = try declaration.memberBlock.members.compactMap { member -> VariableDeclSyntax? in
             guard let varDecl = member.decl.as(VariableDeclSyntax.self),
                   !varDecl.isTransient,
@@ -45,31 +50,36 @@ extension SerializableMacro: MemberMacro {
             return varDecl
         }
                 
-        // Get each case
+        // Build `enum CodingKeys`
         let cases = memberList.map { ivar -> String in
             return "case \(ivar.propertyName!)" + (ivar.customCodingKey.map { " = \($0)"} ?? "")
         }
-        
-        // Build the return syntax
-        let codingKeysEnum = DeclSyntax(
-        """
-        enum CodingKeys: String, OrderedEnumCodingKey {
-        \(raw: cases.joined(separator: "\n"))
+        let codingKeysEnum: DeclSyntax
+        if let idx = subclassIndex {
+            codingKeysEnum = DeclSyntax(
+            """
+            enum CodingKeys: String, OrderedEnumCodingKey, OpenOrderedCodingKey {
+            \(raw: cases.joined(separator: "\n"))
+            
+            var relativeIndex: Int { return \(raw: idx) }
+            }
+            """)
         }
-        """
-        )
+        else {
+            codingKeysEnum = DeclSyntax(
+            """
+            enum CodingKeys: String, OrderedEnumCodingKey {
+            \(raw: cases.joined(separator: "\n"))
+            }
+            """)
+        }
         
         var ret: [DeclSyntax] = [codingKeysEnum]
         
         // If there are no default values then we're done - exit early
-        guard hasDefaultValues
+        guard hasDefaultValues || !isFinal || isSubclass
         else {
             return ret
-        }
-        
-        // TODO: syoung 11/10/2023 support classes
-        if declaration.kind == .classDecl {
-            throw SerializableMacroError.invalidDeclarationKind(declaration, "Only structs are supported.")
         }
         
         // TODO: syoung 11/10/2023 support custom access level
@@ -77,17 +87,18 @@ extension SerializableMacro: MemberMacro {
         let predefinedInits = declaration.getPredefinedInits()
 
         // Add init for decoding
-        let decodeInitializer = try buildDecodeInitializer(memberList, accessLevel)
+        let decodeInitializer = try buildDecodeInitializer(memberList, accessLevel, isSubclass || (isClass && !isFinal), isSubclass)
         ret.insert(DeclSyntax(decodeInitializer), at: 0)
 
-        // Add init with all the properties, but only if there aren't any predefined inits.
-        if predefinedInits.count == 0 {
+        // Add init with all the properties, but only if there aren't any predefined inits
+        // and this isn't a final class (that isn't a subclass).
+        if predefinedInits.count == 0 && subclassIndex == nil {
             let propInitializer = try buildDefaultInitializer(memberList, accessLevel)
             ret.insert(DeclSyntax(propInitializer), at: 0)
         }
         
         // Add encoding func
-        let encodeFunc = try buildEncodeFunc(memberList, accessLevel)
+        let encodeFunc = try buildEncodeFunc(memberList, accessLevel, isSubclass)
         ret.append(DeclSyntax(encodeFunc))
 
         return ret
@@ -114,7 +125,7 @@ extension SerializableMacro: MemberMacro {
         }
     }
     
-    private static func buildDecodeInitializer(_ memberList: [VariableDeclSyntax], _ inAccessLevel: AccessLevelModifier) throws -> InitializerDeclSyntax {
+    private static func buildDecodeInitializer(_ memberList: [VariableDeclSyntax], _ inAccessLevel: AccessLevelModifier, _ isRequired: Bool, _ isOverride: Bool) throws -> InitializerDeclSyntax {
         
         // Pre-build the assignments
         let assignments = memberList.map { ivar -> String in
@@ -128,21 +139,32 @@ extension SerializableMacro: MemberMacro {
         // For an initializer, if the access level is "open" then init() uses public
         let accessLevel = (inAccessLevel == .open) ? .public : inAccessLevel
         
-        return try InitializerDeclSyntax("\(raw: accessLevel.stringLiteral())init(from decoder: Decoder) throws") {
+        // Classes have to use the required keyword
+        let requiredKeyword = isRequired ? " required " : ""
+        
+        return try InitializerDeclSyntax("\(raw: accessLevel.stringLiteral())\(raw: requiredKeyword)init(from decoder: Decoder) throws") {
             try VariableDeclSyntax("let container = try decoder.container(keyedBy: CodingKeys.self)")
             for assignment in assignments {
                 ExprSyntax(stringLiteral: assignment)
             }
+            if isOverride {
+                ExprSyntax(stringLiteral: "try super.init(from: decoder)")
+            }
         }
     }
     
-    private static func buildEncodeFunc(_ memberList: [VariableDeclSyntax], _ accessLevel: AccessLevelModifier) throws -> FunctionDeclSyntax {
+    private static func buildEncodeFunc(_ memberList: [VariableDeclSyntax], _ accessLevel: AccessLevelModifier, _ isOverride: Bool) throws -> FunctionDeclSyntax {
         let encodings = memberList.map { ivar -> String in
             let isOptional = ivar.type!.is(OptionalTypeSyntax.self)
             let encodeSyntax = isOptional ? "encodeIfPresent" : "encode"
             return "try container.\(encodeSyntax)(self.\(ivar.propertyName!), forKey: .\(ivar.propertyName!))"
         }
-        return try FunctionDeclSyntax("\(raw: accessLevel.stringLiteral())func encode(to encoder: Encoder) throws") {
+        let overrideKeyword = isOverride ? " override " : ""
+        
+        return try FunctionDeclSyntax("\(raw: accessLevel.stringLiteral())\(raw: overrideKeyword)func encode(to encoder: Encoder) throws") {
+            if isOverride {
+                ExprSyntax(stringLiteral: "try super.encode(to: encoder)")
+            }
             try VariableDeclSyntax("var container = encoder.container(keyedBy: CodingKeys.self)")
             for encoding in encodings {
                 ExprSyntax(stringLiteral: encoding)
@@ -159,11 +181,18 @@ extension SerializableMacro: ExtensionMacro {
         conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
+        
+        try checkExpectations(node: node, declaration: declaration)
 
-        // If there is an explicit conformance to Codable already, don't add one.
+        // If there is an explicit conformance to Codable already, don't add conformance.
         if let inheritedTypes = declaration.inheritanceClause?.inheritedTypes,
            inheritedTypes.contains(where: { inherited in inherited.type.trimmedDescription == "Codable" }) {
            return []
+        }
+        
+        // If this is a subclass then don't add conformance.
+        if let subclassIndex = try node.getSubclassIndex(), subclassIndex > 0 {
+            return []
         }
 
         return [try ExtensionDeclSyntax("extension \(type): Codable {}")]
@@ -207,8 +236,26 @@ extension VariableDeclSyntax {
     }
 }
 
+extension AttributeSyntax {
+    fileprivate func getSubclassIndex() throws -> Int? {
+        print(self)
+        guard let arguments = self.arguments?.as(LabeledExprListSyntax.self),
+              let expression = arguments.first(where: { $0.label?.trimmed.text == "subclassIndex"})?.expression
+        else {
+            return nil
+        }
+        guard let intLiteral = expression.as(IntegerLiteralExprSyntax.self)?.literal.trimmed.text,
+              let idx = Int(intLiteral)
+        else {
+            throw SerializableMacroError.invalidAttributeSyntax("Could not convert \(expression) to an Int")
+        }
+        return idx
+    }
+}
+
 public enum SerializableMacroError : Error {
     case missingRequiredSyntax(String)
     case invalidDeclarationKind(DeclGroupSyntax, String)
+    case invalidAttributeSyntax(String)
 }
 

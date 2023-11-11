@@ -287,6 +287,154 @@ final class SerializableTests: XCTestCase {
         )
     }
     
+    func testExpansionNonFinalClass() {
+        // If a class is not final, then it *could* be overridden and must explicitly
+        // define the init and encode methods.
+        assertMacroExpansion(
+        """
+        @Serializable
+        class UniquePerson {
+            private let id: UUID
+        }
+        """,
+        expandedSource: """
+        class UniquePerson {
+            private let id: UUID
+        
+            required init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.id = try container.decode(UUID.self, forKey: .id)
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey, OpenOrderedCodingKey {
+                case id
+
+                var relativeIndex: Int {
+                    return 0
+                }
+            }
+        
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.id, forKey: .id)
+            }
+        }
+        
+        extension UniquePerson: Codable {
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionFinalClass() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        final class UniquePerson : Codable {
+            let id: UUID
+        }
+        """,
+        expandedSource: """
+        final class UniquePerson : Codable {
+            let id: UUID
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case id
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionFinalClassWithDefaultValues() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        final class UniquePerson : Codable {
+            let name: String
+            var age: Int = 21
+        }
+        """,
+        expandedSource: """
+        final class UniquePerson : Codable {
+            let name: String
+            var age: Int = 21
+        
+            init(name: String, age: Int = 21) {
+                self.name = name
+                self.age = age
+            }
+        
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decodeIfPresent(Int.self, forKey: .age) ?? 21
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+            }
+        
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionSubclass() {
+        assertMacroExpansion(
+        """
+        @Serializable(subclassIndex: 3)
+        final class Person: UniquePerson {
+            let name: String
+            let age: Int
+        }
+        """,
+        expandedSource: """
+        final class Person: UniquePerson {
+            let name: String
+            let age: Int
+        
+            required init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decode(Int.self, forKey: .age)
+                try super.init(from: decoder)
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey, OpenOrderedCodingKey {
+                case name
+                case age
+        
+                var relativeIndex: Int {
+                    return 3
+                }
+            }
+        
+            override func encode(to encoder: Encoder) throws {
+                try super.encode(to: encoder)
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
     func testExpansionShouldNotAddDefaultValue() {
         assertMacroExpansion(
         """

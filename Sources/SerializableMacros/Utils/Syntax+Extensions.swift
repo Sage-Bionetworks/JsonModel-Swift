@@ -77,6 +77,10 @@ extension DeclGroupSyntax {
             AccessLevelModifier(rawValue: modifier.name.trimmedDescription)
         })
     }
+    
+    func getIsFinal() -> Bool {
+        return self.kind == .structDecl || self.modifiers.contains(where: { $0.name.trimmed.text == "final" })
+    }
 }
 
 extension Sequence {
