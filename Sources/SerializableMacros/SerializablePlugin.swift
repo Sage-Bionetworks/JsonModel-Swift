@@ -9,5 +9,6 @@ struct SerializablePlugin: CompilerPlugin {
         SerializableMacro.self,
         SerialNameMacro.self,
         TransientMacro.self,
+        PolymorphicMacro.self,
     ]
 }

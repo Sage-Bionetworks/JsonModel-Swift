@@ -7,6 +7,7 @@ let macros: [String: Macro.Type] = [
     "Serializable": SerializableMacro.self,
     "SerialName": SerialNameMacro.self,
     "Transient": TransientMacro.self,
+    "Polymorphic": PolymorphicMacro.self,
 ]
 
 final class SerializableTests: XCTestCase {
@@ -68,18 +69,18 @@ final class SerializableTests: XCTestCase {
         }
         """,
         expandedSource: """
-          struct Person: Hashable, Codable {
-              let name: String
-              let age: Int
+        struct Person: Hashable, Codable {
+            let name: String
+            let age: Int
 
-              func randomFunction() {}
+            func randomFunction() {}
 
-              enum CodingKeys: String, OrderedEnumCodingKey {
-                  case name
-                  case age = "user_age"
-              }
-          }
-          """,
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age = "user_age"
+            }
+        }
+        """,
         macros: macros,
         indentationWidth: .spaces(4)
         )
@@ -96,17 +97,17 @@ final class SerializableTests: XCTestCase {
         }
         """,
         expandedSource: """
-          struct Person: Codable {
-              let name: String
-              let age: Int
-              var foo: String? = nil
+        struct Person: Codable {
+            let name: String
+            let age: Int
+            var foo: String? = nil
 
-              enum CodingKeys: String, OrderedEnumCodingKey {
-                  case name
-                  case age
-              }
-          }
-          """,
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+            }
+        }
+        """,
         macros: macros,
         indentationWidth: .spaces(4)
         )
@@ -455,6 +456,426 @@ final class SerializableTests: XCTestCase {
                 case name
                 case age
                 case foo
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionStructWithType() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        @SerialName("boss")
+        struct Boss : Person {
+            let name: String
+            let age: Int
+        }
+        """,
+        expandedSource: """
+        struct Boss : Person {
+            let name: String
+            let age: Int
+        
+            let typeName: String = "boss"
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+                case typeName = "type"
+            }
+        }
+        
+        extension Boss: Codable {
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionNonFinalClassWithType() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        @SerialName("boss")
+        class Boss : Person {
+            let name: String
+            let age: Int
+        }
+        """,
+        expandedSource: """
+        class Boss : Person {
+            let name: String
+            let age: Int
+        }
+        """,
+        diagnostics: [.init(message: """
+        invalidPolymorphicType("The @SerialName macro can only be used with structs and final classes")
+        """, line: 1, column: 1)],
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionFinalClassWithType() {
+        assertMacroExpansion(
+        """
+        @Serializable(subclassIndex: 3)
+        @SerialName("boss")
+        final class Boss : Person {
+            let name: String
+            let age: Int
+        }
+        """,
+        expandedSource: """
+        final class Boss : Person {
+            let name: String
+            let age: Int
+        
+            required init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decode(Int.self, forKey: .age)
+                try super.init(from: decoder)
+            }
+        
+            let typeName: String = "boss"
+        
+            enum CodingKeys: String, OrderedEnumCodingKey, OpenOrderedCodingKey {
+                case name
+                case age
+                case typeName = "type"
+        
+                var relativeIndex: Int {
+                    return 3
+                }
+            }
+        
+            override func encode(to encoder: Encoder) throws {
+                try super.encode(to: encoder)
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.typeName, forKey: .typeName)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionNullablePolymorphicValue() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            @Polymorphic var hulu: Fish?
+        }
+        """,
+        expandedSource: """
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            var hulu: Fish?
+        
+            init(name: String, age: Int, hulu: Fish? = nil) {
+                self.name = name
+                self.age = age
+                self.hulu = hulu
+            }
+        
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decode(Int.self, forKey: .age)
+                if container.contains(.hulu) {
+                    let nestedDecoder = try container.superDecoder(forKey: .hulu)
+                    self.hulu = try decoder.serializationFactory.decodePolymorphicObject(Fish.self, from: nestedDecoder)
+                }
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+                case hulu
+            }
+        
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+                if let obj = self.hulu {
+                    var nestedEncoder = container.superEncoder(forKey: .hulu)
+                    try nestedEncoder.encodePolymorphic(obj)
+                }
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionNonnullPolymorphicValue() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            @Polymorphic let hulu: Fish
+        }
+        """,
+        expandedSource: """
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            let hulu: Fish
+        
+            init(name: String, age: Int, hulu: Fish) {
+                self.name = name
+                self.age = age
+                self.hulu = hulu
+            }
+        
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decode(Int.self, forKey: .age)
+                let huluDecoder = try container.superDecoder(forKey: .hulu)
+                self.hulu = try decoder.serializationFactory.decodePolymorphicObject(Fish.self, from: huluDecoder)
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+                case hulu
+            }
+        
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+                var huluEncoder = container.superEncoder(forKey: .hulu)
+                try huluEncoder.encodePolymorphic(self.hulu)
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionDefaultPolymorphicValue() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            @Polymorphic let hulu: Fish = Salmon()
+        }
+        """,
+        expandedSource: """
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            let hulu: Fish = Salmon()
+        
+            init(name: String, age: Int, hulu: Fish = Salmon()) {
+                self.name = name
+                self.age = age
+                self.hulu = hulu
+            }
+        
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decode(Int.self, forKey: .age)
+                if container.contains(.hulu) {
+                    let nestedDecoder = try container.superDecoder(forKey: .hulu)
+                    self.hulu = try decoder.serializationFactory.decodePolymorphicObject(Fish.self, from: nestedDecoder)
+                } else {
+                    self.hulu = Salmon()
+                }
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+                case hulu
+            }
+        
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+                var huluEncoder = container.superEncoder(forKey: .hulu)
+                try huluEncoder.encodePolymorphic(self.hulu)
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionNullablePolymorphicArray() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            @Polymorphic var hulu: [Fish]?
+        }
+        """,
+        expandedSource: """
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            var hulu: [Fish]?
+        
+            init(name: String, age: Int, hulu: [Fish]? = nil) {
+                self.name = name
+                self.age = age
+                self.hulu = hulu
+            }
+        
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decode(Int.self, forKey: .age)
+                if container.contains(.hulu) {
+                    let nestedDecoder = try container.nestedUnkeyedContainer(forKey: .hulu)
+                    self.hulu = try decoder.serializationFactory.decodePolymorphicArray(Fish.self, from: nestedDecoder)
+                }
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+                case hulu
+            }
+        
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+                if let obj = self.hulu {
+                    var nestedEncoder = container.nestedUnkeyedContainer(forKey: .hulu)
+                    try nestedEncoder.encodePolymorphic(obj)
+                }
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionNonnullPolymorphicArray() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            @Polymorphic let hulu: [Fish]
+        }
+        """,
+        expandedSource: """
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            let hulu: [Fish]
+        
+            init(name: String, age: Int, hulu: [Fish]) {
+                self.name = name
+                self.age = age
+                self.hulu = hulu
+            }
+        
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decode(Int.self, forKey: .age)
+                let huluDecoder = try container.nestedUnkeyedContainer(forKey: .hulu)
+                self.hulu = try decoder.serializationFactory.decodePolymorphicArray(Fish.self, from: huluDecoder)
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+                case hulu
+            }
+        
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+                var huluEncoder = container.nestedUnkeyedContainer(forKey: .hulu)
+                try huluEncoder.encodePolymorphic(self.hulu)
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
+    func testExpansionDefaultPolymorphicArray() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            @Polymorphic var hulu: [Fish] = []
+        }
+        """,
+        expandedSource: """
+        struct Person : Codable {
+            let name: String
+            let age: Int
+            var hulu: [Fish] = []
+        
+            init(name: String, age: Int, hulu: [Fish] = []) {
+                self.name = name
+                self.age = age
+                self.hulu = hulu
+            }
+        
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                self.name = try container.decode(String.self, forKey: .name)
+                self.age = try container.decode(Int.self, forKey: .age)
+                if container.contains(.hulu) {
+                    let nestedDecoder = try container.nestedUnkeyedContainer(forKey: .hulu)
+                    self.hulu = try decoder.serializationFactory.decodePolymorphicArray(Fish.self, from: nestedDecoder)
+                } else {
+                    self.hulu = []
+                }
+            }
+        
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case name
+                case age
+                case hulu
+            }
+        
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.name, forKey: .name)
+                try container.encode(self.age, forKey: .age)
+                var huluEncoder = container.nestedUnkeyedContainer(forKey: .hulu)
+                try huluEncoder.encodePolymorphic(self.hulu)
             }
         }
         """,

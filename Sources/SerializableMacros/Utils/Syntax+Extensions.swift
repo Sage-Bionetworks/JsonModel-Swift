@@ -56,15 +56,26 @@ extension VariableDeclSyntax {
         }
     }
     
-    func firstElement(ofType macroType: PeerMacro.Type) -> AttributeListSyntax.Element? {
+    func firstElement(ofType macroType: PeerMacro.Type) -> AttributeSyntax? {
+        attributes.firstElement(ofType: macroType)
+    }
+}
+
+extension AttributeListSyntax {
+    
+    func firstElement(ofType macroType: PeerMacro.Type) -> AttributeSyntax? {
         let macroName = "\(macroType)".replacingOccurrences(of: "Macro", with: "")
-        return self.as(VariableDeclSyntax.self)?.attributes.first(where: { element in
+        return first(where: { element in
             element.as(AttributeSyntax.self)?.attributeName.as(IdentifierTypeSyntax.self)?.description.trimmingCharacters(in: .whitespacesAndNewlines) == macroName
-        })
+        })?.as(AttributeSyntax.self)
     }
 }
 
 extension DeclGroupSyntax {
+    
+    func firstElement(ofType macroType: PeerMacro.Type) -> AttributeSyntax? {
+        attributes.firstElement(ofType: macroType)
+    }
     
     func getPredefinedInits() -> [InitializerDeclSyntax] {
         return self.memberBlock.members.compactMap { element in

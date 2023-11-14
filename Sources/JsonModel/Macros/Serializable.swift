@@ -1,6 +1,6 @@
 import Foundation
 
-@attached(member, names: named(CodingKeys), named(init), named(encode))
+@attached(member, names: named(CodingKeys), named(init), named(encode), named(typeName))
 @attached(extension, conformances: Codable)
 public macro Serializable(subclassIndex: Int? = nil) = #externalMacro(module: "SerializableMacros", type: "SerializableMacro")
 
@@ -9,4 +9,7 @@ public macro SerialName(_ name: String) = #externalMacro(module: "SerializableMa
 
 @attached(peer)
 public macro Transient() = #externalMacro(module: "SerializableMacros", type: "TransientMacro")
+
+@attached(peer)
+public macro Polymorphic() = #externalMacro(module: "SerializableMacros", type: "PolymorphicMacro")
 
