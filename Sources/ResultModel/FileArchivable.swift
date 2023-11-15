@@ -32,11 +32,9 @@ public protocol FileArchivable {
 }
 
 /// The metadata for an archive that can be zipped using the app developer's choice of third-party archival tools.
+@Serializable
 open class ArchiveMetadata: Codable, DocumentableRootObject {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case appName, appVersion, deviceInfo, deviceTypeIdentifier, files
-    }
-    
+
     /// The name of the application.
     public let appName: String
     
@@ -76,24 +74,6 @@ open class ArchiveMetadata: Codable, DocumentableRootObject {
         self.appName = platformContext.appName
         self.appVersion = platformContext.appVersion
         self.files = files
-    }
-    
-    public required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.deviceInfo = try container.decode(String.self, forKey: .deviceInfo)
-        self.deviceTypeIdentifier = try container.decode(String.self, forKey: .deviceTypeIdentifier)
-        self.appName = try container.decode(String.self, forKey: .appName)
-        self.appVersion = try container.decode(String.self, forKey: .appVersion)
-        self.files = try container.decode([FileInfo].self, forKey: .files)
-    }
-    
-    open func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.deviceInfo, forKey: .deviceInfo)
-        try container.encode(self.deviceTypeIdentifier, forKey: .deviceTypeIdentifier)
-        try container.encode(self.appName, forKey: .appName)
-        try container.encode(self.appVersion, forKey: .appVersion)
-        try container.encode(self.files, forKey: .files)
     }
     
     // DocumentableObject implementation
@@ -146,10 +126,8 @@ open class ArchiveMetadata: Codable, DocumentableRootObject {
 }
 
 /// A manifest for a given file that includes the filename, content type, and creation timestamp.
+@Serializable
 public struct FileInfo : Codable, Hashable, Equatable {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case filename, timestamp, contentType, identifier, stepPath, jsonSchema, metadata
-    }
     
     /// The filename of the archive object. This should be unique within the manifest. It may include
     /// a relative path that points to a subdirectory.

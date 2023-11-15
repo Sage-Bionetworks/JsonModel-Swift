@@ -30,22 +30,19 @@ public protocol FileResult : ResultData {
 }
 
 /// `FileResultObject` is a concrete implementation of a result that holds a pointer to a file url.
-public struct FileResultObject : SerializableResultData, FileResult, MultiplatformTimestamp, Equatable {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType="type", identifier, startDateTime = "startDate", endDateTime = "endDate", relativePath, contentType, startUptime, jsonSchema
-    }
-    public private(set) var serializableType: SerializableResultType = .StandardTypes.file.resultType
-    
+@Serializable
+@SerialName("file")
+public struct FileResultObject : ResultData, FileResult, MultiplatformTimestamp, Equatable {
     public let identifier: String
-    public var startDateTime: Date
-    public var endDateTime: Date?
+    @SerialName("startDate") public var startDateTime: Date = Date()
+    @SerialName("endDate") public var endDateTime: Date? = nil
     
     /// The system clock uptime when the recorder was started (if applicable).
     public let startUptime: TimeInterval?
     
     /// The URL with the full path to the file-based result. This should *not*
     /// be encoded in the file result.
-    public private(set) var url: URL? = nil
+    @Transient public private(set) var url: URL? = nil
     
     /// The relative path to the file-based result.
     public var relativePath: String
@@ -98,7 +95,7 @@ extension FileResultObject : DocumentableStruct {
     
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
         guard let key = codingKey as? CodingKeys else { return false }
-        return key == .identifier || key == .serializableType
+        return key == .identifier || key == .typeName
     }
     
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -106,7 +103,7 @@ extension FileResultObject : DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
+        case .typeName:
             return .init(constValue: SerializableResultType.StandardTypes.file.resultType)
         case .identifier:
             return .init(propertyType: .primitive(.string))

@@ -66,26 +66,13 @@ extension ResultData {
     }
 }
 
-/// `ResultObject` is a concrete implementation of the base result associated with a task, step, or asynchronous action.
-public struct ResultObject : SerializableResultData, MultiplatformTimestamp, Codable {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", identifier, startDateTime = "startDate", endDateTime = "endDate"
-    }
-    public private(set) var serializableType: SerializableResultType = .StandardTypes.base.resultType
-
+/// `ResultObject` is a concrete implementation of the base result associated with a task, step, or asynchronous action
+@Serializable
+@SerialName("base")
+public struct ResultObject : ResultData, MultiplatformTimestamp {
     public let identifier: String
-    public var startDateTime: Date
-    public var endDateTime: Date?
-    
-    /// Default initializer for this object.
-    ///
-    /// - parameters:
-    ///     - identifier: The identifier string.
-    public init(identifier: String, startDate: Date = Date(), endDate: Date? = nil) {
-        self.identifier = identifier
-        self.startDateTime = startDate
-        self.endDateTime = endDate
-    }
+    @SerialName("startDate") public var startDateTime: Date = Date()
+    @SerialName("endDate") public var endDateTime: Date? = nil
     
     public func deepCopy() -> ResultObject {
         self
@@ -106,7 +93,7 @@ extension ResultObject : DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
+        case .typeName:
             return .init(constValue: SerializableResultType.StandardTypes.base.resultType)
         case .identifier:
             return .init(propertyType: .primitive(.string))

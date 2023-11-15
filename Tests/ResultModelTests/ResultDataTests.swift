@@ -99,7 +99,7 @@ class ResultDataTests: XCTestCase {
             let object = try decoder.decode(FileResultObject.self, from: json)
             
             XCTAssertEqual(object.identifier, "foo")
-            XCTAssertEqual(object.serializableType, "file")
+            XCTAssertEqual(object.typeName, "file")
             XCTAssertGreaterThan(object.endDate, object.startDate)
             XCTAssertEqual(object.relativePath, "temp.json")
             XCTAssertEqual(object.contentType, "application/json")
@@ -212,7 +212,7 @@ class ResultDataTests: XCTestCase {
             let object = try decoder.decode(ResultObject.self, from: json)
             
             XCTAssertEqual(object.identifier, "foo")
-            XCTAssertEqual(object.serializableType, .StandardTypes.base.resultType)
+            XCTAssertEqual(object.typeName, "base")
             XCTAssertGreaterThan(object.endDate, object.startDate)
             
             let jsonData = try encoder.encode(object)
@@ -396,7 +396,7 @@ class ResultDataTests: XCTestCase {
     
     func testNilEndDate() {
         
-        let results: [SerializableResultData] = [
+        let results: [ResultData] = [
             AnswerResultObject(identifier: "example", answerType: nil),
             AssessmentResultObject(identifier: "example"),
             ResultObject(identifier: "example"),

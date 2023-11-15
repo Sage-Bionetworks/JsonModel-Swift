@@ -20,15 +20,13 @@ public protocol ErrorResult : ResultData {
 }
 
 /// `ErrorResultObject` is a result that holds information about an error.
-public struct ErrorResultObject : SerializableResultData, ErrorResult, MultiplatformTimestamp, Equatable {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType="type", identifier, startDateTime = "startDate", endDateTime = "endDate", errorDescription, errorDomain, errorCode
-    }
-    public private(set) var serializableType: SerializableResultType = .StandardTypes.error.resultType
-    
+@Serializable
+@SerialName("error")
+public struct ErrorResultObject : ResultData, ErrorResult, MultiplatformTimestamp, Equatable {
+
     public let identifier: String
-    public var startDateTime: Date
-    public var endDateTime: Date?
+    @SerialName("startDate") public var startDateTime: Date = Date()
+    @SerialName("endDate") public var endDateTime: Date? = nil
     
     /// A description associated with an `NSError`.
     public let errorDescription: String
@@ -83,7 +81,7 @@ extension ErrorResultObject : DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
+        case .typeName:
             return .init(constValue: SerializableResultType.StandardTypes.error.resultType)
         case .identifier:
             return .init(propertyType: .primitive(.string))
