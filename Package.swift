@@ -19,11 +19,6 @@ let package = Package(
         .library(
             name: "JsonModel",
             targets: ["JsonModel", "ResultModel"]),
-//        
-//        .library(
-//            name: "Serializable",
-//            targets: ["Serializable"]
-//        ),
     ],
     dependencies: [
         // Depend on the Swift 5.9 release of SwiftSyntax
@@ -62,14 +57,6 @@ let package = Package(
             ]
         ),
 
-//        // Library that exposes a macro as part of its API, which is used in client programs.
-//        .target(
-//            name: "Serializable",
-//            dependencies: [
-//                "SerializableMacros",
-//            ]
-//        ),
-//
         // A test target used to develop the macro implementation.
         .testTarget(
             name: "SerializableTests",

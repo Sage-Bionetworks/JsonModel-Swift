@@ -37,7 +37,11 @@ class OrderedJSONEncoderTests: XCTestCase {
             encoder.shouldOrderKeys = true
             let data = try encoder.encode(result)
             
-            let expectedKeyOrder = ["type", "identifier", "startDate", "endDate", "assessmentIdentifier", "versionString", "taskRunUUID", "schemaIdentifier", "stepHistory", "asyncResults", "path"]
+            let expectedKeyOrder = [
+                "identifier", "startDate", "endDate",
+                "assessmentIdentifier", "versionString", "schemaIdentifier", "taskRunUUID", "$schema",
+                "stepHistory", "asyncResults", "path",
+                "type"]
             guard let pretty = String(data: data, encoding: .utf8) else {
                 XCTFail("Unexpected NULL string")
                 return

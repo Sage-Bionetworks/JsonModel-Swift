@@ -51,11 +51,11 @@ public extension AnswerResult {
     }
 }
 
-public final class AnswerResultObject : SerializableResultData, AnswerResult, MultiplatformTimestamp {
+public final class AnswerResultObject : ResultData, AnswerResult, MultiplatformTimestamp {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", identifier, startDate, endDate, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData
+        case typeName = "type", identifier, startDate, endDate, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData
     }
-    public private(set) var serializableType: SerializableResultType = .StandardTypes.answer.resultType
+    public private(set) var typeName: String = "answer"
     
     public let identifier: String
     public let jsonAnswerType: AnswerType?
@@ -99,7 +99,6 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult, Mu
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.identifier = try container.decode(String.self, forKey: .identifier)
-        self.serializableType = try container.decode(SerializableResultType.self, forKey: .serializableType)
         self.questionData = try container.decodeIfPresent(JsonElement.self, forKey: .questionData)
         self.questionText = try container.decodeIfPresent(String.self, forKey: .questionText)
         if container.contains(.jsonAnswerType) {
@@ -125,7 +124,7 @@ public final class AnswerResultObject : SerializableResultData, AnswerResult, Mu
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(identifier, forKey: .identifier)
-        try container.encode(serializableType, forKey: .serializableType)
+        try container.encode(typeName, forKey: .typeName)
         try container.encodeIfPresent(self.questionData, forKey: .questionData)
         try container.encodeIfPresent(self.questionText, forKey: .questionText)
         try container.encode(self.startDateTime, forKey: .startDate)
@@ -147,7 +146,7 @@ extension AnswerResultObject : DocumentableStruct {
     
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
         guard let key = codingKey as? CodingKeys else { return false }
-        return key == .serializableType || key == .identifier || key == .startDate
+        return key == .typeName || key == .identifier || key == .startDate
     }
     
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -155,7 +154,7 @@ extension AnswerResultObject : DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
+        case .typeName:
             return .init(constValue: SerializableResultType.StandardTypes.answer.resultType)
         case .identifier:
             return .init(propertyType: .primitive(.string))

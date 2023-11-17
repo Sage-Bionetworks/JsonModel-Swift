@@ -28,22 +28,22 @@ public protocol AssessmentResult : BranchNodeResult {
 }
 
 /// Abstract implementation to allow extending an assessment result while retaining the serializable type.
+@Serializable(subclassIndex: 1)
 open class AbstractAssessmentResultObject : AbstractBranchNodeResultObject {
-    private enum CodingKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
-        case assessmentIdentifier, versionString, taskRunUUID, schemaIdentifier, jsonSchema = "$schema"
-        var relativeIndex: Int { 1 }
-    }
 
-    public let versionString: String?
     public var assessmentIdentifier: String?
+    public let versionString: String?
     public var schemaIdentifier: String?
     public var taskRunUUID: UUID
+    
+    @SerialName("$schema") public private(set) var jsonSchema: URL
 
     /// Default initializer for this object.
     public init(identifier: String,
                 versionString: String? = nil,
                 assessmentIdentifier: String? = nil,
                 schemaIdentifier: String? = nil,
+                jsonSchema: URL? = nil,
                 startDate: Date = Date(),
                 endDate: Date? = nil,
                 taskRunUUID: UUID = UUID(),
@@ -54,42 +54,8 @@ open class AbstractAssessmentResultObject : AbstractBranchNodeResultObject {
         self.assessmentIdentifier = assessmentIdentifier
         self.schemaIdentifier = schemaIdentifier
         self.taskRunUUID = taskRunUUID
+        self.jsonSchema = jsonSchema ?? URL(string: "\(Self.self).json", relativeTo: kBDHJsonSchemaBaseURL)!
         super.init(identifier: identifier, startDate: startDate, endDate: endDate, stepHistory: stepHistory, asyncResults: asyncResults, path: path)
-    }
-
-    /// Initialize from a `Decoder`. This decoding method will use the ``SerializationFactory`` instance associated
-    /// with the decoder to decode the `stepHistory` and `asyncResults`.
-    ///
-    /// - parameter decoder: The decoder to use to decode this instance.
-    /// - throws: `DecodingError`
-    public required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.taskRunUUID = try container.decode(UUID.self, forKey: .taskRunUUID)
-        self.versionString = try container.decodeIfPresent(String.self, forKey: .versionString)
-        self.assessmentIdentifier = try container.decodeIfPresent(String.self, forKey: .assessmentIdentifier)
-        self.schemaIdentifier = try container.decodeIfPresent(String.self, forKey: .schemaIdentifier)
-        try super.init(from: decoder)
-    }
-
-    /// Encode the result to the given encoder.
-    /// - parameter encoder: The encoder to use to encode this instance.
-    /// - throws: `EncodingError`
-    override open func encode(to encoder: Encoder) throws {
-        try super.encode(to: encoder)
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(taskRunUUID, forKey: .taskRunUUID)
-        try container.encodeIfPresent(self.assessmentIdentifier, forKey: .assessmentIdentifier)
-        try container.encodeIfPresent(self.schemaIdentifier, forKey: .schemaIdentifier)
-        try container.encodeIfPresent(self.versionString, forKey: .versionString)
-        if let root = self as? DocumentableRootObject {
-            try container.encodeIfPresent(root.jsonSchema, forKey: .jsonSchema)
-        }
-    }
-    
-    override open class func codingKeys() -> [CodingKey] {
-        var keys = super.codingKeys()
-        keys.append(contentsOf: CodingKeys.allCases)
-        return keys
     }
 
     override open class func isRequired(_ codingKey: CodingKey) -> Bool {
@@ -133,11 +99,9 @@ open class AbstractAssessmentResultObject : AbstractBranchNodeResultObject {
 
 /// ``AssessmentResultObject`` is a result associated with a task. This object includes a step history,
 /// task run UUID,  and asynchronous results.
-public final class AssessmentResultObject : AbstractAssessmentResultObject, SerializableResultData, AssessmentResult {
-    
-    public override class func defaultType() -> SerializableResultType {
-        .StandardTypes.assessment.resultType
-    }
+@Serializable(subclassIndex: 3)
+@SerialName("assessment")
+public final class AssessmentResultObject : AbstractAssessmentResultObject, AssessmentResult {
     
     public func deepCopy() -> AssessmentResultObject {
         let copy = AssessmentResultObject(identifier: self.identifier,
@@ -158,10 +122,6 @@ extension AssessmentResultObject : DocumentableRootObject {
 
     public convenience init() {
         self.init(identifier: "example")
-    }
-
-    public var jsonSchema: URL {
-        URL(string: "\(self.className).json", relativeTo: kBDHJsonSchemaBaseURL)!
     }
 
     public var documentDescription: String? {

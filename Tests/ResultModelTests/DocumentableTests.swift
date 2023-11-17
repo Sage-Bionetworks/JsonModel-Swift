@@ -71,8 +71,10 @@ final class DocumentableTests: XCTestCase {
             
             if let props = schema.root.properties,
                let typeProp = props["type"],
-               case .const(let constType) = typeProp {
-                XCTAssertEqual("test", constType.const)
+               case .primitive(let constType) = typeProp,
+               let jsonType = constType.jsonType
+            {
+                XCTAssertEqual(.string, jsonType)
                 // TODO: syoung 06/06/2023 Revisit this when/if we update the schema from Draft 7 to a new schema that supports both const and $ref
 //                XCTAssertEqual("https://bridgedigitalhealth.github.io/mobile-client-json/schemas/v2/ResultData.json#SerializableResultType", constType.ref?.classPath)
             }
@@ -91,20 +93,16 @@ final class DocumentableTests: XCTestCase {
 class TestResultFactoryA : ResultDataFactory {
     required init() {
         super.init()
-        resultSerializer.add(TestResult())
+        try! resultSerializer.add(TestResult())
     }
 }
 
-extension SerializableResultType {
-    static let test: SerializableResultType = "test"
-}
-
-struct TestResult : SerializableResultData, DocumentableStruct, DocumentableRootObject {
+struct TestResult : ResultData, DocumentableStruct, DocumentableRootObject {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType="type", identifier, startDate, endDate, sample
+        case typeName="type", identifier, startDate, endDate, sample
     }
     
-    var serializableType: SerializableResultType = .test
+    let typeName: String = "test"
     var identifier: String = "test"
     var startDate: Date = Date()
     var endDate: Date = Date()
@@ -139,8 +137,8 @@ struct TestResult : SerializableResultData, DocumentableStruct, DocumentableRoot
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
-            return .init(constValue: SerializableResultType.test)
+        case .typeName:
+            return .init(propertyType: .primitive(.string))
         case .identifier:
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:
@@ -192,7 +190,7 @@ let testBURL = URL(string: "https://foo.org/schemas/")!
 class TestResultFactoryB : ResultDataFactory {
     required init() {
         super.init()
-        resultSerializer.add(TestResultExternal())
+        try! resultSerializer.add(TestResultExternal())
     }
     
     override var jsonSchemaBaseURL: URL {
@@ -200,12 +198,12 @@ class TestResultFactoryB : ResultDataFactory {
     }
 }
 
-struct TestResultExternal : SerializableResultData, DocumentableStruct, DocumentableRootObject {
+struct TestResultExternal : ResultData, DocumentableStruct, DocumentableRootObject {
     private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType="type", identifier, startDate, endDate
+        case typeName="type", identifier, startDate, endDate
     }
     
-    var serializableType: SerializableResultType = .test
+    var typeName: String = "test"
     var identifier: String = "test"
     var startDate: Date = Date()
     var endDate: Date = Date()
@@ -239,8 +237,8 @@ struct TestResultExternal : SerializableResultData, DocumentableStruct, Document
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
-            return .init(constValue: SerializableResultType.test)
+        case .typeName:
+            return .init(propertyType: .primitive(.string))
         case .identifier:
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:

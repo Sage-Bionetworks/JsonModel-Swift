@@ -107,14 +107,11 @@ public struct PathMarker: Hashable, Codable {
 }
 
 /// Abstract implementation to allow extending an assessment result while retaining the serializable type.
+@Serializable(subclassIndex: 2)
 open class AbstractBranchNodeResultObject : AbstractResultObject {
-    private enum CodingKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
-        case stepHistory, asyncResults, path
-        var relativeIndex: Int { 2 }
-    }
 
-    public var stepHistory: [ResultData]
-    public var asyncResults: [ResultData]?
+    @Polymorphic public var stepHistory: [ResultData]
+    @Polymorphic public var asyncResults: [ResultData]?
     public var path: [PathMarker]
 
     /// Default initializer for this object.
@@ -128,49 +125,6 @@ open class AbstractBranchNodeResultObject : AbstractResultObject {
         self.asyncResults = asyncResults
         self.path = path
         super.init(identifier: identifier, startDate: startDate, endDate: endDate)
-    }
-
-    /// Initialize from a `Decoder`. This decoding method will use the ``SerializationFactory`` instance associated
-    /// with the decoder to decode the `stepHistory` and `asyncResults`.
-    ///
-    /// - parameter decoder: The decoder to use to decode this instance.
-    /// - throws: `DecodingError`
-    public required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.path = try container.decodeIfPresent([PathMarker].self, forKey: .path) ?? []
-
-        let resultsContainer = try container.nestedUnkeyedContainer(forKey: .stepHistory)
-        self.stepHistory = try decoder.serializationFactory.decodePolymorphicArray(ResultData.self, from: resultsContainer)
-
-        if container.contains(.asyncResults) {
-            let asyncResultsContainer = try container.nestedUnkeyedContainer(forKey: .asyncResults)
-            self.asyncResults = try decoder.serializationFactory.decodePolymorphicArray(ResultData.self, from: asyncResultsContainer)
-        }
-        
-        try super.init(from: decoder)
-    }
-
-    /// Encode the result to the given encoder.
-    /// - parameter encoder: The encoder to use to encode this instance.
-    /// - throws: `EncodingError`
-    override open func encode(to encoder: Encoder) throws {
-        try super.encode(to: encoder)
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(path, forKey: .path)
-
-        var nestedContainer = container.nestedUnkeyedContainer(forKey: .stepHistory)
-        try nestedContainer.encodePolymorphic(stepHistory)
-
-        if let results = asyncResults {
-            var asyncContainer = container.nestedUnkeyedContainer(forKey: .asyncResults)
-            try asyncContainer.encodePolymorphic(results)
-        }
-    }
-    
-    override open class func codingKeys() -> [CodingKey] {
-        var keys = super.codingKeys()
-        keys.append(contentsOf: CodingKeys.allCases)
-        return keys
     }
 
     override open class func isRequired(_ codingKey: CodingKey) -> Bool {
@@ -201,11 +155,9 @@ open class AbstractBranchNodeResultObject : AbstractResultObject {
     }
 }
 
-public final class BranchNodeResultObject : AbstractBranchNodeResultObject, SerializableResultData, BranchNodeResult {
-    
-    public override class func defaultType() -> SerializableResultType {
-        .StandardTypes.section.resultType
-    }
+@Serializable(subclassIndex: 3)
+@SerialName("section")
+public final class BranchNodeResultObject : AbstractBranchNodeResultObject, BranchNodeResult {
     
     public func deepCopy() -> BranchNodeResultObject {
         .init(identifier: identifier,
