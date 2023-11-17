@@ -9,7 +9,7 @@ import JsonModel
 /// The coding information for an answer. This allows for adding custom information to the "kind" of question because
 /// JSON only supports a small subset of value types that are often encoded and can be described using JSON Schema
 /// or Swagger.
-public protocol AnswerType : PolymorphicTyped, DictionaryRepresentable {
+public protocol AnswerType : PolymorphicTyped, Codable {
 
     /// The `JsonType` for the base value.
     var baseType: JsonType { get }
@@ -61,66 +61,9 @@ public final class AnswerTypeSerializer : GenericPolymorphicSerializer<AnswerTyp
             AnswerTypeTime.examples().first!,
         ])
     }
-    
-    public override class func typeDocumentProperty() -> DocumentProperty {
-        .init(propertyType: .reference(AnswerTypeType.documentableType()))
-    }
 }
 
-public protocol SerializableAnswerType : AnswerType, PolymorphicRepresentable, Encodable {
-    var serializableType: AnswerTypeType { get }
-}
-
-extension SerializableAnswerType {
-    public var typeName: String { serializableType.stringValue }
-    
-    public func jsonDictionary() throws -> [String : JsonSerializable] {
-        try jsonEncodedDictionary()
-    }
-}
-
-public struct AnswerTypeType : TypeRepresentable, Codable, Hashable {
-    public let rawValue: String
-    public init(rawValue: String) {
-        self.rawValue = rawValue
-    }
-    
-    public init(jsonType: JsonType) {
-        self.rawValue = jsonType.rawValue
-    }
-    
-    static public let measurement: AnswerTypeType = "measurement"
-    static public let dateTime: AnswerTypeType = "date-time"
-    static public let time: AnswerTypeType = "time"
-    static public let duration: AnswerTypeType = "duration"
-    
-    static public let array: AnswerTypeType = AnswerTypeType(jsonType: .array)
-    static public let boolean: AnswerTypeType = AnswerTypeType(jsonType: .boolean)
-    static public let integer: AnswerTypeType = AnswerTypeType(jsonType: .integer)
-    static public let null: AnswerTypeType = AnswerTypeType(jsonType: .null)
-    static public let number: AnswerTypeType = AnswerTypeType(jsonType: .number)
-    static public let object: AnswerTypeType = AnswerTypeType(jsonType: .object)
-    static public let string: AnswerTypeType = AnswerTypeType(jsonType: .string)
-    
-    static func allStandardTypes() -> [AnswerTypeType] {
-        return [.measurement, .dateTime, .time, .duration, .array, .boolean, .integer, .number, .object, .string]
-    }
-}
-
-extension AnswerTypeType : ExpressibleByStringLiteral {
-    public init(stringLiteral value: String) {
-        self.init(rawValue: value)
-    }
-}
-
-extension AnswerTypeType : DocumentableStringLiteral {
-    public static func examples() -> [String] {
-        allStandardTypes().map { $0.rawValue }
-    }
-}
-
-public protocol BaseAnswerType : SerializableAnswerType {
-    static var defaultJsonType: JsonType { get }
+public protocol BaseAnswerType : AnswerType {
 }
 
 public protocol DecimalAnswerType : BaseAnswerType {
@@ -128,10 +71,9 @@ public protocol DecimalAnswerType : BaseAnswerType {
 }
 
 extension BaseAnswerType {
-    public var typeName: String { serializableType.rawValue }
     
     public var baseType: JsonType {
-        return type(of: self).defaultJsonType
+        return JsonType(rawValue: typeName)!
     }
 }
 
@@ -169,13 +111,10 @@ extension AnswerType {
     }
 }
 
+@Serializable
+@SerialName("object")
 public struct AnswerTypeObject : BaseAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType = "type"
-    }
-    public static let defaultJsonType: JsonType = .object
-    public static let defaultType: AnswerTypeType = .object
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
+    
     public init() {
     }
     
@@ -211,13 +150,10 @@ public struct AnswerTypeObject : BaseAnswerType, Codable, Hashable {
     }
 }
 
+@Serializable
+@SerialName("string")
 public struct AnswerTypeString : BaseAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType = "type"
-    }
-    public static let defaultJsonType: JsonType = .string
-    public static let defaultType: AnswerTypeType = .string
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
+
     public init() {
     }
     
@@ -255,13 +191,10 @@ public struct AnswerTypeString : BaseAnswerType, Codable, Hashable {
     }
 }
 
+@Serializable
+@SerialName("boolean")
 public struct AnswerTypeBoolean : BaseAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType = "type"
-    }
-    public static let defaultJsonType: JsonType = .boolean
-    public static let defaultType: AnswerTypeType = .boolean
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
+
     public init() {
     }
     
@@ -311,13 +244,10 @@ public struct AnswerTypeBoolean : BaseAnswerType, Codable, Hashable {
     }
 }
 
+@Serializable
+@SerialName("integer")
 public struct AnswerTypeInteger : BaseAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType = "type"
-    }
-    public static let defaultJsonType: JsonType = .integer
-    public static let defaultType: AnswerTypeType = .integer
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
+
     public init() {
     }
     
@@ -363,13 +293,10 @@ public struct AnswerTypeInteger : BaseAnswerType, Codable, Hashable {
     }
 }
 
+@Serializable
+@SerialName("number")
 public struct AnswerTypeNumber : DecimalAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", significantDigits
-    }
-    public static let defaultJsonType: JsonType = .number
-    public static let defaultType: AnswerTypeType = .number
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
+
     public let significantDigits: Int?
     public init(significantDigits: Int? = nil) {
         self.significantDigits = significantDigits
@@ -424,13 +351,10 @@ extension NumberJsonType {
     }
 }
 
+@Serializable
+@SerialName("null")
 public struct AnswerTypeNull : BaseAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, CodingKey, CaseIterable {
-        case serializableType = "type"
-    }
-    public static let defaultJsonType: JsonType = .null
-    public static let defaultType: AnswerTypeType = .null
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
+
     public init() {
     }
     
@@ -447,12 +371,10 @@ public struct AnswerTypeNull : BaseAnswerType, Codable, Hashable {
     }
 }
 
-public struct AnswerTypeArray : SerializableAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", baseType, sequenceSeparator
-    }
-    public static let defaultType: AnswerTypeType = .array
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
+@Serializable
+@SerialName("array")
+public struct AnswerTypeArray : AnswerType, Codable, Hashable {
+
     public let baseType: JsonType
     public let sequenceSeparator: String?
     public init(baseType: JsonType = .string, sequenceSeparator: String? = nil) {
@@ -533,13 +455,9 @@ public struct AnswerTypeArray : SerializableAnswerType, Codable, Hashable {
     }
 }
 
+@Serializable
+@SerialName("date-time")
 public struct AnswerTypeDateTime : DateTimeAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", codingFormat
-    }
-    public static let defaultJsonType: JsonType = .string
-    public static let defaultType: AnswerTypeType = .dateTime
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     
     public let codingFormat: String
     
@@ -548,13 +466,9 @@ public struct AnswerTypeDateTime : DateTimeAnswerType, Codable, Hashable {
     }
 }
 
+@Serializable
+@SerialName("time")
 public struct AnswerTypeTime : DateTimeAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", codingFormat
-    }
-    public static let defaultJsonType: JsonType = .string
-    public static let defaultType: AnswerTypeType = .time
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     
     public let codingFormat: String
     
@@ -612,13 +526,9 @@ extension DateTimeAnswerType {
 }
 
 /// The duration answer type represents a duration of time where duration is measured in seconds.
+@Serializable
+@SerialName("duration")
 public struct AnswerTypeDuration : DecimalAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", displayUnits, significantDigits
-    }
-    public static let defaultJsonType: JsonType = .number
-    public static let defaultType: AnswerTypeType = .duration
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
     
     /// The units used to build the question for the participant.
     public let displayUnits: [DurationUnit]?
@@ -639,13 +549,10 @@ public enum DurationUnit : String, StringEnumSet, DocumentableStringEnum {
     public static let defaultDispayUnits: [DurationUnit] = [.hour, .minute]
 }
 
+@Serializable
+@SerialName("measurement")
 public struct AnswerTypeMeasurement : DecimalAnswerType, Codable, Hashable {
-    private enum CodingKeys : String, OrderedEnumCodingKey {
-        case serializableType = "type", unit, significantDigits
-    }
-    public static let defaultJsonType: JsonType = .number
-    public static let defaultType: AnswerTypeType = .measurement
-    public private(set) var serializableType: AnswerTypeType = Self.defaultType
+    
     public let unit: String?
     public let significantDigits: Int?
     
@@ -687,7 +594,7 @@ extension AnswerTypeObject : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        .init(constValue: defaultType)
+        .init(propertyType: .primitive(.string))
     }
     
     public static func examples() -> [AnswerTypeObject] {
@@ -703,7 +610,7 @@ extension AnswerTypeString : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        .init(constValue: defaultType)
+        .init(propertyType: .primitive(.string))
     }
 
     public static func examples() -> [AnswerTypeString] {
@@ -719,7 +626,7 @@ extension AnswerTypeBoolean : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        .init(constValue: defaultType)
+        .init(propertyType: .primitive(.string))
     }
 
     public static func examples() -> [AnswerTypeBoolean] {
@@ -735,7 +642,7 @@ extension AnswerTypeInteger : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        .init(constValue: defaultType)
+        .init(propertyType: .primitive(.string))
     }
 
     public static func examples() -> [AnswerTypeInteger] {
@@ -751,15 +658,15 @@ extension AnswerTypeNumber : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
         guard let key = codingKey as? CodingKeys else { return false }
-        return key == .serializableType
+        return key == .typeName
     }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
         guard let key = codingKey as? CodingKeys else {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
-            return .init(constValue: defaultType)
+        case .typeName:
+            return .init(propertyType: .primitive(.string))
         case .significantDigits:
             return .init(propertyType: .primitive(.number), propertyDescription:
                             "The number of significant digits to use in encoding the answer.")
@@ -780,7 +687,7 @@ extension AnswerTypeArray : AnswerTypeDocumentable, DocumentableStruct {
     
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
         guard let key = codingKey as? CodingKeys else { return false }
-        return key == .serializableType || key == .baseType
+        return key == .typeName || key == .baseType
     }
     
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -788,8 +695,8 @@ extension AnswerTypeArray : AnswerTypeDocumentable, DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
-            return .init(constValue: defaultType)
+        case .typeName:
+            return .init(propertyType: .primitive(.string))
         case .baseType:
             return .init(propertyType: .reference(JsonType.documentableType()), propertyDescription:
                             "The base type of the array.")
@@ -817,7 +724,7 @@ extension AnswerTypeDateTime : AnswerTypeDocumentable, DocumentableStruct {
 
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
         guard let key = codingKey as? CodingKeys else { return false }
-        return key == .serializableType
+        return key == .typeName
     }
 
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -825,8 +732,8 @@ extension AnswerTypeDateTime : AnswerTypeDocumentable, DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
-            return .init(constValue: defaultType)
+        case .typeName:
+            return .init(propertyType: .primitive(.string))
         case .codingFormat:
             return .init(propertyType: .primitive(.string), propertyDescription:
                             "The iso8601 format for the date-time components used by this answer type.")
@@ -851,7 +758,7 @@ extension AnswerTypeTime : AnswerTypeDocumentable, DocumentableStruct {
 
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
         guard let key = codingKey as? CodingKeys else { return false }
-        return key == .serializableType
+        return key == .typeName
     }
 
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -859,8 +766,8 @@ extension AnswerTypeTime : AnswerTypeDocumentable, DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
-            return .init(constValue: defaultType)
+        case .typeName:
+            return .init(propertyType: .primitive(.string))
         case .codingFormat:
             return .init(propertyType: .primitive(.string), propertyDescription:
                             "The iso8601 format for the time components used by this answer type.")
@@ -883,7 +790,7 @@ extension AnswerTypeDuration : AnswerTypeDocumentable, DocumentableStruct {
 
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
         guard let key = codingKey as? CodingKeys else { return false }
-        return key == .serializableType
+        return key == .typeName
     }
 
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -891,8 +798,8 @@ extension AnswerTypeDuration : AnswerTypeDocumentable, DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
-            return .init(constValue: defaultType)
+        case .typeName:
+            return .init(propertyType: .primitive(.string))
         case .displayUnits:
             return .init(propertyType: .referenceArray(DurationUnit.documentableType()), propertyDescription:
                             "The units used to display the duration as a question.")
@@ -916,7 +823,7 @@ extension AnswerTypeMeasurement : AnswerTypeDocumentable, DocumentableStruct {
 
     public static func isRequired(_ codingKey: CodingKey) -> Bool {
         guard let key = codingKey as? CodingKeys else { return false }
-        return key == .serializableType
+        return key == .typeName
     }
 
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -924,8 +831,8 @@ extension AnswerTypeMeasurement : AnswerTypeDocumentable, DocumentableStruct {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
-            return .init(constValue: defaultType)
+        case .typeName:
+            return .init(propertyType: .primitive(.string))
         case .unit:
             return .init(propertyType: .primitive(.string), propertyDescription:
                             "The unit of measurement into which the value is converted for storage.")
