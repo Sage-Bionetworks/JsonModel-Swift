@@ -15,8 +15,6 @@ public struct SerializableMacro {
     }
 }
 
-// TODO: syoung 11/10/2023 support polymorphic serialization
-
 extension SerializableMacro: MemberMacro {
 
     public static func expansion(
@@ -101,8 +99,10 @@ extension SerializableMacro: MemberMacro {
         let predefinedInits = declaration.getPredefinedInits()
 
         // Add init for decoding
-        let decodeInitializer = try buildDecodeInitializer(memberList, accessLevel, isSubclass || (isClass && !isFinal), isSubclass)
-        ret.insert(DeclSyntax(decodeInitializer), at: 0)
+        if memberList.count > 1 || typeVar == nil {
+            let decodeInitializer = try buildDecodeInitializer(memberList, accessLevel, isSubclass || (isClass && !isFinal), isSubclass)
+            ret.insert(DeclSyntax(decodeInitializer), at: 0)
+        }
 
         // Add init with all the properties, but only if there aren't any predefined inits
         // and this isn't a final class (that isn't a subclass).

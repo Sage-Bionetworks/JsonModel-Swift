@@ -568,6 +568,39 @@ final class SerializableTests: XCTestCase {
         )
     }
     
+    func testExpansionFinalClassWithTypeOnly() {
+        assertMacroExpansion(
+        """
+        @Serializable(subclassIndex: 3)
+        @SerialName("boss")
+        final class Boss : Person {
+        }
+        """,
+        expandedSource: """
+        final class Boss : Person {
+        
+            let typeName: String = "boss"
+        
+            enum CodingKeys: String, OrderedEnumCodingKey, OpenOrderedCodingKey {
+                case typeName = "type"
+        
+                var relativeIndex: Int {
+                    return 3
+                }
+            }
+        
+            override func encode(to encoder: Encoder) throws {
+                try super.encode(to: encoder)
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.typeName, forKey: .typeName)
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
+    
     func testExpansionNullablePolymorphicValue() {
         assertMacroExpansion(
         """
