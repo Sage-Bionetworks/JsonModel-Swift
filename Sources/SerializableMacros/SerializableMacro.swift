@@ -145,7 +145,7 @@ extension SerializableMacro: MemberMacro {
         let accessLevel = (inAccessLevel == .open) ? .public : inAccessLevel
         
         // Classes have to use the required keyword
-        let requiredKeyword = isRequired ? " required " : ""
+        let requiredKeyword = isRequired ? "required " : ""
         
         return try InitializerDeclSyntax("\(raw: accessLevel.stringLiteral())\(raw: requiredKeyword)init(from decoder: Decoder) throws") {
             try VariableDeclSyntax("let container = try decoder.container(keyedBy: CodingKeys.self)")
