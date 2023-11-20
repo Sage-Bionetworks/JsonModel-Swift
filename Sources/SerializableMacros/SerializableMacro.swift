@@ -99,7 +99,7 @@ extension SerializableMacro: MemberMacro {
         let predefinedInits = declaration.getPredefinedInits()
 
         // Add init for decoding
-        if memberList.count > 1 || typeVar == nil {
+        if memberList.count > 0 || typeVar == nil {
             let decodeInitializer = try buildDecodeInitializer(memberList, accessLevel, isSubclass || (isClass && !isFinal), isSubclass)
             ret.insert(DeclSyntax(decodeInitializer), at: 0)
         }

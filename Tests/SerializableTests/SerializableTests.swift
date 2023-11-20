@@ -916,5 +916,60 @@ final class SerializableTests: XCTestCase {
         indentationWidth: .spaces(4)
         )
     }
+    
+    func testMooExpansion() {
+        assertMacroExpansion(
+        """
+        @Serializable
+        @SerialName("moo")
+        public struct MooObject : Codable, PolymorphicTyped, GooProtocol {
+            public var value: Int {
+                goos.count
+            }
+
+            @Polymorphic public var goos: [GooProtocol] = []
+        }
+        """,
+        expandedSource: """
+        public struct MooObject : Codable, PolymorphicTyped, GooProtocol {
+            public var value: Int {
+                goos.count
+            }
+
+            public var goos: [GooProtocol] = []
+        
+            public init(goos: [GooProtocol] = []) {
+                self.goos = goos
+            }
+        
+            public init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                if container.contains(.goos) {
+                    let nestedDecoder = try container.nestedUnkeyedContainer(forKey: .goos)
+                    self.goos = try decoder.serializationFactory.decodePolymorphicArray(GooProtocol.self, from: nestedDecoder)
+                } else {
+                    self.goos = []
+                }
+            }
+
+            public let typeName: String = "moo"
+
+            enum CodingKeys: String, OrderedEnumCodingKey {
+                case goos
+                case typeName = "type"
+            }
+
+            public func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(self.typeName, forKey: .typeName)
+                var goosEncoder = container.nestedUnkeyedContainer(forKey: .goos)
+                try goosEncoder.encodePolymorphic(self.goos)
+            }
+        }
+        """,
+        macros: macros,
+        indentationWidth: .spaces(4)
+        )
+    }
 }
 
