@@ -222,7 +222,7 @@ enum PolymorphicCodableTypeKeys: String, Codable, OpenOrderedCodingKey {
 }
 
 /// Protocol for converting an object to a dictionary representation. This is included for
-/// reverse-compatiblility to older implementations that are not Swift `Codable` and instead
+/// reverse-compatibility to older implementations that are not Swift `Codable` and instead
 /// use a dictionary representation. Additionally, this can be used to implement Kotlin-Native
 /// serializable objects that do not conform to the Codable protocol.
 public protocol DictionaryRepresentable {
