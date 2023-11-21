@@ -154,6 +154,34 @@ Whereas `RaguObject` must be wrapped:
 
 ```
 
+### Version 2.2
+
+Added support for additional Json Schema Draft 7 generated documentation.
+
+### Version 2.3
+
+Moved from Sage-Bionetworks to BridgeDigitalHealth as the owning organization.
+
+### Version 2.4
+
+Added `@Serializable` macro for defining the boilerplate code used to support 
+polymorphic serialization using the `GenericPolymorphicSerializer` and the 
+`SerializationFactory`. This uses the same naming, where possible, as Kotlin
+serialization in an effort to improve readability when moving between Kotlin
+and Swift.
+
+- `@Serializable`: member macro 
+  - declares a struct or class to be `Codable`
+  - adds CodingKeys
+  - implements init and encode if needed
+- `@SerialName(_ name: String)`: peer macro
+  - when defined on a property, adds custom CodingKey
+  - when defined on a struct or final class, adds `typeName` property
+- `@Transient`: peer macro
+  - does not encode property
+- `@Polymorphic`: peer macro
+  - encode/decode properties using the serialization factory
+
 ## License
 
 JsonModel is available under the BSD license:
