@@ -9,17 +9,19 @@ import JsonModel
 
 /// `SerializableResultData` is the base implementation for `ResultData` that is serialized using
 /// the `Codable` protocol and the polymorphic serialization defined by this framework.
-///
+@available(*, deprecated, message: "Inherit from ResultData directly")
 public protocol SerializableResultData : ResultData, PolymorphicRepresentable {
     var serializableType: SerializableResultType { get }
 }
 
+@available(*, deprecated, message: "Inherit from ResultData directly")
 extension SerializableResultData {
     public var typeName: String { serializableType.stringValue }
 }
 
 /// `SerializableResultType` is an extendable string enum used by the `SerializationFactory` to
 /// create the appropriate result type.
+@available(*, deprecated, message: "Define type name directly")
 public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
     
     public let rawValue: String
@@ -42,12 +44,14 @@ public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
     }
 }
 
+@available(*, deprecated, message: "Define type name directly")
 extension SerializableResultType : ExpressibleByStringLiteral {
     public init(stringLiteral value: String) {
         self.init(rawValue: value)
     }
 }
 
+@available(*, deprecated, message: "Define type name directly")
 extension SerializableResultType : DocumentableStringLiteral {
     public static func examples() -> [String] {
         return allStandardTypes().map{ $0.rawValue }
@@ -78,18 +82,16 @@ public final class ResultDataSerializer : GenericPolymorphicSerializer<ResultDat
         ])
     }
     
-    public override class func typeDocumentProperty() -> DocumentProperty {
-        .init(propertyType: .reference(SerializableResultType.documentableType()))
-    }
-    
     /// Insert the given example into the example array, replacing any existing example with the
     /// same `typeName` as one of the new example.
+    @available(*, deprecated, message: "Inherit from ResultData directly")
     public func add(_ example: SerializableResultData) {
         try! add(example as ResultData)
     }
     
     /// Insert the given examples into the example array, replacing any existing examples with the
     /// same `typeName` as one of the new examples.
+    @available(*, deprecated, message: "Inherit from ResultData directly")
     public func add(contentsOf newExamples: [SerializableResultData]) {
         try! add(contentsOf: newExamples as [ResultData])
     }
@@ -131,20 +133,12 @@ public final class ResultDataSerializer : GenericPolymorphicSerializer<ResultDat
 }
 
 /// Abstract implementation to allow extending a result while retaining the serializable type.
+@Serializable(subclassIndex: 0)
 open class AbstractResultObject : Codable, MultiplatformTimestamp {
-    private enum CodingKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
-        case serializableType = "type", identifier, startDate, endDate
-        var relativeIndex: Int { 0 }
-    }
-    public private(set) var serializableType: SerializableResultType = "null"
-    
-    open class func defaultType() -> SerializableResultType {
-        fatalError("Default serializable type not defined for abstract.")
-    }
 
     public let identifier: String
-    public var startDateTime: Date
-    public var endDateTime: Date?
+    @SerialName("startDate") public var startDateTime: Date
+    @SerialName("endDate") public var endDateTime: Date?
 
     /// Default initializer for this object.
     public init(identifier: String,
@@ -153,31 +147,6 @@ open class AbstractResultObject : Codable, MultiplatformTimestamp {
         self.identifier = identifier
         self.startDateTime = startDate
         self.endDateTime = endDate
-        self.serializableType = type(of: self).defaultType()
-    }
-
-    /// Initialize from a `Decoder`. This decoding method will use the ``SerializationFactory`` instance associated
-    /// with the decoder to decode the `stepHistory` and `asyncResults`.
-    ///
-    /// - parameter decoder: The decoder to use to decode this instance.
-    /// - throws: `DecodingError`
-    public required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.identifier = try container.decode(String.self, forKey: .identifier)
-        self.startDateTime = try container.decode(Date.self, forKey: .startDate)
-        self.endDateTime = try container.decodeIfPresent(Date.self, forKey: .endDate)
-        self.serializableType = type(of: self).defaultType()
-    }
-
-    /// Encode the result to the given encoder.
-    /// - parameter encoder: The encoder to use to encode this instance.
-    /// - throws: `EncodingError`
-    open func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(identifier, forKey: .identifier)
-        try container.encode(serializableType, forKey: .serializableType)
-        try container.encode(startDateTime, forKey: .startDate)
-        try container.encodeIfPresent(endDateTime, forKey: .endDate)
     }
     
     open class func codingKeys() -> [CodingKey] {
@@ -185,25 +154,26 @@ open class AbstractResultObject : Codable, MultiplatformTimestamp {
     }
 
     open class func isRequired(_ codingKey: CodingKey) -> Bool {
-        guard let key = codingKey as? CodingKeys else { return false }
-        switch key {
-        case .serializableType, .identifier, .startDate:
+        if codingKey.stringValue == "typeName" {
             return true
-        default:
+        } else if let key = codingKey as? CodingKeys {
+            return [.identifier, .startDateTime].contains(key)
+        } else {
             return false
         }
     }
 
     open class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
+        if codingKey.stringValue == "typeName" {
+            return .init(propertyType: .primitive(.string), propertyDescription: "The polymorphic type")
+        }
         guard let key = codingKey as? CodingKeys else {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")
         }
         switch key {
-        case .serializableType:
-            return .init(constValue: defaultType())
         case .identifier:
             return .init(propertyType: .primitive(.string))
-        case .startDate, .endDate:
+        case .startDateTime, .endDateTime:
             return .init(propertyType: .format(.dateTime))
         }
     }

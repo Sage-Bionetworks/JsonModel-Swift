@@ -469,7 +469,6 @@ final class JsonSchemaTests: XCTestCase {
                let decodedBaloo = decodedObject.properties?["baloo"],
                case .reference(let newBaloo) = decodedBaloo {
                 XCTAssertEqual(ogBaloo.refId, newBaloo.refId)
-                print(ogBaloo)
             }
             else {
                 XCTFail("Failed to decode the 'baloo' property")

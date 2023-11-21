@@ -223,12 +223,8 @@ class AnswerTypeTests: XCTestCase {
         expected.remove("null")
         XCTAssertEqual(expected.count, actual.count)
         XCTAssertEqual(expected, actual)
-        
-        let standardTypes = Set(AnswerTypeType.allStandardTypes().map { $0.rawValue })
-        XCTAssertEqual(expected.count, standardTypes.count)
-        XCTAssertEqual(expected, standardTypes)
 
-        let answerTypes: [SerializableAnswerType] = serializer.examples as! [SerializableAnswerType]
+        let answerTypes: [AnswerType] = serializer.examples
 
         answerTypes.forEach { object in
 

@@ -49,44 +49,18 @@ public extension CollectionResult {
     }
 }
 
+@Serializable(subclassIndex: 1)
 open class AbstractCollectionResultObject : AbstractResultObject {
-    private enum CodingKeys : String, OrderedEnumCodingKey, OpenOrderedCodingKey {
-        case children
-        var relativeIndex: Int { 1 }
-    }
-    
-    public var children: [ResultData]
+
+    @Polymorphic public var children: [ResultData]
     
     public init(identifier: String, children: [ResultData] = [], startDate: Date = Date(), endDate: Date? = nil) {
         self.children = children
         super.init(identifier: identifier, startDate: startDate, endDate: endDate)
     }
-    
-    public required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let resultsContainer = try container.nestedUnkeyedContainer(forKey: .children)
-        self.children = try decoder.serializationFactory.decodePolymorphicArray(ResultData.self, from: resultsContainer)
-        try super.init(from: decoder)
-    }
-    
-    /// Encode the result to the given encoder.
-    /// - parameter encoder: The encoder to use to encode this instance.
-    /// - throws: `EncodingError`
-    open override func encode(to encoder: Encoder) throws {
-        try super.encode(to: encoder)
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        var nestedContainer = container.nestedUnkeyedContainer(forKey: .children)
-        try nestedContainer.encodePolymorphic(children)
-    }
-    
-    override open class func codingKeys() -> [CodingKey] {
-        var keys = super.codingKeys()
-        keys.append(contentsOf: CodingKeys.allCases)
-        return keys
-    }
 
     override open class func isRequired(_ codingKey: CodingKey) -> Bool {
-        (codingKey as? CodingKeys).map { $0 == .children } ?? super.isRequired(codingKey)
+        return (codingKey is CodingKeys) || super.isRequired(codingKey)
     }
     
     override open class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
@@ -102,11 +76,9 @@ open class AbstractCollectionResultObject : AbstractResultObject {
 }
 
 /// `CollectionResultObject` is used to include multiple results associated with a single action.
-public final class CollectionResultObject : AbstractCollectionResultObject, SerializableResultData, CollectionResult {
-    
-    public override class func defaultType() -> SerializableResultType {
-        .StandardTypes.collection.resultType
-    }
+@Serializable(subclassIndex: 2)
+@SerialName("collection")
+public final class CollectionResultObject : AbstractCollectionResultObject, CollectionResult {
     
     public func deepCopy() -> CollectionResultObject {
         let copyChildren = self.children.map { $0.deepCopy() }

@@ -4,28 +4,6 @@
 
 import Foundation
 
-/// Coding keys that conform to this protocol include a sort order index.
-public protocol OrderedCodingKey : CodingKey {
-    /// The sort index of this key when encoding.
-    var sortOrderIndex: Int? { get }
-}
-
-/// An ordered enum relies upon using an enum that is `CaseIterable` to define the index position
-/// within the set.
-public protocol OrderedEnumCodingKey : OrderedCodingKey, StringEnumSet {
-}
-
-extension OrderedEnumCodingKey {
-    public var sortOrderIndex: Int? { indexPosition }
-}
-
-/// Open ordered coding keys are used for classes that are open to define indexes within the
-/// encoding that are relative to the coding keys of the parent or child. This allows coding keys
-/// to be sorted where the keys are *not* all defined within the same class.
-public protocol OpenOrderedCodingKey : OrderedCodingKey {
-    var relativeIndex: Int { get }
-}
-
 /// This is a subclass of `JSONEncoder` that encodes json using the indexed order provided by
 /// `Encodable` objects that are encoded using `CodingKey` keys that implement the
 /// `OrderedCodingKey` protocol.
