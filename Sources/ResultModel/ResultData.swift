@@ -57,7 +57,7 @@ extension MultiplatformTimestamp {
     }
 }
 
-public protocol MultiplatformResultData : ResultData, MultiplatformTimestamp {
+public protocol MultiplatformResultData : ResultData, MultiplatformTimestamp, PolymorphicSerializableTyped {
 }
 
 extension ResultData {
@@ -69,7 +69,7 @@ extension ResultData {
 /// `ResultObject` is a concrete implementation of the base result associated with a task, step, or asynchronous action
 @Serializable
 @SerialName("base")
-public struct ResultObject : ResultData, MultiplatformTimestamp {
+public struct ResultObject : MultiplatformResultData {
     public let identifier: String
     @SerialName("startDate") public var startDateTime: Date = Date()
     @SerialName("endDate") public var endDateTime: Date? = nil

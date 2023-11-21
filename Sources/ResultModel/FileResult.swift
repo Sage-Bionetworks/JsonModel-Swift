@@ -32,7 +32,7 @@ public protocol FileResult : ResultData {
 /// `FileResultObject` is a concrete implementation of a result that holds a pointer to a file url.
 @Serializable
 @SerialName("file")
-public struct FileResultObject : ResultData, FileResult, MultiplatformTimestamp, Equatable {
+public struct FileResultObject : FileResult, MultiplatformResultData, Equatable {
     public let identifier: String
     @SerialName("startDate") public var startDateTime: Date = Date()
     @SerialName("endDate") public var endDateTime: Date? = nil

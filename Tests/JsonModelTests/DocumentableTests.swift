@@ -257,7 +257,7 @@ class AnotherSerializer : GenericPolymorphicSerializer<Another>, DocumentableInt
     }
 }
 
-protocol Another : PolymorphicRepresentable, Encodable {
+protocol Another : PolymorphicTyped, Codable {
     var exampleType: AnotherType { get }
 }
 

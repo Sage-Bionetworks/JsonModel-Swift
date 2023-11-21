@@ -21,6 +21,7 @@ extension SerializableResultData {
 
 /// `SerializableResultType` is an extendable string enum used by the `SerializationFactory` to
 /// create the appropriate result type.
+@available(*, deprecated, message: "Define type name directly")
 public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
     
     public let rawValue: String
@@ -43,12 +44,14 @@ public struct SerializableResultType : TypeRepresentable, Codable, Hashable {
     }
 }
 
+@available(*, deprecated, message: "Define type name directly")
 extension SerializableResultType : ExpressibleByStringLiteral {
     public init(stringLiteral value: String) {
         self.init(rawValue: value)
     }
 }
 
+@available(*, deprecated, message: "Define type name directly")
 extension SerializableResultType : DocumentableStringLiteral {
     public static func examples() -> [String] {
         return allStandardTypes().map{ $0.rawValue }
@@ -77,10 +80,6 @@ public final class ResultDataSerializer : GenericPolymorphicSerializer<ResultDat
             BranchNodeResultObject.examples().first!,
             AssessmentResultObject(),
         ])
-    }
-    
-    public override class func typeDocumentProperty() -> DocumentProperty {
-        .init(propertyType: .reference(SerializableResultType.documentableType()))
     }
     
     /// Insert the given example into the example array, replacing any existing example with the

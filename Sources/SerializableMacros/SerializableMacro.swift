@@ -32,9 +32,14 @@ extension SerializableMacro: MemberMacro {
         var hasPolymorphicValues = false
         let isSubclass = isClass && (subclassIndex ?? 0) > 0
         let accessLevel = declaration.getAccessLevel() ?? .internal
-        let typeVar = try declaration.customCodingKey.map {
-            try VariableDeclSyntax("\(raw: accessLevel.stringLiteral())let typeName: String = \($0)")
+        let typeVarList = try declaration.customCodingKey.map {
+            [
+                try VariableDeclSyntax("\(raw: accessLevel.stringLiteral())let typeName: String = \($0)"),
+                try VariableDeclSyntax("\(raw: accessLevel.stringLiteral())static let serialTypeName: String = \($0)"),
+            ]
         }
+        
+        let typeVar = typeVarList?.first
         
         if !isFinal, let _ = typeVar {
             throw SerializableMacroError.invalidPolymorphicType("The @SerialName macro can only be used with structs and final classes")
@@ -60,7 +65,7 @@ extension SerializableMacro: MemberMacro {
         }
         
         // set up the return
-        var ret: [DeclSyntax] = typeVar.map { [DeclSyntax($0)] } ?? []
+        var ret: [DeclSyntax] = typeVarList?.map { DeclSyntax($0) } ?? []
                 
         // Build `enum CodingKeys`
         var cases = memberList.map { ivar -> String in
@@ -249,24 +254,34 @@ extension SerializableMacro: ExtensionMacro {
     ) throws -> [ExtensionDeclSyntax] {
         
         try checkExpectations(node: node, declaration: declaration)
-
-        // If there is an explicit conformance to Codable already, don't add conformance.
-        if let inheritedTypes = declaration.inheritanceClause?.inheritedTypes,
-           inheritedTypes.contains(where: { inherited in inherited.type.trimmedDescription == "Codable" }) {
-           return []
+        
+        let inheritedTypes = declaration.inheritanceClause?.inheritedTypes.map { $0.type.trimmedDescription } ?? []
+        let subclassIndex = try node.getSubclassIndex() ?? 0
+        var ret: [ExtensionDeclSyntax] = []
+        
+        // If this is a polymorphic encoding, then add the type conformance used
+        // in decoding.
+        if let _ = declaration.customCodingKey {
+            guard declaration.getIsFinal() else {
+                // If this is not final then it will throw an error while adding member declarations
+                // so just exit with an empty array.
+                return []
+            }
+            /** TODO: syoung 11/21/2023 Revisit adding the conformance with next version of SwiftSyntax.
+                Swift 5.9 compiler fails to compile when adding conformance to custom protocols.
+            if !inheritedTypes.contains("PolymorphicSerializableTyped") {
+                ret.append(try ExtensionDeclSyntax("extension \(type): PolymorphicSerializableTyped {}"))
+            }
+             */
         }
         
-        // If this is a subclass then don't add conformance.
-        if let subclassIndex = try node.getSubclassIndex(), subclassIndex > 0 {
-            return []
+        // Add the Codable protocol if the class autosynthesizes the `Codable` init
+        // or its the base class.
+        if !inheritedTypes.contains("Codable"), subclassIndex <= 0 {
+            ret.append(try ExtensionDeclSyntax("extension \(type): Codable {}"))
         }
         
-        // If this is a non-final class with a "type" declaration, then it's invalid.
-        if !declaration.getIsFinal(), let _ = declaration.customCodingKey {
-            return []
-        }
-
-        return [try ExtensionDeclSyntax("extension \(type): Codable {}")]
+        return ret
     }
 }
 

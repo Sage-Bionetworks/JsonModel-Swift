@@ -157,7 +157,7 @@ class SampleSerializer : GenericPolymorphicSerializer<Sample>, DocumentableInter
 protocol Sample {
 }
 
-protocol SerializableSample : Sample, PolymorphicRepresentable, Encodable {
+protocol SerializableSample : Sample, PolymorphicTyped, Codable {
     var exampleType: SampleType { get }
     static var defaultType: SampleType { get }
 }

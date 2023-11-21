@@ -481,6 +481,8 @@ final class SerializableTests: XCTestCase {
         
             let typeName: String = "boss"
         
+            static let serialTypeName: String = "boss"
+        
             enum CodingKeys: String, OrderedEnumCodingKey {
                 case name
                 case age
@@ -544,6 +546,8 @@ final class SerializableTests: XCTestCase {
         
             let typeName: String = "boss"
         
+            static let serialTypeName: String = "boss"
+        
             enum CodingKeys: String, OrderedEnumCodingKey, OpenOrderedCodingKey {
                 case name
                 case age
@@ -580,6 +584,8 @@ final class SerializableTests: XCTestCase {
         final class Boss : Person {
         
             let typeName: String = "boss"
+        
+            static let serialTypeName: String = "boss"
         
             enum CodingKeys: String, OrderedEnumCodingKey, OpenOrderedCodingKey {
                 case typeName = "type"
@@ -922,7 +928,7 @@ final class SerializableTests: XCTestCase {
         """
         @Serializable
         @SerialName("moo")
-        public struct MooObject : Codable, PolymorphicTyped, GooProtocol {
+        public struct MooObject : Codable, GooProtocol {
             public var value: Int {
                 goos.count
             }
@@ -931,7 +937,7 @@ final class SerializableTests: XCTestCase {
         }
         """,
         expandedSource: """
-        public struct MooObject : Codable, PolymorphicTyped, GooProtocol {
+        public struct MooObject : Codable, GooProtocol {
             public var value: Int {
                 goos.count
             }
@@ -953,6 +959,8 @@ final class SerializableTests: XCTestCase {
             }
 
             public let typeName: String = "moo"
+        
+            public static let serialTypeName: String = "moo"
 
             enum CodingKeys: String, OrderedEnumCodingKey {
                 case goos

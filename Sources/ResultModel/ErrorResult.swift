@@ -22,7 +22,7 @@ public protocol ErrorResult : ResultData {
 /// `ErrorResultObject` is a result that holds information about an error.
 @Serializable
 @SerialName("error")
-public struct ErrorResultObject : ResultData, ErrorResult, MultiplatformTimestamp, Equatable {
+public struct ErrorResultObject : ErrorResult, MultiplatformResultData, Equatable {
 
     public let identifier: String
     @SerialName("startDate") public var startDateTime: Date = Date()

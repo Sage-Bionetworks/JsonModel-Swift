@@ -19,6 +19,20 @@ import Foundation
 ///
 /// - See Also: `PolymorphicSerializerTests`
 ///
+public protocol PolymorphicSerializableTyped : Codable {
+    /// A "name" for the class of object that can be used in Dictionary representable objects.
+    static var serialTypeName: String { get }
+}
+
+/// This is the original protocol used by ``GenericPolymorphicSerializer`` to decode an object
+/// from a list of example instances. It is retained so that older implementations of polymorphic
+/// objects do not need to be migrated.
+public protocol PolymorphicTyped {
+    /// A "name" for the class of object that can be used in Dictionary representable objects.
+    var typeName: String { get }
+}
+
+@available(*, deprecated, message: "Use `PolymorphicSerializableTyped` instead.")
 public protocol PolymorphicRepresentable : PolymorphicTyped, Decodable {
 }
 
@@ -35,25 +49,23 @@ public protocol PolymorphicRepresentable : PolymorphicTyped, Decodable {
 /// to decode their objects, to use the ``SerializationFactory`` to handle polymorphic
 /// object decoding without requiring them to also implement an unused `Encodable` protocol
 /// adherence.
+@available(*, deprecated, message: "Use `PolymorphicSerializableTyped` instead.")
 public protocol PolymorphicCodable : PolymorphicRepresentable, Encodable {
-}
-
-/// This is the original protocol used by ``PolymorphicSerializer`` to decode an object from
-/// a list of example instances. It is retained so that older implementations of polymorphic
-/// objects do not need to be migrated.
-public protocol PolymorphicTyped {
-    /// A "name" for the class of object that can be used in Dictionary representable objects.
-    var typeName: String { get }
 }
 
 /// A **static** implementation that allows decoding from an object Type rather than requiring
 /// an example instance.
-public protocol PolymorphicStaticTyped : PolymorphicTyped {
+@available(*, deprecated, renamed: "PolymorphicSerializableTyped", message: "Use `PolymorphicSerializableTyped` instead.")
+public protocol PolymorphicStaticTyped : PolymorphicSerializableTyped, PolymorphicTyped {
     /// A "name" for the class of object that can be used in Dictionary representable objects.
     static var typeName: String { get }
 }
 
+@available(*, deprecated, renamed: "PolymorphicSerializableTyped", message: "Use `PolymorphicSerializableTyped` instead.")
 extension PolymorphicStaticTyped {
+    
+    public static var serialTypeName: String { Self.typeName }
+    
     public var typeName: String { Self.typeName }
 }
 
@@ -118,7 +130,8 @@ open class GenericPolymorphicSerializer<ProtocolValue> : GenericSerializer {
             throw PolymorphicSerializerError.exampleNotDecodable(example)
         }
         let typeValue = type(of: decodable).decodingType()
-        let typeName = (example as? PolymorphicTyped)?.typeName ?? "\(typeValue)"
+        let typeName = objectTypeName(for: example)
+
         typeMap[typeName] = typeValue
         _examples[typeName] = example
     }
@@ -134,7 +147,7 @@ open class GenericPolymorphicSerializer<ProtocolValue> : GenericSerializer {
     /// Insert the given `ProtocolValue.Type` into the type map, replacing any existing class with
     /// the same "type" decoding.
     public final func add(typeOf typeValue: Decodable.Type) {
-        let typeName = (typeValue as? PolymorphicStaticTyped.Type)?.typeName ?? "\(typeValue)"
+        let typeName = (typeValue as? PolymorphicSerializableTyped.Type)?.serialTypeName ?? "\(typeValue)"
         typeMap[typeName] = typeValue
         _examples[typeName] = nil
     }
@@ -247,7 +260,7 @@ extension Encoder {
             // Otherwise, look to see if this is an older object that pre-dates Swift 2.0 `Codable`
             var dictionary = try dictionaryRep.jsonDictionary()
             if dictionary[PolymorphicCodableTypeKeys.type.rawValue] == nil {
-                dictionary[PolymorphicCodableTypeKeys.type.rawValue] = typeName(for: obj)
+                dictionary[PolymorphicCodableTypeKeys.type.rawValue] = objectTypeName(for: obj)
             }
             let jsonElement = JsonElement.object(dictionary)
             try jsonElement.encode(to: self)
@@ -271,8 +284,12 @@ extension UnkeyedEncodingContainer {
     }
 }
 
-fileprivate func typeName(for obj: Any) -> String {
-    (obj as? PolymorphicTyped)?.typeName ?? "\(type(of: obj))"
+fileprivate func objectTypeName(for obj: Any) -> String {
+    if let value = obj as? PolymorphicTyped {
+        return value.typeName
+    }
+    let typeValue = type(of: obj)
+    return (typeValue as? PolymorphicSerializableTyped.Type)?.serialTypeName ?? "\(typeValue)"
 }
 
 /// Work-around for polymorphic encoding that includes a "type" in a dictionary where the "type"
@@ -300,7 +317,7 @@ class PolymorphicEncoder : Encoder {
         guard !typeAdded else { return }
         typeAdded = true
         do {
-            let typeName = typeName(for: encodable)
+            let typeName = objectTypeName(for: encodable)
             var container = wrappedEncoder.container(keyedBy: PolymorphicCodableTypeKeys.self)
             try container.encode(typeName, forKey: .type)
         } catch {
