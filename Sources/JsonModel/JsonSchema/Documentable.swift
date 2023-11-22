@@ -337,6 +337,13 @@ public struct DocumentProperty {
         self.propertyDescription = propertyDescription
     }
     
+    public init(constValue: String, propertyDescription: String? = nil) {
+        self.propertyType = .primitive(.string)
+        self.constValue = constValue
+        self.defaultValue = nil
+        self.propertyDescription = propertyDescription
+    }
+    
     public init(constValue: DocumentableString, propertyDescription: String? = nil) {
         self.propertyType = .reference(type(of: constValue))
         self.constValue = constValue.stringValue
