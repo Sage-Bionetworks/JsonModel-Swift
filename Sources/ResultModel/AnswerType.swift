@@ -594,7 +594,7 @@ extension AnswerTypeObject : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        .init(propertyType: .primitive(.string))
+        return .init(constValue: serialTypeName)
     }
     
     public static func examples() -> [AnswerTypeObject] {
@@ -610,7 +610,7 @@ extension AnswerTypeString : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        .init(propertyType: .primitive(.string))
+        return .init(constValue: serialTypeName)
     }
 
     public static func examples() -> [AnswerTypeString] {
@@ -626,7 +626,7 @@ extension AnswerTypeBoolean : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        .init(propertyType: .primitive(.string))
+        return .init(constValue: serialTypeName)
     }
 
     public static func examples() -> [AnswerTypeBoolean] {
@@ -642,7 +642,7 @@ extension AnswerTypeInteger : AnswerTypeDocumentable, DocumentableStruct {
     public static func codingKeys() -> [CodingKey] { CodingKeys.allCases }
     public static func isRequired(_ codingKey: CodingKey) -> Bool { true }
     public static func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        .init(propertyType: .primitive(.string))
+        return .init(constValue: serialTypeName)
     }
 
     public static func examples() -> [AnswerTypeInteger] {
@@ -666,7 +666,7 @@ extension AnswerTypeNumber : AnswerTypeDocumentable, DocumentableStruct {
         }
         switch key {
         case .typeName:
-            return .init(propertyType: .primitive(.string))
+            return .init(constValue: serialTypeName)
         case .significantDigits:
             return .init(propertyType: .primitive(.number), propertyDescription:
                             "The number of significant digits to use in encoding the answer.")
@@ -696,7 +696,7 @@ extension AnswerTypeArray : AnswerTypeDocumentable, DocumentableStruct {
         }
         switch key {
         case .typeName:
-            return .init(propertyType: .primitive(.string))
+            return .init(constValue: serialTypeName)
         case .baseType:
             return .init(propertyType: .reference(JsonType.documentableType()), propertyDescription:
                             "The base type of the array.")
@@ -733,7 +733,7 @@ extension AnswerTypeDateTime : AnswerTypeDocumentable, DocumentableStruct {
         }
         switch key {
         case .typeName:
-            return .init(propertyType: .primitive(.string))
+            return .init(constValue: serialTypeName)
         case .codingFormat:
             return .init(propertyType: .primitive(.string), propertyDescription:
                             "The iso8601 format for the date-time components used by this answer type.")
@@ -767,7 +767,7 @@ extension AnswerTypeTime : AnswerTypeDocumentable, DocumentableStruct {
         }
         switch key {
         case .typeName:
-            return .init(propertyType: .primitive(.string))
+            return .init(constValue: serialTypeName)
         case .codingFormat:
             return .init(propertyType: .primitive(.string), propertyDescription:
                             "The iso8601 format for the time components used by this answer type.")
@@ -799,7 +799,7 @@ extension AnswerTypeDuration : AnswerTypeDocumentable, DocumentableStruct {
         }
         switch key {
         case .typeName:
-            return .init(propertyType: .primitive(.string))
+            return .init(constValue: serialTypeName)
         case .displayUnits:
             return .init(propertyType: .referenceArray(DurationUnit.documentableType()), propertyDescription:
                             "The units used to display the duration as a question.")
@@ -832,7 +832,7 @@ extension AnswerTypeMeasurement : AnswerTypeDocumentable, DocumentableStruct {
         }
         switch key {
         case .typeName:
-            return .init(propertyType: .primitive(.string))
+            return .init(constValue: serialTypeName)
         case .unit:
             return .init(propertyType: .primitive(.string), propertyDescription:
                             "The unit of measurement into which the value is converted for storage.")

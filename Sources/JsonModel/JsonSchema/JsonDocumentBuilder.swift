@@ -278,7 +278,8 @@ public class JsonDocumentBuilder {
                 if prop.constValue == nil, prop.defaultValue == nil,
                    let parentKey = parentKeys.first(where: { $0.stringValue == key.stringValue }),
                    let parentProp = try parentDocType?.documentProperty(for: parentKey),
-                   prop.propertyType == parentProp.propertyType
+                   prop.propertyType == parentProp.propertyType,
+                   key.stringValue != "type"
                 {
                     required.removeAll(where: { $0 == key.stringValue })
                     return
@@ -329,6 +330,9 @@ public class JsonDocumentBuilder {
         case .primitive(let jsonType):
             if let defaultValue = prop.defaultValue {
                 return .primitive(JsonSchemaPrimitive(defaultValue: defaultValue, description: prop.propertyDescription))
+            }
+            else if let const = prop.constValue {
+                return .const(JsonSchemaConst(const: const, description: prop.propertyDescription))
             }
             else {
                 return .primitive(JsonSchemaPrimitive(jsonType: jsonType, description: prop.propertyDescription))

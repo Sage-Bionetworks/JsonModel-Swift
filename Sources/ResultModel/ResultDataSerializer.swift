@@ -150,11 +150,13 @@ open class AbstractResultObject : Codable, MultiplatformTimestamp {
     }
     
     open class func codingKeys() -> [CodingKey] {
-        CodingKeys.allCases
+        var ret: [CodingKey] = CodingKeys.allCases
+        ret.append(AnyCodingKey(stringValue: "type", intValue: 9999))
+        return ret
     }
 
     open class func isRequired(_ codingKey: CodingKey) -> Bool {
-        if codingKey.stringValue == "typeName" {
+        if codingKey.stringValue == "type" {
             return true
         } else if let key = codingKey as? CodingKeys {
             return [.identifier, .startDateTime].contains(key)
@@ -164,8 +166,13 @@ open class AbstractResultObject : Codable, MultiplatformTimestamp {
     }
 
     open class func documentProperty(for codingKey: CodingKey) throws -> DocumentProperty {
-        if codingKey.stringValue == "typeName" {
-            return .init(propertyType: .primitive(.string), propertyDescription: "The polymorphic type")
+        if codingKey.stringValue == "type" {
+            if let const = (self as? PolymorphicSerializableTyped.Type)?.serialTypeName {
+                return .init(constValue: const)
+            }
+            else {
+                return .init(propertyType: .primitive(.string), propertyDescription: "The polymorphic type")
+            }
         }
         guard let key = codingKey as? CodingKeys else {
             throw DocumentableError.invalidCodingKey(codingKey, "\(codingKey) is not recognized for this class")

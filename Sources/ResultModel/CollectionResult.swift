@@ -58,6 +58,12 @@ open class AbstractCollectionResultObject : AbstractResultObject {
         self.children = children
         super.init(identifier: identifier, startDate: startDate, endDate: endDate)
     }
+    
+    override open class func codingKeys() -> [CodingKey] {
+        var keys = super.codingKeys()
+        keys.append(contentsOf: CodingKeys.allCases)
+        return keys
+    }
 
     override open class func isRequired(_ codingKey: CodingKey) -> Bool {
         return (codingKey is CodingKeys) || super.isRequired(codingKey)
@@ -78,7 +84,7 @@ open class AbstractCollectionResultObject : AbstractResultObject {
 /// `CollectionResultObject` is used to include multiple results associated with a single action.
 @Serializable(subclassIndex: 2)
 @SerialName("collection")
-public final class CollectionResultObject : AbstractCollectionResultObject, CollectionResult {
+public final class CollectionResultObject : AbstractCollectionResultObject, CollectionResult, MultiplatformResultData {
     
     public func deepCopy() -> CollectionResultObject {
         let copyChildren = self.children.map { $0.deepCopy() }
