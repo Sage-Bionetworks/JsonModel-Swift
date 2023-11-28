@@ -389,7 +389,7 @@ class ResultDataTests: XCTestCase {
         // Check that an example of all the standard results are included in the serializer.
         let serializer = ResultDataSerializer()
         let actual = Set(serializer.examples.map { $0.typeName })
-        let expected = Set(SerializableResultType.StandardTypes.allCases.map { $0.rawValue })
+        let expected = Set(["answer", "assessment", "base", "collection", "error", "file", "section"])
         XCTAssertEqual(expected.count, actual.count)
         XCTAssertEqual(expected, actual)
     }
@@ -407,7 +407,7 @@ class ResultDataTests: XCTestCase {
         ]
         
         // Check that all standard results are being checked
-        let expected = Set(SerializableResultType.StandardTypes.allCases.map { $0.rawValue })
+        let expected = Set(["answer", "assessment", "base", "collection", "error", "file", "section"])
         let actual = Set(results.map { $0.typeName })
         XCTAssertEqual(expected.count, actual.count)
         XCTAssertEqual(expected, actual)

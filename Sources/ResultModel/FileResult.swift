@@ -104,7 +104,7 @@ extension FileResultObject : DocumentableStruct {
         }
         switch key {
         case .typeName:
-            return .init(constValue: SerializableResultType.StandardTypes.file.resultType)
+            return .init(constValue: serialTypeName)
         case .identifier:
             return .init(propertyType: .primitive(.string))
         case .startDateTime, .endDateTime:

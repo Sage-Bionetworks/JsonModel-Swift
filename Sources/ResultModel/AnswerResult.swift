@@ -51,11 +51,12 @@ public extension AnswerResult {
     }
 }
 
-public final class AnswerResultObject : ResultData, AnswerResult, MultiplatformTimestamp {
+public final class AnswerResultObject : ResultData, AnswerResult, MultiplatformTimestamp, PolymorphicSerializableTyped {
     private enum CodingKeys : String, OrderedEnumCodingKey {
         case typeName = "type", identifier, startDate, endDate, jsonAnswerType = "answerType", jsonValue = "value", questionText, questionData
     }
-    public private(set) var typeName: String = "answer"
+    public let typeName: String = AnswerResultObject.serialTypeName
+    public static let serialTypeName: String = "answer"
     
     public let identifier: String
     public let jsonAnswerType: AnswerType?
@@ -155,7 +156,7 @@ extension AnswerResultObject : DocumentableStruct {
         }
         switch key {
         case .typeName:
-            return .init(constValue: SerializableResultType.StandardTypes.answer.resultType)
+            return .init(constValue: serialTypeName)
         case .identifier:
             return .init(propertyType: .primitive(.string))
         case .startDate, .endDate:

@@ -82,7 +82,7 @@ extension ErrorResultObject : DocumentableStruct {
         }
         switch key {
         case .typeName:
-            return .init(constValue: SerializableResultType.StandardTypes.error.resultType)
+            return .init(constValue: serialTypeName)
         case .identifier:
             return .init(propertyType: .primitive(.string))
         case .startDateTime, .endDateTime:
