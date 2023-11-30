@@ -35,6 +35,15 @@ public protocol AnswerType : PolymorphicTyped, Codable {
     func encodeAnswer(from value: Any?) throws -> JsonElement
 }
 
+/// An ``AnswerType`` that can be represented as a decimal number.
+public protocol DecimalAnswerType : AnswerType {
+    var significantDigits: Int? { get }
+}
+
+extension DecimalAnswerType {
+    public var baseType: JsonType { .number }
+}
+
 public final class AnswerTypeSerializer : GenericPolymorphicSerializer<AnswerType>, DocumentableInterface {
     public var documentDescription: String? {
         """
@@ -60,20 +69,6 @@ public final class AnswerTypeSerializer : GenericPolymorphicSerializer<AnswerTyp
             AnswerTypeString.examples().first!,
             AnswerTypeTime.examples().first!,
         ])
-    }
-}
-
-public protocol BaseAnswerType : AnswerType {
-}
-
-public protocol DecimalAnswerType : BaseAnswerType {
-    var significantDigits: Int? { get }
-}
-
-extension BaseAnswerType {
-    
-    public var baseType: JsonType {
-        return JsonType(rawValue: typeName)!
     }
 }
 
@@ -113,7 +108,8 @@ extension AnswerType {
 
 @Serializable
 @SerialName("object")
-public struct AnswerTypeObject : BaseAnswerType, Codable, Hashable {
+public struct AnswerTypeObject : AnswerType, Codable, Hashable {
+    public var baseType: JsonType { .init(rawValue: typeName)! }
     
     public init() {
     }
@@ -152,7 +148,8 @@ public struct AnswerTypeObject : BaseAnswerType, Codable, Hashable {
 
 @Serializable
 @SerialName("string")
-public struct AnswerTypeString : BaseAnswerType, Codable, Hashable {
+public struct AnswerTypeString : AnswerType, Codable, Hashable {
+    public var baseType: JsonType { .init(rawValue: typeName)! }
 
     public init() {
     }
@@ -193,7 +190,8 @@ public struct AnswerTypeString : BaseAnswerType, Codable, Hashable {
 
 @Serializable
 @SerialName("boolean")
-public struct AnswerTypeBoolean : BaseAnswerType, Codable, Hashable {
+public struct AnswerTypeBoolean : AnswerType, Codable, Hashable {
+    public var baseType: JsonType { .init(rawValue: typeName)! }
 
     public init() {
     }
@@ -246,7 +244,8 @@ public struct AnswerTypeBoolean : BaseAnswerType, Codable, Hashable {
 
 @Serializable
 @SerialName("integer")
-public struct AnswerTypeInteger : BaseAnswerType, Codable, Hashable {
+public struct AnswerTypeInteger : AnswerType, Codable, Hashable {
+    public var baseType: JsonType { .init(rawValue: typeName)! }
 
     public init() {
     }
@@ -353,7 +352,8 @@ extension NumberJsonType {
 
 @Serializable
 @SerialName("null")
-public struct AnswerTypeNull : BaseAnswerType, Codable, Hashable {
+public struct AnswerTypeNull : AnswerType, Codable, Hashable {
+    public var baseType: JsonType { .null }
 
     public init() {
     }
@@ -477,11 +477,15 @@ public struct AnswerTypeTime : DateTimeAnswerType, Codable, Hashable {
     }
 }
 
-public protocol DateTimeAnswerType : BaseAnswerType {
+public protocol DateTimeAnswerType : AnswerType {
     var codingFormat: String { get }
 }
 
 extension DateTimeAnswerType {
+    
+    public var baseType: JsonType {
+        return .string
+    }
     
     public var formatter: DateFormatter {
         let formatter = DateFormatter()
